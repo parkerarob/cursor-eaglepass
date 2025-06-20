@@ -8,9 +8,10 @@ interface CreatePassFormProps {
   onCreatePass: (formData: PassFormData) => void;
   isLoading?: boolean;
   excludeLocationId?: string;
+  heading?: string;
 }
 
-export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocationId }: CreatePassFormProps) {
+export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocationId, heading }: CreatePassFormProps) {
   const [selectedDestination, setSelectedDestination] = useState<string>('');
   let availableDestinations = getAvailableDestinations();
   if (excludeLocationId) {
@@ -45,7 +46,7 @@ export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocatio
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-center">Where are you going?</CardTitle>
+        <CardTitle className="text-center">{heading || 'Where are you going?'}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -201,6 +201,7 @@ export default function Home() {
                   }}
                   isLoading={isLoading}
                   excludeLocationId={currentLeg.destinationLocationId}
+                  heading="Need to go somewhere else?"
                 />
               </>
             );
@@ -258,20 +259,23 @@ export default function Home() {
                     currentLeg.destinationLocationId !== currentStudent.assignedLocationId && !isRestroomTrip && (
                       <>
                         <Button
-                          onClick={handleReturn}
-                          disabled={isLoading}
-                          className="w-full"
-                          variant="outline"
-                        >
-                          {isLoading ? 'Updating...' : 'I\'ve Arrived'}
-                        </Button>
-                        <Button
                           onClick={handleClosePass}
                           disabled={isLoading}
                           className="w-full"
                         >
                           {isLoading ? 'Closing...' : `I'm back in class`}
                         </Button>
+                        <div className="text-center pt-2">
+                          <p className="text-sm text-muted-foreground mb-2">Need to stay here for awhile?</p>
+                          <Button
+                            onClick={handleReturn}
+                            disabled={isLoading}
+                            className="w-full"
+                            variant="outline"
+                          >
+                            {isLoading ? 'Updating...' : 'I\'ve Arrived'}
+                          </Button>
+                        </div>
                       </>
                     )}
                 </CardContent>
