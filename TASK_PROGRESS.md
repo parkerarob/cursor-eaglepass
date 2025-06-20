@@ -22,6 +22,9 @@
 **Next Steps:**
 Ready for **Task 1.2: Deploy "Hello World"** - Create a simple webpage and deploy to Vercel
 
+### ✅ Task 1.2: Deploy "Hello World" - COMPLETED
+Successfully deployed the initial application to Vercel, establishing the CI/CD pipeline and production environment.
+
 ---
 
 ## Phase 2: Understanding Data (Days 4-7)
@@ -83,33 +86,51 @@ Ready for **Phase 3: Real Data Storage** - Connect to Firebase and implement rea
 
 ---
 
+## Phase 3: Real Data Storage
+
+### ✅ Task 3.1: Firebase Integration - COMPLETED
+1.  ✅ Connected the application to a live Firebase Firestore database.
+2.  ✅ Replaced all mock data functions with live Firestore calls (`getStudentById`, `getLocationById`, `getActivePassByStudentId`, etc.).
+3.  ✅ Implemented `createPass` and `updatePass` functions to persist data in Firestore.
+4.  ✅ Added data conversion utilities to handle Firestore Timestamps.
+5.  ✅ Created a developer tool page (`/dev-tools`) for migrating mock user and location data into Firestore.
+6.  ✅ Added environment variable checks to ensure the app fails gracefully if Firebase configuration is missing.
+
+---
+
+## Phase 4: Authentication & Security
+
+### ✅ Task 4.1: Google SSO & Role-Based Access - COMPLETED
+1.  ✅ Implemented Google Single Sign-On (SSO) using Firebase Authentication.
+2.  ✅ Created a secure authentication flow where only registered users can access the application.
+3.  ✅ Added role-based access control, limiting access to users with the `student` role and providing a `dev` role for testing.
+4.  ✅ Implemented a "Dev Mode" to allow developers to impersonate a test student for easier debugging.
+5.  ✅ Added necessary security configurations (`vercel.json`, authorized domains in Firebase) to ensure authentication works correctly in the Vercel production environment.
+6.  ✅ Created a clean login page and integrated sign-out functionality.
+
+---
+
 ## Learning Journey Status
 
 - [x] **Phase 1: Foundation & "Hello World"** (Completed)
   - [x] Task 1.1: Project Setup & Environment
-  - [ ] Task 1.2: Deploy "Hello World"
+  - [x] Task 1.2: Deploy "Hello World"
 - [x] **Phase 2: Understanding Data** (Completed)
   - [x] Task 2.1: Data Models & Mock Data
-- [ ] **Phase 3: Real Data Storage** (Week 2)
-- [ ] **Phase 4: Authentication & Security** (Week 3)
-- [ ] **Phase 5: The Core State Machine** (Week 4)
-- [ ] **Phase 6: Real-World Testing** (Week 5)
+- [x] **Phase 3: Real Data Storage** (Completed)
+  - [x] Task 3.1: Firebase Integration
+- [x] **Phase 4: Authentication & Security** (Completed)
+  - [x] Task 4.1: Google SSO & Role-Based Access
+- [ ] **Phase 5: The Core State Machine** (Next)
+- [ ] **Phase 6: Real-World Testing**
 
 ---
 
-## MVP Completion Summary
+## Current Status
 
-**🎉 Eagle Pass MVP is COMPLETE and FUNCTIONAL!**
+**🎉 Eagle Pass now has a live database and secure authentication!**
 
-The MVP successfully demonstrates the core hall pass lifecycle with a beautiful, modern interface. Students can create passes, navigate between locations, and the system properly tracks their movement with appropriate state transitions.
+The application has been successfully migrated from mock data to a persistent Firestore database. The core pass lifecycle is fully functional with real data. We have also implemented a complete Google SSO authentication flow, ensuring that only authorized students (and developers in "dev mode") can access the application.
 
-**Key MVP Features Delivered:**
-1. **Complete Pass Lifecycle** - Create, depart, arrive, return, close
-2. **Smart State Machine** - Handles simple and complex movement patterns
-3. **Beautiful UI/UX** - Modern design with dark mode support
-4. **Type Safety** - Full TypeScript implementation
-5. **Production Ready** - Clean code, no linting errors, optimized build
-6. **Deployment Ready** - Vercel deployment with GitHub integration
-
-**Ready for Next Phase:**
-The foundation is solid and ready for Phase 3 (Real Data Storage) when you're ready to move from mock data to Firebase integration. 
+**Next Steps:**
+Ready for **Phase 5: The Core State Machine**. We will refactor the state transition logic out of the UI components and into a dedicated, testable module to improve maintainability and prepare for more complex features. 

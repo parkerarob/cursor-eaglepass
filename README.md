@@ -2,7 +2,30 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### Environment Variables
+
+This project uses Firebase for its backend and authentication. Before you can run the application, you'll need to set up your environment variables.
+
+1.  Create a file named `.env.local` in the root of the project.
+2.  Copy the contents of the example below into your new file.
+3.  Replace the placeholder values with your actual Firebase project credentials. You can find these in your Firebase project settings.
+
+```
+# .env.local
+
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+```
+
+**Note:** The `.env.local` file is included in `.gitignore` and should not be committed to your repository.
+
+### Running the Development Server
+
+Once your environment variables are set, you can run the development server:
 
 ```bash
 npm run dev
