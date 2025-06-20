@@ -23,15 +23,21 @@ export interface Location {
 export type PassStatus = 'OPEN' | 'CLOSED';
 export type MovementState = 'IN' | 'OUT';
 
+export interface Leg {
+  legNumber: number;
+  originLocationId: string;
+  destinationLocationId: string;
+  state: MovementState; // IN or OUT
+  timestamp: Date;
+}
+
 export interface Pass {
   id: string;
   studentId: string;
-  originLocationId: string;
-  destinationLocationId: string;
   status: PassStatus;
-  state: MovementState;
   createdAt: Date;
   lastUpdatedAt: Date;
+  legs: Leg[];
 }
 
 export interface EventLog {

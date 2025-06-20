@@ -28,8 +28,9 @@ export function PassStatus({ pass, currentLocation }: PassStatusProps) {
     );
   }
 
-  const destination = getLocationById(pass.destinationLocationId);
-  const isOut = pass.state === 'OUT';
+  const lastLeg = pass.legs[pass.legs.length - 1];
+  const location = getLocationById(lastLeg.destinationLocationId);
+  const isOut = lastLeg.state === 'OUT';
   const isOpen = pass.status === 'OPEN';
 
   return (
@@ -39,8 +40,12 @@ export function PassStatus({ pass, currentLocation }: PassStatusProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-center">
-          <p className="text-sm text-muted-foreground mb-2">Going to:</p>
-          <p className="text-lg font-semibold">{destination?.name}</p>
+          <p className="text-sm text-muted-foreground mb-2">
+            {isOut ? 'OUT to:' : 'IN'}
+          </p>
+          <p className="text-lg font-semibold">
+            {location?.name}
+          </p>
         </div>
 
         <div className="flex justify-center gap-2">
@@ -59,7 +64,7 @@ export function PassStatus({ pass, currentLocation }: PassStatusProps) {
         </div>
 
         <div className="text-center text-sm text-muted-foreground">
-          <p>Started: {pass.createdAt.toLocaleTimeString()}</p>
+          <p>{isOut ? 'Started' : 'Arrived'}: {lastLeg.timestamp.toLocaleTimeString()}</p>
           {isOpen && (
             <p className="mt-1">
               {isOut ? "You're on your way" : "You've arrived"}

@@ -110,32 +110,64 @@ export const mockPasses: Pass[] = [
   {
     id: 'pass-1',
     studentId: 'student-2',
-    originLocationId: 'location-1',
-    destinationLocationId: 'location-3',
     status: 'OPEN',
-    state: 'OUT',
-    createdAt: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
+    createdAt: new Date(Date.now() - 5 * 60 * 1000),
     lastUpdatedAt: new Date(Date.now() - 5 * 60 * 1000),
+    legs: [
+      {
+        legNumber: 1,
+        originLocationId: 'location-1',
+        destinationLocationId: 'location-3',
+        state: 'OUT',
+        timestamp: new Date(Date.now() - 5 * 60 * 1000),
+      },
+    ],
   },
   {
     id: 'pass-2',
     studentId: 'student-3',
-    originLocationId: 'location-2',
-    destinationLocationId: 'location-4',
     status: 'OPEN',
-    state: 'IN',
-    createdAt: new Date(Date.now() - 10 * 60 * 1000), // 10 minutes ago
-    lastUpdatedAt: new Date(Date.now() - 2 * 60 * 1000), // 2 minutes ago
+    createdAt: new Date(Date.now() - 10 * 60 * 1000),
+    lastUpdatedAt: new Date(Date.now() - 2 * 60 * 1000),
+    legs: [
+      {
+        legNumber: 1,
+        originLocationId: 'location-2',
+        destinationLocationId: 'location-4',
+        state: 'OUT',
+        timestamp: new Date(Date.now() - 10 * 60 * 1000),
+      },
+      {
+        legNumber: 2,
+        originLocationId: 'location-2',
+        destinationLocationId: 'location-4',
+        state: 'IN',
+        timestamp: new Date(Date.now() - 2 * 60 * 1000),
+      },
+    ],
   },
   {
     id: 'pass-3',
     studentId: 'student-4',
-    originLocationId: 'location-1',
-    destinationLocationId: 'location-5',
     status: 'CLOSED',
-    state: 'IN',
-    createdAt: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-    lastUpdatedAt: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
+    createdAt: new Date(Date.now() - 30 * 60 * 1000),
+    lastUpdatedAt: new Date(Date.now() - 15 * 60 * 1000),
+    legs: [
+      {
+        legNumber: 1,
+        originLocationId: 'location-1',
+        destinationLocationId: 'location-5',
+        state: 'OUT',
+        timestamp: new Date(Date.now() - 30 * 60 * 1000),
+      },
+      {
+        legNumber: 2,
+        originLocationId: 'location-1',
+        destinationLocationId: 'location-5',
+        state: 'IN',
+        timestamp: new Date(Date.now() - 15 * 60 * 1000),
+      },
+    ],
   },
 ];
 

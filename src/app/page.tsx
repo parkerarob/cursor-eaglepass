@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Pass, User, Location, PassFormData } from '@/types';
+import { Pass, User, Location, PassFormData, Leg } from '@/types';
 import { PassStatus } from '@/components/PassStatus';
 import { CreatePassForm } from '@/components/CreatePassForm';
 import { Button } from '@/components/ui/button';
@@ -21,88 +21,106 @@ export default function Home() {
   );
   const [isLoading, setIsLoading] = useState(false);
 
+  // Helper to get the current leg
+  const getCurrentLeg = (pass: Pass | null): Leg | null => {
+    if (!pass || pass.legs.length === 0) return null;
+    return pass.legs[pass.legs.length - 1];
+  };
+
+  // Helper to get the next leg number
+  const getNextLegNumber = (pass: Pass | null): number => {
+    if (!pass) return 1;
+    return pass.legs.length + 1;
+  };
+
   const handleCreatePass = async (formData: PassFormData) => {
     setIsLoading(true);
-    
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Create a new pass (in real app, this would be saved to database)
     const newPass: Pass = {
       id: `pass-${Date.now()}`,
       studentId: currentStudent.id,
-      originLocationId: currentStudent.assignedLocationId!,
-      destinationLocationId: formData.destinationLocationId,
       status: 'OPEN',
-      state: 'OUT',
       createdAt: new Date(),
       lastUpdatedAt: new Date(),
+      legs: [
+        {
+          legNumber: 1,
+          originLocationId: currentStudent.assignedLocationId!,
+          destinationLocationId: formData.destinationLocationId,
+          state: 'OUT',
+          timestamp: new Date(),
+        },
+      ],
     };
-    
     setCurrentPass(newPass);
     setIsLoading(false);
   };
 
   const handleReturn = async () => {
     if (!currentPass) return;
-    
     setIsLoading(true);
-    
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Update pass to show student has returned
+    const lastLeg = getCurrentLeg(currentPass)!;
+    const newLeg: Leg = {
+      legNumber: getNextLegNumber(currentPass),
+      originLocationId: lastLeg.destinationLocationId,
+      destinationLocationId: lastLeg.destinationLocationId,
+      state: 'IN',
+      timestamp: new Date(),
+    };
     const updatedPass: Pass = {
       ...currentPass,
-      state: 'IN',
       lastUpdatedAt: new Date(),
+      legs: [...currentPass.legs, newLeg],
     };
-    
+    setCurrentPass(updatedPass);
+    setIsLoading(false);
+  };
+
+  const handleReturnToClass = async () => {
+    if (!currentPass) return;
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const lastLeg = getCurrentLeg(currentPass)!;
+    const newLeg: Leg = {
+      legNumber: getNextLegNumber(currentPass),
+      originLocationId: lastLeg.destinationLocationId,
+      destinationLocationId: currentStudent.assignedLocationId!,
+      state: 'OUT',
+      timestamp: new Date(),
+    };
+    const updatedPass: Pass = {
+      ...currentPass,
+      lastUpdatedAt: new Date(),
+      legs: [...currentPass.legs, newLeg],
+    };
     setCurrentPass(updatedPass);
     setIsLoading(false);
   };
 
   const handleClosePass = async () => {
     if (!currentPass) return;
-    
     setIsLoading(true);
-    
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Close the pass
+    const lastLeg = getCurrentLeg(currentPass)!;
+    const newLeg: Leg = {
+      legNumber: getNextLegNumber(currentPass),
+      originLocationId: lastLeg.destinationLocationId,
+      destinationLocationId: currentStudent.assignedLocationId!,
+      state: 'IN',
+      timestamp: new Date(),
+    };
     const closedPass: Pass = {
       ...currentPass,
       status: 'CLOSED',
       lastUpdatedAt: new Date(),
+      legs: [...currentPass.legs, newLeg],
     };
-    
     setCurrentPass(closedPass);
     setIsLoading(false);
-    
-    // After closing, reset to no pass state
     setTimeout(() => {
       setCurrentPass(null);
-    }, 1500); // Give user time to see the closed state
-  };
-
-  const handleReturnToClass = async () => {
-    if (!currentPass) return;
-    
-    setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Update pass to show student is heading back to class
-    const updatedPass: Pass = {
-      ...currentPass,
-      state: 'OUT',
-      lastUpdatedAt: new Date(),
-    };
-    
-    setCurrentPass(updatedPass);
-    setIsLoading(false);
+    }, 1500);
   };
 
   const handleResetPass = () => {
@@ -136,38 +154,20 @@ export default function Home() {
         )}
 
         {/* Action Buttons - Only show for OPEN passes */}
-        {currentPass && currentPass.status === 'OPEN' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {currentPass.state === 'OUT' && (
-                <>
-                  {/* For restroom or return-to-class, only show "I'm back in class" */}
-                  {(getLocationById(currentPass.destinationLocationId)?.locationType === 'bathroom' || 
-                    currentPass.destinationLocationId === currentStudent.assignedLocationId) && (
-                    <Button 
-                      onClick={handleClosePass} 
-                      disabled={isLoading}
-                      className="w-full"
-                    >
-                      {isLoading ? 'Closing...' : 'I\'m back in class'}
-                    </Button>
-                  )}
-                  
-                  {/* For other destinations, show both options */}
-                  {getLocationById(currentPass.destinationLocationId)?.locationType !== 'bathroom' && 
-                   currentPass.destinationLocationId !== currentStudent.assignedLocationId && (
-                    <>
-                      <Button 
-                        onClick={handleReturn} 
-                        disabled={isLoading}
-                        className="w-full"
-                        variant="outline"
-                      >
-                        {isLoading ? 'Updating...' : 'I\'ve Arrived'}
-                      </Button>
+        {currentPass && currentPass.status === 'OPEN' && (() => {
+          const currentLeg = getCurrentLeg(currentPass);
+          if (!currentLeg) return null;
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle>Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {currentLeg.state === 'OUT' && (
+                  <>
+                    {/* For restroom or return-to-class, only show "I'm back in class" */}
+                    {(getLocationById(currentLeg.destinationLocationId)?.locationType === 'bathroom' || 
+                      currentLeg.destinationLocationId === currentStudent.assignedLocationId) && (
                       <Button 
                         onClick={handleClosePass} 
                         disabled={isLoading}
@@ -175,23 +175,43 @@ export default function Home() {
                       >
                         {isLoading ? 'Closing...' : 'I\'m back in class'}
                       </Button>
-                    </>
-                  )}
-                </>
-              )}
-              
-              {currentPass.state === 'IN' && (
-                <Button 
-                  onClick={handleReturnToClass} 
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                    )}
+                    {/* For other destinations, show both options */}
+                    {getLocationById(currentLeg.destinationLocationId)?.locationType !== 'bathroom' && 
+                     currentLeg.destinationLocationId !== currentStudent.assignedLocationId && (
+                      <>
+                        <Button 
+                          onClick={handleReturn} 
+                          disabled={isLoading}
+                          className="w-full"
+                          variant="outline"
+                        >
+                          {isLoading ? 'Updating...' : 'I\'ve Arrived'}
+                        </Button>
+                        <Button 
+                          onClick={handleClosePass} 
+                          disabled={isLoading}
+                          className="w-full"
+                        >
+                          {isLoading ? 'Closing...' : 'I\'m back in class'}
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
+                {currentLeg.state === 'IN' && (
+                  <Button 
+                    onClick={handleReturnToClass} 
+                    disabled={isLoading}
+                    className="w-full"
+                  >
+                    {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Reset Button for Demo */}
         {currentPass && (
