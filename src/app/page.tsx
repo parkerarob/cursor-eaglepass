@@ -45,6 +45,12 @@ export default function Home() {
     return currentStudent.assignedLocationId!;
   };
 
+  // Helper to check if this is a simple restroom trip (first pass to restroom)
+  const isSimpleRestroomTrip = (pass: Pass): boolean => {
+    return pass.legs.length === 1 && 
+           getLocationById(pass.legs[0].destinationLocationId)?.locationType === 'bathroom';
+  };
+
   const handleCreatePass = async (formData: PassFormData) => {
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -224,25 +230,48 @@ export default function Home() {
                       onClick={async () => {
                         setIsLoading(true);
                         await new Promise(resolve => setTimeout(resolve, 1000));
-                        const newLeg: Leg = {
-                          legNumber: getNextLegNumber(currentPass),
-                          originLocationId: currentLeg.destinationLocationId!,
-                          destinationLocationId: returnLocationId!,
-                          state: 'IN',
-                          timestamp: new Date(),
-                        };
-                        const updatedPass: Pass = {
-                          ...currentPass,
-                          lastUpdatedAt: new Date(),
-                          legs: [...currentPass.legs, newLeg],
-                        };
-                        setCurrentPass(updatedPass);
+                        
+                        // For simple restroom trips, close the pass
+                        if (isSimpleRestroomTrip(currentPass)) {
+                          const newLeg: Leg = {
+                            legNumber: getNextLegNumber(currentPass),
+                            originLocationId: currentLeg.destinationLocationId!,
+                            destinationLocationId: currentStudent.assignedLocationId!,
+                            state: 'IN',
+                            timestamp: new Date(),
+                          };
+                          const closedPass: Pass = {
+                            ...currentPass,
+                            status: 'CLOSED',
+                            lastUpdatedAt: new Date(),
+                            legs: [...currentPass.legs, newLeg],
+                          };
+                          setCurrentPass(closedPass);
+                          setTimeout(() => {
+                            setCurrentPass(null);
+                          }, 1500);
+                        } else {
+                          // For complex trips, return to the last non-restroom location
+                          const newLeg: Leg = {
+                            legNumber: getNextLegNumber(currentPass),
+                            originLocationId: currentLeg.destinationLocationId!,
+                            destinationLocationId: returnLocationId!,
+                            state: 'IN',
+                            timestamp: new Date(),
+                          };
+                          const updatedPass: Pass = {
+                            ...currentPass,
+                            lastUpdatedAt: new Date(),
+                            legs: [...currentPass.legs, newLeg],
+                          };
+                          setCurrentPass(updatedPass);
+                        }
                         setIsLoading(false);
                       }}
                       disabled={isLoading}
                       className="w-full"
                     >
-                      {isLoading ? 'Returning...' : `I'm back in ${returnLocationName}`}
+                      {isLoading ? 'Returning...' : `I'm back in ${isSimpleRestroomTrip(currentPass) ? 'class' : returnLocationName}`}
                     </Button>
                   )}
                   {!isRestroomTrip && (getLocationById(currentLeg.destinationLocationId)?.locationType === 'bathroom' ||
