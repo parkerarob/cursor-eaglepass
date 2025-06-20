@@ -1,5 +1,5 @@
 import { PassStateMachine } from '../stateMachine';
-import { Pass, User, Leg, PassFormData } from '@/types';
+import { Pass, User, PassFormData } from '@/types';
 
 // Mock the Firebase function
 jest.mock('@/lib/firebase/firestore', () => ({
@@ -40,7 +40,7 @@ describe('PassStateMachine', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetLocationById.mockImplementation((id: string) => {
-      const locations: Record<string, any> = {
+      const locations: Record<string, { id: string; name: string; locationType: 'classroom' | 'bathroom' | 'library' | 'nurse' | 'office' | 'cafeteria' }> = {
         'classroom-1': mockClassroom,
         'bathroom-1': mockBathroom,
         'library-1': mockLibrary,

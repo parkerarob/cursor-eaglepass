@@ -1,4 +1,4 @@
-import { Pass, Leg, Location, User, PassFormData } from '@/types';
+import { Pass, Leg, User, PassFormData } from '@/types';
 import { getLocationById } from '@/lib/firebase/firestore';
 
 export interface ActionState {

@@ -333,7 +333,7 @@ export default function Home() {
                       >
                         {isLoading
                           ? 'Returning...'
-                          : `I&apos;m back in ${
+                          : `I'm back in ${
                               isSimpleTrip ? 'class' : returnLocationName
                             }`}
                       </Button>
@@ -346,7 +346,7 @@ export default function Home() {
                       >
                         {isLoading
                           ? 'Closing...'
-                          : `I&apos;m back in class`}
+                          : `I'm back in class`}
                       </Button>
                     )}
                     {canArrive && !isRestroomTrip && (
@@ -362,7 +362,7 @@ export default function Home() {
                         >
                           {isLoading
                             ? 'Updating...'
-                            : "I&apos;ve Arrived"}
+                            : "I've Arrived"}
                         </Button>
                       </div>
                     )}
