@@ -153,43 +153,81 @@ export default function Home() {
           />
         )}
 
-        {/* Action Buttons - Only show for OPEN passes */}
+        {/* When pass is OPEN and last leg is IN, show all destination buttons and Return to Scheduled Class */}
         {currentPass && currentPass.status === 'OPEN' && (() => {
           const currentLeg = getCurrentLeg(currentPass);
           if (!currentLeg) return null;
-          return (
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {currentLeg.state === 'OUT' && (
-                  <>
-                    {/* For restroom or return-to-class, only show "I'm back in class" */}
-                    {(getLocationById(currentLeg.destinationLocationId)?.locationType === 'bathroom' || 
-                      currentLeg.destinationLocationId === currentStudent.assignedLocationId) && (
-                      <Button 
-                        onClick={handleClosePass} 
-                        disabled={isLoading}
-                        className="w-full"
-                      >
-                        {isLoading ? 'Closing...' : 'I\'m back in class'}
-                      </Button>
-                    )}
-                    {/* For other destinations, show both options */}
-                    {getLocationById(currentLeg.destinationLocationId)?.locationType !== 'bathroom' && 
-                     currentLeg.destinationLocationId !== currentStudent.assignedLocationId && (
+          if (currentLeg.state === 'IN') {
+            return (
+              <>
+                <CreatePassForm
+                  onCreatePass={async (formData) => {
+                    setIsLoading(true);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    const newLeg: Leg = {
+                      legNumber: getNextLegNumber(currentPass),
+                      originLocationId: currentLeg.destinationLocationId,
+                      destinationLocationId: formData.destinationLocationId,
+                      state: 'OUT',
+                      timestamp: new Date(),
+                    };
+                    const updatedPass: Pass = {
+                      ...currentPass,
+                      lastUpdatedAt: new Date(),
+                      legs: [...currentPass.legs, newLeg],
+                    };
+                    setCurrentPass(updatedPass);
+                    setIsLoading(false);
+                  }}
+                  isLoading={isLoading}
+                />
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Actions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button
+                      onClick={handleReturnToClass}
+                      disabled={isLoading}
+                      className="w-full"
+                    >
+                      {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </>
+            );
+          }
+          if (currentLeg.state === 'OUT') {
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {(getLocationById(currentLeg.destinationLocationId)?.locationType === 'bathroom' ||
+                    currentLeg.destinationLocationId === currentStudent.assignedLocationId) && (
+                    <Button
+                      onClick={handleClosePass}
+                      disabled={isLoading}
+                      className="w-full"
+                    >
+                      {isLoading ? 'Closing...' : 'I\'m back in class'}
+                    </Button>
+                  )}
+                  {getLocationById(currentLeg.destinationLocationId)?.locationType !== 'bathroom' &&
+                    currentLeg.destinationLocationId !== currentStudent.assignedLocationId && (
                       <>
-                        <Button 
-                          onClick={handleReturn} 
+                        <Button
+                          onClick={handleReturn}
                           disabled={isLoading}
                           className="w-full"
                           variant="outline"
                         >
                           {isLoading ? 'Updating...' : 'I\'ve Arrived'}
                         </Button>
-                        <Button 
-                          onClick={handleClosePass} 
+                        <Button
+                          onClick={handleClosePass}
                           disabled={isLoading}
                           className="w-full"
                         >
@@ -197,20 +235,11 @@ export default function Home() {
                         </Button>
                       </>
                     )}
-                  </>
-                )}
-                {currentLeg.state === 'IN' && (
-                  <Button 
-                    onClick={handleReturnToClass} 
-                    disabled={isLoading}
-                    className="w-full"
-                  >
-                    {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
+                </CardContent>
+              </Card>
+            );
+          }
+          return null;
         })()}
 
         {/* Reset Button for Demo */}
