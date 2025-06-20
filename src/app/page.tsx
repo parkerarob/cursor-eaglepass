@@ -32,6 +32,18 @@ export default function Home() {
   });
 
   useEffect(() => {
+    const isFirebaseConfigured =
+      !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
+      !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+
+    if (!isFirebaseConfigured) {
+      setError(
+        'Firebase configuration is missing. Please ensure all NEXT_PUBLIC_FIREBASE_* environment variables are set in your Vercel project settings.'
+      );
+      setIsLoading(false);
+      return;
+    }
+
     const fetchInitialData = async () => {
       try {
         setIsLoading(true);
