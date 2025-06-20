@@ -18,9 +18,11 @@ import { PassService } from '@/lib/passService';
 import { useAuth } from '@/components/AuthProvider';
 import { Login } from '@/components/Login';
 import { signOut } from '@/lib/firebase/auth';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const router = useRouter();
 
   const [currentStudent, setCurrentStudent] = useState<User | null>(null);
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
@@ -79,6 +81,10 @@ export default function Home() {
             setError('Could not load test student profile for dev mode.');
             setCurrentStudent(null);
           }
+        } else if (userProfile?.role === 'teacher' || userProfile?.role === 'admin') {
+          // Redirect teachers and admins to admin interface
+          router.push('/admin');
+          return;
         } else if (userProfile) {
           setError(`This application is for students only. Your role is: ${userProfile.role}.`);
           setCurrentStudent(null);
@@ -93,7 +99,7 @@ export default function Home() {
     };
 
     fetchUserData();
-  }, [authUser, authLoading]);
+  }, [authUser, authLoading, router]);
 
   useEffect(() => {
     if (!currentStudent) {
