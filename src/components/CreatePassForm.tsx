@@ -7,11 +7,15 @@ import { getAvailableDestinations } from '@/lib/mockData';
 interface CreatePassFormProps {
   onCreatePass: (formData: PassFormData) => void;
   isLoading?: boolean;
+  excludeLocationId?: string;
 }
 
-export function CreatePassForm({ onCreatePass, isLoading = false }: CreatePassFormProps) {
+export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocationId }: CreatePassFormProps) {
   const [selectedDestination, setSelectedDestination] = useState<string>('');
-  const availableDestinations = getAvailableDestinations();
+  let availableDestinations = getAvailableDestinations();
+  if (excludeLocationId) {
+    availableDestinations = availableDestinations.filter(loc => loc.id !== excludeLocationId);
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

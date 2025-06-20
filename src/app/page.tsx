@@ -192,6 +192,7 @@ export default function Home() {
                     setIsLoading(false);
                   }}
                   isLoading={isLoading}
+                  excludeLocationId={currentLeg.destinationLocationId}
                 />
                 <Card>
                   <CardHeader>
