@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Pass, User, Location, PassFormData, Leg } from '@/types';
+import { Pass, User, Location, PassFormData } from '@/types';
 import { PassStatus } from '@/components/PassStatus';
 import { CreatePassForm } from '@/components/CreatePassForm';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -11,11 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   getLocationById,
   getActivePassByStudentId,
-  createPass,
-  updatePass,
   getUserByEmail,
   getStudentById,
 } from '@/lib/firebase/firestore';
+import { PassService } from '@/lib/passService';
 import { useAuth } from '@/components/AuthProvider';
 import { Login } from '@/components/Login';
 import { signOut } from '@/lib/firebase/auth';
@@ -133,139 +132,86 @@ export default function Home() {
       return;
     }
 
-    const determineActionState = async () => {
-      const lastLeg = currentPass.legs[currentPass.legs.length - 1];
-      if (lastLeg.state !== 'OUT') return;
-
-      const destination = await getLocationById(lastLeg.destinationLocationId);
-      const isRestroom = destination?.locationType === 'bathroom';
-      const isSimple = currentPass.legs.length === 1 && isRestroom;
-
-      let returnLocName = 'class';
-      if (isRestroom && !isSimple) {
-        let returnId: string | undefined;
-        for (let i = currentPass.legs.length - 2; i >= 0; i--) {
-          const leg = currentPass.legs[i];
-          const loc = await getLocationById(leg.destinationLocationId);
-          if (loc?.locationType !== 'bathroom') {
-            returnId = leg.destinationLocationId;
-            break;
-          }
-        }
-        if (!returnId) returnId = currentStudent.assignedLocationId;
-        const returnLocation = await getLocationById(returnId!);
-        returnLocName = returnLocation?.name ?? 'class';
-      }
-
-      const canArrive =
-        destination?.locationType !== 'bathroom' &&
-        lastLeg.destinationLocationId !== currentStudent.assignedLocationId;
-
-      setActionState({
-        isRestroomTrip: isRestroom,
-        isSimpleTrip: isSimple,
-        returnLocationName: returnLocName,
-        canArrive: canArrive,
-      });
+    const updateActionState = async () => {
+      const newActionState = await PassService.getActionState(currentPass, currentStudent);
+      setActionState(newActionState);
     };
 
-    determineActionState();
+    updateActionState();
   }, [currentPass, currentStudent]);
-
-  const getNextLegNumber = (pass: Pass | null): number => {
-    if (!pass) return 1;
-    return pass.legs.length + 1;
-  };
 
   const handleCreatePass = async (formData: PassFormData) => {
     if (!currentStudent) return;
     setIsLoading(true);
-    const newPass: Pass = {
-      id: `pass-${Date.now()}`,
-      studentId: currentStudent.id,
-      status: 'OPEN',
-      createdAt: new Date(),
-      lastUpdatedAt: new Date(),
-      legs: [
-        {
-          legNumber: 1,
-          originLocationId: currentStudent.assignedLocationId!,
-          destinationLocationId: formData.destinationLocationId,
-          state: 'OUT',
-          timestamp: new Date(),
-        },
-      ],
-    };
-    await createPass(newPass);
-    setCurrentPass(newPass);
+    
+    const result = await PassService.createPass(formData, currentStudent);
+    if (result.success && result.updatedPass) {
+      setCurrentPass(result.updatedPass);
+    } else {
+      setError(result.error || 'Failed to create pass');
+    }
     setIsLoading(false);
   };
 
   const handleReturn = async () => {
-    if (!currentPass) return;
+    if (!currentPass || !currentStudent) return;
     setIsLoading(true);
-    const lastLeg = currentPass.legs[currentPass.legs.length - 1];
-    const newLeg: Leg = {
-      legNumber: getNextLegNumber(currentPass),
-      originLocationId: lastLeg.destinationLocationId,
-      destinationLocationId: lastLeg.destinationLocationId,
-      state: 'IN',
-      timestamp: new Date(),
-    };
-    const updatedPass: Pass = {
-      ...currentPass,
-      lastUpdatedAt: new Date(),
-      legs: [...currentPass.legs, newLeg],
-    };
-    await updatePass(updatedPass.id, updatedPass);
-    setCurrentPass(updatedPass);
+    
+    const result = await PassService.arriveAtDestination(currentPass, currentStudent);
+    if (result.success && result.updatedPass) {
+      setCurrentPass(result.updatedPass);
+    } else {
+      setError(result.error || 'Failed to arrive at destination');
+    }
     setIsLoading(false);
   };
 
   const handleReturnToClass = async () => {
     if (!currentPass || !currentStudent) return;
     setIsLoading(true);
-    const lastLeg = currentPass.legs[currentPass.legs.length - 1];
-    const newLeg: Leg = {
-      legNumber: getNextLegNumber(currentPass),
-      originLocationId: lastLeg.destinationLocationId,
-      destinationLocationId: currentStudent.assignedLocationId!,
-      state: 'OUT',
-      timestamp: new Date(),
-    };
-    const updatedPass: Pass = {
-      ...currentPass,
-      lastUpdatedAt: new Date(),
-      legs: [...currentPass.legs, newLeg],
-    };
-    await updatePass(updatedPass.id, updatedPass);
-    setCurrentPass(updatedPass);
+    
+    const result = await PassService.returnToClass(currentPass, currentStudent);
+    if (result.success && result.updatedPass) {
+      setCurrentPass(result.updatedPass);
+    } else {
+      setError(result.error || 'Failed to return to class');
+    }
     setIsLoading(false);
   };
 
   const handleClosePass = async () => {
     if (!currentPass || !currentStudent) return;
     setIsLoading(true);
-    const lastLeg = currentPass.legs[currentPass.legs.length - 1];
-    const newLeg: Leg = {
-      legNumber: getNextLegNumber(currentPass),
-      originLocationId: lastLeg.destinationLocationId,
-      destinationLocationId: currentStudent.assignedLocationId!,
-      state: 'IN',
-      timestamp: new Date(),
-    };
-    const closedPass: Pass = {
-      ...currentPass,
-      status: 'CLOSED',
-      lastUpdatedAt: new Date(),
-      legs: [...currentPass.legs, newLeg],
-    };
-    await updatePass(closedPass.id, closedPass);
-    setCurrentPass(closedPass);
+    
+    const result = await PassService.closePass(currentPass, currentStudent);
+    if (result.success && result.updatedPass) {
+      setCurrentPass(result.updatedPass);
+      setTimeout(() => {
+        setCurrentPass(null);
+      }, 1500);
+    } else {
+      setError(result.error || 'Failed to close pass');
+    }
     setIsLoading(false);
-    setTimeout(() => {
-      setCurrentPass(null);
-    }, 1500);
+  };
+
+  const handleRestroomReturn = async () => {
+    if (!currentPass || !currentStudent) return;
+    setIsLoading(true);
+    
+    const result = await PassService.handleRestroomReturn(currentPass, currentStudent);
+    if (result.success && result.updatedPass) {
+      setCurrentPass(result.updatedPass);
+      // If it's a simple trip that was closed, clear the pass after a delay
+      if (result.updatedPass.status === 'CLOSED') {
+        setTimeout(() => {
+          setCurrentPass(null);
+        }, 1500);
+      }
+    } else {
+      setError(result.error || 'Failed to handle restroom return');
+    }
+    setIsLoading(false);
   };
 
   const handleResetPass = () => {
@@ -341,6 +287,7 @@ export default function Home() {
           (() => {
             const currentLeg = currentPass.legs[currentPass.legs.length - 1];
             if (!currentLeg) return null;
+            
             if (currentLeg.state === 'IN') {
               return (
                 <>
@@ -363,6 +310,7 @@ export default function Home() {
                 </>
               );
             }
+            
             if (currentLeg.state === 'OUT') {
               const {
                 isRestroomTrip,
@@ -370,6 +318,7 @@ export default function Home() {
                 returnLocationName,
                 canArrive,
               } = actionState;
+              
               return (
                 <Card>
                   <CardHeader>
@@ -378,64 +327,7 @@ export default function Home() {
                   <CardContent className="space-y-3">
                     {isRestroomTrip && (
                       <Button
-                        onClick={async () => {
-                          setIsLoading(true);
-                          if (isSimpleTrip) {
-                            const newLeg: Leg = {
-                              legNumber: getNextLegNumber(currentPass),
-                              originLocationId: currentLeg.destinationLocationId!,
-                              destinationLocationId:
-                                currentStudent.assignedLocationId!,
-                              state: 'IN',
-                              timestamp: new Date(),
-                            };
-                            const closedPass: Pass = {
-                              ...currentPass,
-                              status: 'CLOSED',
-                              lastUpdatedAt: new Date(),
-                              legs: [...currentPass.legs, newLeg],
-                            };
-                            await updatePass(closedPass.id, closedPass);
-                            setCurrentPass(closedPass);
-                            setTimeout(() => {
-                              setCurrentPass(null);
-                            }, 1500);
-                          } else {
-                            let returnId: string | undefined;
-                            for (
-                              let i = currentPass.legs.length - 2;
-                              i >= 0;
-                              i--
-                            ) {
-                              const leg = currentPass.legs[i];
-                              const loc = await getLocationById(
-                                leg.destinationLocationId
-                              );
-                              if (loc?.locationType !== 'bathroom') {
-                                returnId = leg.destinationLocationId;
-                                break;
-                              }
-                            }
-                            if (!returnId)
-                              returnId = currentStudent.assignedLocationId;
-
-                            const newLeg: Leg = {
-                              legNumber: getNextLegNumber(currentPass),
-                              originLocationId: currentLeg.destinationLocationId!,
-                              destinationLocationId: returnId!,
-                              state: 'IN',
-                              timestamp: new Date(),
-                            };
-                            const updatedPass: Pass = {
-                              ...currentPass,
-                              lastUpdatedAt: new Date(),
-                              legs: [...currentPass.legs, newLeg],
-                            };
-                            await updatePass(updatedPass.id, updatedPass);
-                            setCurrentPass(updatedPass);
-                          }
-                          setIsLoading(false);
-                        }}
+                        onClick={handleRestroomReturn}
                         disabled={isLoading}
                         className="w-full"
                       >
