@@ -1,5 +1,6 @@
 import { PassStateMachine } from '../stateMachine';
 import { Pass, User, PassFormData } from '@/types';
+import * as firestore from '@/lib/firebase/firestore';
 
 // Mock the Firebase function
 jest.mock('@/lib/firebase/firestore', () => ({
@@ -653,73 +654,51 @@ describe('PassStateMachine', () => {
         ],
       };
 
-      // Mock the getActivePassByStudentId function
-      const mockGetActivePassByStudentId = jest.fn().mockResolvedValue(existingPass);
-      const mockUpdatePass = jest.fn().mockResolvedValue(undefined);
-      
-      // Temporarily replace the imported function
-      const originalGetActivePassByStudentId = require('@/lib/firebase/firestore').getActivePassByStudentId;
-      const originalUpdatePass = require('@/lib/firebase/firestore').updatePass;
-      
-      require('@/lib/firebase/firestore').getActivePassByStudentId = mockGetActivePassByStudentId;
-      require('@/lib/firebase/firestore').updatePass = mockUpdatePass;
+      const getActivePassSpy = jest.spyOn(firestore, 'getActivePassByStudentId').mockResolvedValue(existingPass);
+      const updatePassSpy = jest.spyOn(firestore, 'updatePass').mockResolvedValue(undefined);
 
-      try {
-        const PassService = require('@/lib/passService').PassService;
-        const result = await PassService.createPass(
-          { destinationLocationId: 'bathroom-1' },
-          mockStudent
-        );
+      const { PassService } = await import('@/lib/passService');
+      const result = await PassService.createPass(
+        { destinationLocationId: 'bathroom-1' },
+        mockStudent
+      );
 
-        expect(result.success).toBe(true);
-        expect(result.updatedPass).toBeDefined();
-        expect(result.updatedPass!.legs).toHaveLength(3);
-        expect(result.updatedPass!.legs[2].originLocationId).toBe('library-1');
-        expect(result.updatedPass!.legs[2].destinationLocationId).toBe('bathroom-1');
-        expect(result.updatedPass!.legs[2].state).toBe('OUT');
-        
-        expect(mockGetActivePassByStudentId).toHaveBeenCalledWith(mockStudent.id);
-        expect(mockUpdatePass).toHaveBeenCalled();
-      } finally {
-        // Restore original functions
-        require('@/lib/firebase/firestore').getActivePassByStudentId = originalGetActivePassByStudentId;
-        require('@/lib/firebase/firestore').updatePass = originalUpdatePass;
-      }
+      expect(result.success).toBe(true);
+      expect(result.updatedPass).toBeDefined();
+      expect(result.updatedPass!.legs).toHaveLength(3);
+      expect(result.updatedPass!.legs[2].originLocationId).toBe('library-1');
+      expect(result.updatedPass!.legs[2].destinationLocationId).toBe('bathroom-1');
+      expect(result.updatedPass!.legs[2].state).toBe('OUT');
+      
+      expect(getActivePassSpy).toHaveBeenCalledWith(mockStudent.id);
+      expect(updatePassSpy).toHaveBeenCalled();
+
+      getActivePassSpy.mockRestore();
+      updatePassSpy.mockRestore();
     });
 
     it('should create new pass when no active pass exists', async () => {
-      // Mock no existing pass
-      const mockGetActivePassByStudentId = jest.fn().mockResolvedValue(null);
-      const mockCreatePass = jest.fn().mockResolvedValue(undefined);
-      
-      // Temporarily replace the imported function
-      const originalGetActivePassByStudentId = require('@/lib/firebase/firestore').getActivePassByStudentId;
-      const originalCreatePass = require('@/lib/firebase/firestore').createPass;
-      
-      require('@/lib/firebase/firestore').getActivePassByStudentId = mockGetActivePassByStudentId;
-      require('@/lib/firebase/firestore').createPass = mockCreatePass;
+      const getActivePassSpy = jest.spyOn(firestore, 'getActivePassByStudentId').mockResolvedValue(null);
+      const createPassSpy = jest.spyOn(firestore, 'createPass').mockResolvedValue(undefined);
 
-      try {
-        const PassService = require('@/lib/passService').PassService;
-        const result = await PassService.createPass(
-          { destinationLocationId: 'library-1' },
-          mockStudent
-        );
+      const { PassService } = await import('@/lib/passService');
+      const result = await PassService.createPass(
+        { destinationLocationId: 'library-1' },
+        mockStudent
+      );
 
-        expect(result.success).toBe(true);
-        expect(result.updatedPass).toBeDefined();
-        expect(result.updatedPass!.legs).toHaveLength(1);
-        expect(result.updatedPass!.legs[0].originLocationId).toBe('classroom-1');
-        expect(result.updatedPass!.legs[0].destinationLocationId).toBe('library-1');
-        expect(result.updatedPass!.legs[0].state).toBe('OUT');
-        
-        expect(mockGetActivePassByStudentId).toHaveBeenCalledWith(mockStudent.id);
-        expect(mockCreatePass).toHaveBeenCalled();
-      } finally {
-        // Restore original functions
-        require('@/lib/firebase/firestore').getActivePassByStudentId = originalGetActivePassByStudentId;
-        require('@/lib/firebase/firestore').createPass = originalCreatePass;
-      }
+      expect(result.success).toBe(true);
+      expect(result.updatedPass).toBeDefined();
+      expect(result.updatedPass!.legs).toHaveLength(1);
+      expect(result.updatedPass!.legs[0].originLocationId).toBe('classroom-1');
+      expect(result.updatedPass!.legs[0].destinationLocationId).toBe('library-1');
+      expect(result.updatedPass!.legs[0].state).toBe('OUT');
+      
+      expect(getActivePassSpy).toHaveBeenCalledWith(mockStudent.id);
+      expect(createPassSpy).toHaveBeenCalled();
+
+      getActivePassSpy.mockRestore();
+      createPassSpy.mockRestore();
     });
   });
 }); 
