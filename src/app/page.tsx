@@ -10,13 +10,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   getLocationById,
   getActivePassByStudentId,
-  getStudentById,
   createPass,
   updatePass,
+  getUserByEmail,
 } from '@/lib/firebase/firestore';
+import { useAuth } from '@/components/AuthProvider';
+import { Login } from '@/components/Login';
+import { signOut } from '@/lib/firebase/auth';
 
 export default function Home() {
-  const currentStudentId = 'student-1';
+  const { user: authUser, isLoading: authLoading } = useAuth();
 
   const [currentStudent, setCurrentStudent] = useState<User | null>(null);
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
@@ -44,43 +47,72 @@ export default function Home() {
       return;
     }
 
-    const fetchInitialData = async () => {
+    if (authLoading) {
+      setIsLoading(true);
+      return;
+    }
+
+    if (!authUser) {
+      setIsLoading(false);
+      setCurrentStudent(null);
+      setCurrentPass(null);
+      return;
+    }
+
+    const fetchUserData = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
-        setIsLoading(true);
-        setError(null);
-        const student = await getStudentById(currentStudentId);
-
-        if (!student) {
-          throw new Error(`Student with ID '${currentStudentId}' not found in the database.`);
+        const userProfile = await getUserByEmail(authUser.email!);
+        if (userProfile?.role === 'student') {
+          setCurrentStudent(userProfile);
+        } else if (userProfile) {
+          setError(`This application is for students only. Your role is: ${userProfile.role}.`);
+          setCurrentStudent(null);
+        } else {
+          setError(`Your email (${authUser.email}) is not registered in the system.`);
+          setCurrentStudent(null);
         }
-        
-        if (!student.assignedLocationId) {
-          throw new Error(`Student with ID '${currentStudentId}' is missing an assignedLocationId.`);
-        }
+      } catch (e) {
+        setError((e as Error).message);
+        setCurrentStudent(null);
+      }
+    };
 
+    fetchUserData();
+  }, [authUser, authLoading]);
+
+  useEffect(() => {
+    if (!currentStudent) {
+      if (!authLoading) {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    const fetchStudentData = async () => {
+      try {
+        if (!currentStudent.assignedLocationId) {
+          throw new Error(`Your user profile is missing an assigned classroom.`);
+        }
         const [location, pass] = await Promise.all([
-          getLocationById(student.assignedLocationId),
-          getActivePassByStudentId(student.id)
+          getLocationById(currentStudent.assignedLocationId),
+          getActivePassByStudentId(currentStudent.id),
         ]);
-
         if (!location) {
-          throw new Error(`Could not find assigned location for student '${currentStudentId}'. Check if a location with ID '${student.assignedLocationId}' exists.`);
+          throw new Error(`Could not find your assigned classroom (ID: ${currentStudent.assignedLocationId}).`);
         }
-
-        setCurrentStudent(student);
         setCurrentLocation(location);
         setCurrentPass(pass);
-
       } catch (e) {
-        const err = e as Error;
-        console.error("Failed to fetch initial data:", err);
-        setError(err.message);
+        setError((e as Error).message);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchInitialData();
-  }, [currentStudentId]);
+
+    fetchStudentData();
+  }, [currentStudent, authLoading]);
 
   useEffect(() => {
     if (!currentPass || !currentStudent) {
@@ -99,20 +131,21 @@ export default function Home() {
       if (isRestroom && !isSimple) {
         let returnId: string | undefined;
         for (let i = currentPass.legs.length - 2; i >= 0; i--) {
-            const leg = currentPass.legs[i];
-            const loc = await getLocationById(leg.destinationLocationId);
-            if (loc?.locationType !== 'bathroom') {
-                returnId = leg.destinationLocationId;
-                break;
-            }
+          const leg = currentPass.legs[i];
+          const loc = await getLocationById(leg.destinationLocationId);
+          if (loc?.locationType !== 'bathroom') {
+            returnId = leg.destinationLocationId;
+            break;
+          }
         }
         if (!returnId) returnId = currentStudent.assignedLocationId;
         const returnLocation = await getLocationById(returnId!);
         returnLocName = returnLocation?.name ?? 'class';
       }
 
-      const canArrive = destination?.locationType !== 'bathroom' &&
-                        lastLeg.destinationLocationId !== currentStudent.assignedLocationId;
+      const canArrive =
+        destination?.locationType !== 'bathroom' &&
+        lastLeg.destinationLocationId !== currentStudent.assignedLocationId;
 
       setActionState({
         isRestroomTrip: isRestroom,
@@ -225,7 +258,7 @@ export default function Home() {
     setCurrentPass(null);
   };
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
         <p>Loading...</p>
@@ -233,24 +266,25 @@ export default function Home() {
     );
   }
 
+  if (!authUser) {
+    return <Login />;
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-center text-center">
-        <h1 className="text-2xl font-bold text-destructive mb-4">Could Not Load App</h1>
-        <p className="text-muted-foreground">{error}</p>
-        <p className="text-sm text-muted-foreground mt-4">
-          Please check the data in your Firestore database and ensure it&apos;s correct.
-        </p>
+        <h1 className="text-2xl font-bold text-destructive mb-4">An Error Occurred</h1>
+        <p className="text-muted-foreground mb-4">{error}</p>
+        <Button onClick={signOut} variant="outline">Sign Out</Button>
       </div>
     );
   }
 
   if (!currentStudent || !currentLocation) {
-    // This case should ideally not be reached if error handling is exhaustive
     return (
-        <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-            <p>An unknown error occurred while loading student data.</p>
-        </div>
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <p>An unknown error occurred while loading student data.</p>
+      </div>
     );
   }
 
@@ -258,10 +292,19 @@ export default function Home() {
     <div className="min-h-screen bg-background p-4">
       <ThemeToggle />
       <div className="max-w-2xl mx-auto space-y-6">
+        <header className="flex justify-between items-center">
+          <div className="text-left">
+            <h1 className="text-3xl font-bold">Eagle Pass</h1>
+            <p className="text-muted-foreground">
+              Welcome, {currentStudent.name}
+            </p>
+          </div>
+          <Button onClick={signOut} variant="outline" size="sm">Sign Out</Button>
+        </header>
+        
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold">Eagle Pass</h1>
           <p className="text-muted-foreground">
-            Welcome, {currentStudent.name} • Currently in {currentLocation.name}
+            You are currently in <strong>{currentLocation.name}</strong>
           </p>
         </div>
 
@@ -278,123 +321,150 @@ export default function Home() {
           />
         )}
 
-        {currentPass && currentPass.status === 'OPEN' && (() => {
-          const currentLeg = currentPass.legs[currentPass.legs.length - 1];
-          if (!currentLeg) return null;
-          if (currentLeg.state === 'IN') {
-            return (
-              <>
-                <Button
-                  onClick={handleReturnToClass}
-                  disabled={isLoading}
-                  className="w-full mb-4 text-base font-semibold"
-                  style={{ minHeight: 48 }}
-                >
-                  {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
-                </Button>
-                <CreatePassForm
-                  onCreatePass={handleCreatePass}
-                  isLoading={isLoading}
-                  excludeLocationId={currentLeg.destinationLocationId}
-                  heading="Need to go somewhere else?"
-                />
-              </>
-            );
-          }
-          if (currentLeg.state === 'OUT') {
-            const { isRestroomTrip, isSimpleTrip, returnLocationName, canArrive } = actionState;
-            return (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {isRestroomTrip && (
-                    <Button
-                      onClick={async () => {
-                        setIsLoading(true);
-                        if (isSimpleTrip) {
-                          const newLeg: Leg = {
-                            legNumber: getNextLegNumber(currentPass),
-                            originLocationId: currentLeg.destinationLocationId!,
-                            destinationLocationId: currentStudent.assignedLocationId!,
-                            state: 'IN',
-                            timestamp: new Date(),
-                          };
-                          const closedPass: Pass = {
-                            ...currentPass,
-                            status: 'CLOSED',
-                            lastUpdatedAt: new Date(),
-                            legs: [...currentPass.legs, newLeg],
-                          };
-                          await updatePass(closedPass.id, closedPass);
-                          setCurrentPass(closedPass);
-                          setTimeout(() => {
-                            setCurrentPass(null);
-                          }, 1500);
-                        } else {
-                           let returnId: string | undefined;
-                           for (let i = currentPass.legs.length - 2; i >= 0; i--) {
-                               const leg = currentPass.legs[i];
-                               const loc = await getLocationById(leg.destinationLocationId);
-                               if (loc?.locationType !== 'bathroom') {
-                                   returnId = leg.destinationLocationId;
-                                   break;
-                               }
-                           }
-                           if (!returnId) returnId = currentStudent.assignedLocationId;
+        {currentPass &&
+          currentPass.status === 'OPEN' &&
+          (() => {
+            const currentLeg = currentPass.legs[currentPass.legs.length - 1];
+            if (!currentLeg) return null;
+            if (currentLeg.state === 'IN') {
+              return (
+                <>
+                  <Button
+                    onClick={handleReturnToClass}
+                    disabled={isLoading}
+                    className="w-full mb-4 text-base font-semibold"
+                    style={{ minHeight: 48 }}
+                  >
+                    {isLoading
+                      ? 'Returning...'
+                      : 'Return to Scheduled Class'}
+                  </Button>
+                  <CreatePassForm
+                    onCreatePass={handleCreatePass}
+                    isLoading={isLoading}
+                    excludeLocationId={currentLeg.destinationLocationId}
+                    heading="Need to go somewhere else?"
+                  />
+                </>
+              );
+            }
+            if (currentLeg.state === 'OUT') {
+              const {
+                isRestroomTrip,
+                isSimpleTrip,
+                returnLocationName,
+                canArrive,
+              } = actionState;
+              return (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Actions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {isRestroomTrip && (
+                      <Button
+                        onClick={async () => {
+                          setIsLoading(true);
+                          if (isSimpleTrip) {
+                            const newLeg: Leg = {
+                              legNumber: getNextLegNumber(currentPass),
+                              originLocationId: currentLeg.destinationLocationId!,
+                              destinationLocationId:
+                                currentStudent.assignedLocationId!,
+                              state: 'IN',
+                              timestamp: new Date(),
+                            };
+                            const closedPass: Pass = {
+                              ...currentPass,
+                              status: 'CLOSED',
+                              lastUpdatedAt: new Date(),
+                              legs: [...currentPass.legs, newLeg],
+                            };
+                            await updatePass(closedPass.id, closedPass);
+                            setCurrentPass(closedPass);
+                            setTimeout(() => {
+                              setCurrentPass(null);
+                            }, 1500);
+                          } else {
+                            let returnId: string | undefined;
+                            for (
+                              let i = currentPass.legs.length - 2;
+                              i >= 0;
+                              i--
+                            ) {
+                              const leg = currentPass.legs[i];
+                              const loc = await getLocationById(
+                                leg.destinationLocationId
+                              );
+                              if (loc?.locationType !== 'bathroom') {
+                                returnId = leg.destinationLocationId;
+                                break;
+                              }
+                            }
+                            if (!returnId)
+                              returnId = currentStudent.assignedLocationId;
 
-                          const newLeg: Leg = {
-                            legNumber: getNextLegNumber(currentPass),
-                            originLocationId: currentLeg.destinationLocationId!,
-                            destinationLocationId: returnId!,
-                            state: 'IN',
-                            timestamp: new Date(),
-                          };
-                          const updatedPass: Pass = {
-                            ...currentPass,
-                            lastUpdatedAt: new Date(),
-                            legs: [...currentPass.legs, newLeg],
-                          };
-                          await updatePass(updatedPass.id, updatedPass);
-                          setCurrentPass(updatedPass);
-                        }
-                        setIsLoading(false);
-                      }}
-                      disabled={isLoading}
-                      className="w-full"
-                    >
-                      {isLoading ? 'Returning...' : `I&apos;m back in ${isSimpleTrip ? 'class' : returnLocationName}`}
-                    </Button>
-                  )}
-                  {!isRestroomTrip && (
+                            const newLeg: Leg = {
+                              legNumber: getNextLegNumber(currentPass),
+                              originLocationId: currentLeg.destinationLocationId!,
+                              destinationLocationId: returnId!,
+                              state: 'IN',
+                              timestamp: new Date(),
+                            };
+                            const updatedPass: Pass = {
+                              ...currentPass,
+                              lastUpdatedAt: new Date(),
+                              legs: [...currentPass.legs, newLeg],
+                            };
+                            await updatePass(updatedPass.id, updatedPass);
+                            setCurrentPass(updatedPass);
+                          }
+                          setIsLoading(false);
+                        }}
+                        disabled={isLoading}
+                        className="w-full"
+                      >
+                        {isLoading
+                          ? 'Returning...'
+                          : `I&apos;m back in ${
+                              isSimpleTrip ? 'class' : returnLocationName
+                            }`}
+                      </Button>
+                    )}
+                    {!isRestroomTrip && (
                       <Button
                         onClick={handleClosePass}
                         disabled={isLoading}
                         className="w-full"
                       >
-                        {isLoading ? 'Closing...' : `I&apos;m back in class`}
+                        {isLoading
+                          ? 'Closing...'
+                          : `I&apos;m back in class`}
                       </Button>
-                  )}
-                  {canArrive && !isRestroomTrip && (
+                    )}
+                    {canArrive && !isRestroomTrip && (
                       <div className="text-center pt-2">
-                        <p className="text-sm text-muted-foreground mb-2">Need to stay here for awhile?</p>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Need to stay here for awhile?
+                        </p>
                         <Button
                           onClick={handleReturn}
                           disabled={isLoading}
                           className="w-full"
                           variant="outline"
                         >
-                          {isLoading ? 'Updating...' : "I&apos;ve Arrived"}
+                          {isLoading
+                            ? 'Updating...'
+                            : "I&apos;ve Arrived"}
                         </Button>
                       </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          }
-          return null;
-        })()}
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            }
+            return null;
+          })()}
 
         {currentPass && (
           <Card>

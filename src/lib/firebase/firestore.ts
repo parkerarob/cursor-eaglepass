@@ -104,4 +104,18 @@ export const updatePass = async (passId: string, updates: Partial<Pass>): Promis
     const passRef = doc(db, "passes", passId);
     const updateData = convertDatesToTimestamps(updates);
     await updateDoc(passRef, updateData as Partial<Pass>);
+};
+
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  if (!email) return null;
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("email", "==", email));
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) {
+    console.warn(`No user found with email: ${email}`);
+    return null;
+  }
+  const userDoc = querySnapshot.docs[0];
+  return { id: userDoc.id, ...userDoc.data() } as User;
 }; 
