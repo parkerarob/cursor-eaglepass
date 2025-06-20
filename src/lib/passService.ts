@@ -1,5 +1,5 @@
 import { Pass, User, PassFormData } from '@/types';
-import { createPass, updatePass } from '@/lib/firebase/firestore';
+import { createPass, updatePass, getActivePassByStudentId } from '@/lib/firebase/firestore';
 import { PassStateMachine, ActionState } from '@/lib/stateMachine';
 
 export interface PassServiceResult {
@@ -14,9 +14,36 @@ export class PassService {
    */
   static async createPass(formData: PassFormData, student: User): Promise<PassServiceResult> {
     try {
-      const newPass = PassStateMachine.createPass(formData, student);
-      await createPass(newPass);
-      return { success: true, updatedPass: newPass };
+      // Check if student already has an active pass
+      const existingPass = await getActivePassByStudentId(student.id);
+      
+      if (existingPass) {
+        // Student has an active pass - add a new leg to it
+        const stateMachine = new PassStateMachine(existingPass, student);
+        const currentLeg = stateMachine.getCurrentLeg();
+        
+        if (currentLeg && currentLeg.state === 'IN') {
+          // Student is currently "IN" at a location - add new leg from current location
+          const updatedPass = stateMachine.addLeg(
+            currentLeg.destinationLocationId, // Origin is current location
+            formData.destinationLocationId,   // Destination is new location
+            'OUT'                             // State is OUT (traveling)
+          );
+          await updatePass(updatedPass.id, updatedPass);
+          return { success: true, updatedPass };
+        } else {
+          // Student is "OUT" - they can't create a new pass
+          return { 
+            success: false, 
+            error: 'Cannot create new pass while already traveling' 
+          };
+        }
+      } else {
+        // No active pass - create new pass from assigned class
+        const newPass = PassStateMachine.createPass(formData, student);
+        await createPass(newPass);
+        return { success: true, updatedPass: newPass };
+      }
     } catch (error) {
       return { 
         success: false, 

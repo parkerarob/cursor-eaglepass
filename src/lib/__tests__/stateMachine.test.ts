@@ -540,4 +540,186 @@ describe('PassStateMachine', () => {
       });
     });
   });
+
+  describe('Multi-leg bathroom trip', () => {
+    it('should handle student going to library, then bathroom, then returning to library', async () => {
+      // Step 1: Student creates pass to library
+      const passToLibrary: Pass = {
+        id: 'pass-1',
+        studentId: mockStudent.id,
+        status: 'OPEN',
+        createdAt: new Date(),
+        lastUpdatedAt: new Date(),
+        legs: [
+          {
+            legNumber: 1,
+            originLocationId: 'classroom-1', // Assigned class
+            destinationLocationId: 'library-1',
+            state: 'OUT',
+            timestamp: new Date(),
+          },
+        ],
+      };
+
+      // Step 2: Student arrives at library
+      let stateMachine = new PassStateMachine(passToLibrary, mockStudent);
+      let updatedPass = stateMachine.arriveAtDestination();
+      
+      expect(updatedPass.legs).toHaveLength(2);
+      expect(updatedPass.legs[1].state).toBe('IN');
+      expect(updatedPass.legs[1].destinationLocationId).toBe('library-1');
+
+      // Step 3: Student creates new pass to bathroom while at library
+      // This should add a new leg from library to bathroom
+      stateMachine = new PassStateMachine(updatedPass, mockStudent);
+      updatedPass = stateMachine.addLeg('library-1', 'bathroom-1', 'OUT');
+      
+      expect(updatedPass.legs).toHaveLength(3);
+      expect(updatedPass.legs[2].state).toBe('OUT');
+      expect(updatedPass.legs[2].originLocationId).toBe('library-1');
+      expect(updatedPass.legs[2].destinationLocationId).toBe('bathroom-1');
+
+      // Step 4: Student returns from bathroom to library
+      stateMachine = new PassStateMachine(updatedPass, mockStudent);
+      updatedPass = await stateMachine.handleRestroomReturn();
+      
+      expect(updatedPass.legs).toHaveLength(4);
+      expect(updatedPass.legs[3].state).toBe('IN');
+      expect(updatedPass.legs[3].originLocationId).toBe('bathroom-1');
+      expect(updatedPass.legs[3].destinationLocationId).toBe('library-1');
+      expect(updatedPass.status).toBe('OPEN'); // Pass should remain open since not returning to assigned class
+    });
+
+    it('should determine correct action state for bathroom trip from library', async () => {
+      const pass: Pass = {
+        id: 'pass-1',
+        studentId: mockStudent.id,
+        status: 'OPEN',
+        createdAt: new Date(),
+        lastUpdatedAt: new Date(),
+        legs: [
+          {
+            legNumber: 1,
+            originLocationId: 'classroom-1',
+            destinationLocationId: 'library-1',
+            state: 'IN',
+            timestamp: new Date(),
+          },
+          {
+            legNumber: 2,
+            originLocationId: 'library-1',
+            destinationLocationId: 'bathroom-1',
+            state: 'OUT',
+            timestamp: new Date(),
+          },
+        ],
+      };
+
+      const stateMachine = new PassStateMachine(pass, mockStudent);
+      const actionState = await stateMachine.determineActionState();
+
+      expect(actionState).toMatchObject({
+        isRestroomTrip: true,
+        returnLocationName: 'Library',
+        canArrive: false,
+      });
+    });
+  });
+
+  describe('PassService.createPass', () => {
+    it('should add leg to existing pass when student is IN at a location', async () => {
+      // Mock existing pass where student is IN at library
+      const existingPass: Pass = {
+        id: 'pass-1',
+        studentId: mockStudent.id,
+        status: 'OPEN',
+        createdAt: new Date(),
+        lastUpdatedAt: new Date(),
+        legs: [
+          {
+            legNumber: 1,
+            originLocationId: 'classroom-1',
+            destinationLocationId: 'library-1',
+            state: 'OUT',
+            timestamp: new Date(),
+          },
+          {
+            legNumber: 2,
+            originLocationId: 'library-1',
+            destinationLocationId: 'library-1',
+            state: 'IN',
+            timestamp: new Date(),
+          },
+        ],
+      };
+
+      // Mock the getActivePassByStudentId function
+      const mockGetActivePassByStudentId = jest.fn().mockResolvedValue(existingPass);
+      const mockUpdatePass = jest.fn().mockResolvedValue(undefined);
+      
+      // Temporarily replace the imported function
+      const originalGetActivePassByStudentId = require('@/lib/firebase/firestore').getActivePassByStudentId;
+      const originalUpdatePass = require('@/lib/firebase/firestore').updatePass;
+      
+      require('@/lib/firebase/firestore').getActivePassByStudentId = mockGetActivePassByStudentId;
+      require('@/lib/firebase/firestore').updatePass = mockUpdatePass;
+
+      try {
+        const PassService = require('@/lib/passService').PassService;
+        const result = await PassService.createPass(
+          { destinationLocationId: 'bathroom-1' },
+          mockStudent
+        );
+
+        expect(result.success).toBe(true);
+        expect(result.updatedPass).toBeDefined();
+        expect(result.updatedPass!.legs).toHaveLength(3);
+        expect(result.updatedPass!.legs[2].originLocationId).toBe('library-1');
+        expect(result.updatedPass!.legs[2].destinationLocationId).toBe('bathroom-1');
+        expect(result.updatedPass!.legs[2].state).toBe('OUT');
+        
+        expect(mockGetActivePassByStudentId).toHaveBeenCalledWith(mockStudent.id);
+        expect(mockUpdatePass).toHaveBeenCalled();
+      } finally {
+        // Restore original functions
+        require('@/lib/firebase/firestore').getActivePassByStudentId = originalGetActivePassByStudentId;
+        require('@/lib/firebase/firestore').updatePass = originalUpdatePass;
+      }
+    });
+
+    it('should create new pass when no active pass exists', async () => {
+      // Mock no existing pass
+      const mockGetActivePassByStudentId = jest.fn().mockResolvedValue(null);
+      const mockCreatePass = jest.fn().mockResolvedValue(undefined);
+      
+      // Temporarily replace the imported function
+      const originalGetActivePassByStudentId = require('@/lib/firebase/firestore').getActivePassByStudentId;
+      const originalCreatePass = require('@/lib/firebase/firestore').createPass;
+      
+      require('@/lib/firebase/firestore').getActivePassByStudentId = mockGetActivePassByStudentId;
+      require('@/lib/firebase/firestore').createPass = mockCreatePass;
+
+      try {
+        const PassService = require('@/lib/passService').PassService;
+        const result = await PassService.createPass(
+          { destinationLocationId: 'library-1' },
+          mockStudent
+        );
+
+        expect(result.success).toBe(true);
+        expect(result.updatedPass).toBeDefined();
+        expect(result.updatedPass!.legs).toHaveLength(1);
+        expect(result.updatedPass!.legs[0].originLocationId).toBe('classroom-1');
+        expect(result.updatedPass!.legs[0].destinationLocationId).toBe('library-1');
+        expect(result.updatedPass!.legs[0].state).toBe('OUT');
+        
+        expect(mockGetActivePassByStudentId).toHaveBeenCalledWith(mockStudent.id);
+        expect(mockCreatePass).toHaveBeenCalled();
+      } finally {
+        // Restore original functions
+        require('@/lib/firebase/firestore').getActivePassByStudentId = originalGetActivePassByStudentId;
+        require('@/lib/firebase/firestore').createPass = originalCreatePass;
+      }
+    });
+  });
 }); 
