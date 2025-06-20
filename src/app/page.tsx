@@ -212,10 +212,11 @@ export default function Home() {
           }
           if (currentLeg.state === 'OUT') {
             const isRestroomTrip = getLocationById(currentLeg.destinationLocationId)?.locationType === 'bathroom';
-            const returnLocationId = isRestroomTrip
+            let returnLocationId = isRestroomTrip
               ? getLastNonRestroomLocationId(currentPass)
               : currentStudent.assignedLocationId;
-            const returnLocationName = getLocationById(returnLocationId)?.name || 'class';
+            if (!returnLocationId) returnLocationId = currentStudent.assignedLocationId!;
+            const returnLocationName = getLocationById(returnLocationId)?.name ?? 'class';
             return (
               <Card>
                 <CardHeader>
