@@ -79,6 +79,30 @@ export default function Home() {
     
     setCurrentPass(closedPass);
     setIsLoading(false);
+    
+    // After closing, reset to no pass state
+    setTimeout(() => {
+      setCurrentPass(null);
+    }, 1500); // Give user time to see the closed state
+  };
+
+  const handleReturnToClass = async () => {
+    if (!currentPass) return;
+    
+    setIsLoading(true);
+    
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Update pass to show student is heading back to class
+    const updatedPass: Pass = {
+      ...currentPass,
+      state: 'OUT',
+      lastUpdatedAt: new Date(),
+    };
+    
+    setCurrentPass(updatedPass);
+    setIsLoading(false);
   };
 
   const handleResetPass = () => {
@@ -131,13 +155,23 @@ export default function Home() {
               )}
               
               {currentPass.state === 'IN' && (
-                <Button 
-                  onClick={handleClosePass} 
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  {isLoading ? 'Closing...' : 'I\'m back in class'}
-                </Button>
+                <>
+                  <Button 
+                    onClick={handleReturnToClass} 
+                    disabled={isLoading}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
+                  </Button>
+                  <Button 
+                    onClick={handleClosePass} 
+                    disabled={isLoading}
+                    className="w-full"
+                  >
+                    {isLoading ? 'Closing...' : 'I\'m back in class'}
+                  </Button>
+                </>
               )}
             </CardContent>
           </Card>
