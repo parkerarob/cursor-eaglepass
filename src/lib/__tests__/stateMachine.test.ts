@@ -5,11 +5,17 @@ import * as firestore from '@/lib/firebase/firestore';
 // Mock the Firebase function
 jest.mock('@/lib/firebase/firestore', () => ({
   getLocationById: jest.fn(),
+  getActivePassByStudentId: jest.fn(),
+  updatePass: jest.fn(),
+  createPass: jest.fn(),
 }));
 
-import { getLocationById } from '@/lib/firebase/firestore';
+import { getLocationById, getActivePassByStudentId, updatePass, createPass } from '@/lib/firebase/firestore';
 
 const mockGetLocationById = getLocationById as jest.MockedFunction<typeof getLocationById>;
+const mockGetActivePassByStudentId = getActivePassByStudentId as jest.MockedFunction<typeof getActivePassByStudentId>;
+const mockUpdatePass = updatePass as jest.MockedFunction<typeof updatePass>;
+const mockCreatePass = createPass as jest.MockedFunction<typeof createPass>;
 
 describe('PassStateMachine', () => {
   const mockStudent: User = {
@@ -654,8 +660,8 @@ describe('PassStateMachine', () => {
         ],
       };
 
-      const getActivePassSpy = jest.spyOn(firestore, 'getActivePassByStudentId').mockResolvedValue(existingPass);
-      const updatePassSpy = jest.spyOn(firestore, 'updatePass').mockResolvedValue(undefined);
+      mockGetActivePassByStudentId.mockResolvedValue(existingPass);
+      mockUpdatePass.mockResolvedValue(undefined);
 
       const { PassService } = await import('@/lib/passService');
       const result = await PassService.createPass(
@@ -670,16 +676,13 @@ describe('PassStateMachine', () => {
       expect(result.updatedPass!.legs[2].destinationLocationId).toBe('bathroom-1');
       expect(result.updatedPass!.legs[2].state).toBe('OUT');
       
-      expect(getActivePassSpy).toHaveBeenCalledWith(mockStudent.id);
-      expect(updatePassSpy).toHaveBeenCalled();
-
-      getActivePassSpy.mockRestore();
-      updatePassSpy.mockRestore();
+      expect(mockGetActivePassByStudentId).toHaveBeenCalledWith(mockStudent.id);
+      expect(mockUpdatePass).toHaveBeenCalled();
     });
 
     it('should create new pass when no active pass exists', async () => {
-      const getActivePassSpy = jest.spyOn(firestore, 'getActivePassByStudentId').mockResolvedValue(null);
-      const createPassSpy = jest.spyOn(firestore, 'createPass').mockResolvedValue(undefined);
+      mockGetActivePassByStudentId.mockResolvedValue(null);
+      mockCreatePass.mockResolvedValue(undefined);
 
       const { PassService } = await import('@/lib/passService');
       const result = await PassService.createPass(
@@ -694,11 +697,8 @@ describe('PassStateMachine', () => {
       expect(result.updatedPass!.legs[0].destinationLocationId).toBe('library-1');
       expect(result.updatedPass!.legs[0].state).toBe('OUT');
       
-      expect(getActivePassSpy).toHaveBeenCalledWith(mockStudent.id);
-      expect(createPassSpy).toHaveBeenCalled();
-
-      getActivePassSpy.mockRestore();
-      createPassSpy.mockRestore();
+      expect(mockGetActivePassByStudentId).toHaveBeenCalledWith(mockStudent.id);
+      expect(mockCreatePass).toHaveBeenCalled();
     });
   });
 }); 

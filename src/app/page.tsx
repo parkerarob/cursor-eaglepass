@@ -108,14 +108,40 @@ export default function Home() {
         if (!currentStudent.assignedLocationId) {
           throw new Error(`Your user profile is missing an assigned classroom.`);
         }
-        const [location, pass] = await Promise.all([
+        
+        const [assignedLocation, pass] = await Promise.all([
           getLocationById(currentStudent.assignedLocationId),
           getActivePassByStudentId(currentStudent.id),
         ]);
-        if (!location) {
+        
+        if (!assignedLocation) {
           throw new Error(`Could not find your assigned classroom (ID: ${currentStudent.assignedLocationId}).`);
         }
-        setCurrentLocation(location);
+
+        // Determine current location based on active pass
+        let currentLocation = assignedLocation; // Default to assigned class
+        
+        if (pass && pass.status === 'OPEN') {
+          const currentLeg = pass.legs[pass.legs.length - 1];
+          if (currentLeg) {
+            if (currentLeg.state === 'IN') {
+              // Student is "IN" at the destination of the current leg
+              const actualLocation = await getLocationById(currentLeg.destinationLocationId);
+              if (actualLocation) {
+                currentLocation = actualLocation;
+              }
+            } else if (currentLeg.state === 'OUT') {
+              // Student is "OUT" - they're traveling from origin to destination
+              // Show where they're coming from (origin)
+              const originLocation = await getLocationById(currentLeg.originLocationId);
+              if (originLocation) {
+                currentLocation = originLocation;
+              }
+            }
+          }
+        }
+        
+        setCurrentLocation(currentLocation);
         setCurrentPass(pass);
       } catch (e) {
         setError((e as Error).message);
@@ -147,6 +173,8 @@ export default function Home() {
     const result = await PassService.createPass(formData, currentStudent);
     if (result.success && result.updatedPass) {
       setCurrentPass(result.updatedPass);
+      // Update current location to reflect the new pass state
+      await updateCurrentLocation(result.updatedPass);
     } else {
       setError(result.error || 'Failed to create pass');
     }
@@ -160,6 +188,8 @@ export default function Home() {
     const result = await PassService.arriveAtDestination(currentPass, currentStudent);
     if (result.success && result.updatedPass) {
       setCurrentPass(result.updatedPass);
+      // Update current location to reflect the new pass state
+      await updateCurrentLocation(result.updatedPass);
     } else {
       setError(result.error || 'Failed to arrive at destination');
     }
@@ -173,6 +203,8 @@ export default function Home() {
     const result = await PassService.returnToClass(currentPass, currentStudent);
     if (result.success && result.updatedPass) {
       setCurrentPass(result.updatedPass);
+      // Update current location to reflect the new pass state
+      await updateCurrentLocation(result.updatedPass);
     } else {
       setError(result.error || 'Failed to return to class');
     }
@@ -186,8 +218,16 @@ export default function Home() {
     const result = await PassService.closePass(currentPass, currentStudent);
     if (result.success && result.updatedPass) {
       setCurrentPass(result.updatedPass);
+      // Update current location to reflect the new pass state
+      await updateCurrentLocation(result.updatedPass);
       setTimeout(() => {
         setCurrentPass(null);
+        // Reset to assigned class when pass is closed
+        if (currentStudent.assignedLocationId) {
+          getLocationById(currentStudent.assignedLocationId).then(location => {
+            if (location) setCurrentLocation(location);
+          });
+        }
       }, 1500);
     } else {
       setError(result.error || 'Failed to close pass');
@@ -202,10 +242,18 @@ export default function Home() {
     const result = await PassService.handleRestroomReturn(currentPass, currentStudent);
     if (result.success && result.updatedPass) {
       setCurrentPass(result.updatedPass);
+      // Update current location to reflect the new pass state
+      await updateCurrentLocation(result.updatedPass);
       // If returning to assigned class, the pass will be closed
       if (result.updatedPass.status === 'CLOSED') {
         setTimeout(() => {
           setCurrentPass(null);
+          // Reset to assigned class when pass is closed
+          if (currentStudent.assignedLocationId) {
+            getLocationById(currentStudent.assignedLocationId).then(location => {
+              if (location) setCurrentLocation(location);
+            });
+          }
         }, 1500);
       }
     } else {
@@ -214,8 +262,37 @@ export default function Home() {
     setIsLoading(false);
   };
 
+  // Helper function to update current location based on pass state
+  const updateCurrentLocation = async (pass: Pass) => {
+    if (!currentStudent) return;
+    
+    const currentLeg = pass.legs[pass.legs.length - 1];
+    if (currentLeg) {
+      if (currentLeg.state === 'IN') {
+        // Student is "IN" at the destination of the current leg
+        const actualLocation = await getLocationById(currentLeg.destinationLocationId);
+        if (actualLocation) {
+          setCurrentLocation(actualLocation);
+        }
+      } else if (currentLeg.state === 'OUT') {
+        // Student is "OUT" - they're traveling from origin to destination
+        // Show where they're coming from (origin)
+        const originLocation = await getLocationById(currentLeg.originLocationId);
+        if (originLocation) {
+          setCurrentLocation(originLocation);
+        }
+      }
+    }
+  };
+
   const handleResetPass = () => {
     setCurrentPass(null);
+    // Reset to assigned class when pass is reset
+    if (currentStudent?.assignedLocationId) {
+      getLocationById(currentStudent.assignedLocationId).then(location => {
+        if (location) setCurrentLocation(location);
+      });
+    }
   };
 
   if (isLoading || authLoading) {
