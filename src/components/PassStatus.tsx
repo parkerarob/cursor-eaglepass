@@ -9,7 +9,7 @@ interface PassStatusProps {
   currentLocation: Location;
 }
 
-export function PassStatus({ pass, studentName, currentLocation }: PassStatusProps) {
+export function PassStatus({ pass, currentLocation }: PassStatusProps) {
   if (!pass) {
     return (
       <Card className="w-full max-w-md mx-auto">
@@ -18,7 +18,7 @@ export function PassStatus({ pass, studentName, currentLocation }: PassStatusPro
         </CardHeader>
         <CardContent className="text-center">
           <p className="text-muted-foreground mb-4">
-            You're currently in {currentLocation.name}
+            You&apos;re currently in {currentLocation.name}
           </p>
           <Badge variant="success" className="text-sm">
             IN CLASS
