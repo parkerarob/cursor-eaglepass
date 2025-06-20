@@ -110,6 +110,53 @@ Ready for **Phase 3: Real Data Storage** - Connect to Firebase and implement rea
 
 ---
 
+## Phase 5: The Core State Machine
+
+### ✅ Task 5.1: State Machine Refactoring - COMPLETED
+1.  ✅ Refactored the core state machine logic out of UI components into a dedicated, testable module (`src/lib/stateMachine.ts`).
+2.  ✅ Created a service layer (`src/lib/passService.ts`) to handle Firebase operations and coordinate with the state machine.
+3.  ✅ Refactored the main page (`src/app/page.tsx`) to use the new service layer instead of direct state machine calls.
+4.  ✅ Added comprehensive Jest tests for the state machine (`src/lib/__tests__/stateMachine.test.ts`) covering all state transitions and edge cases.
+5.  ✅ Fixed initial test failures by adjusting validation order in the state machine.
+6.  ✅ All tests now pass successfully, ensuring the state machine logic is robust and reliable.
+7.  ✅ Tagged and released as `v0.5.0` to mark the completion of Phase 5.
+
+**Technical Achievements:**
+- ✅ **Separation of Concerns**: State machine logic is now isolated from UI components
+- ✅ **Testability**: Comprehensive test suite covering all state transitions
+- ✅ **Maintainability**: Clean service layer abstraction for Firebase operations
+- ✅ **Reliability**: All edge cases and validation scenarios are tested
+- ✅ **Documentation**: Clear interfaces and method documentation
+
+---
+
+## Phase 6: Real-World Testing
+
+### 🔄 Task 6.1: User Acceptance Testing - IN PROGRESS
+
+**What we need to accomplish:**
+1.  🔄 Conduct real-world testing with actual students and teachers
+2.  🔄 Gather feedback on usability, performance, and feature completeness
+3.  🔄 Identify and fix any bugs or edge cases discovered during testing
+4.  🔄 Validate that the system works correctly in a real school environment
+5.  🔄 Document any additional requirements or improvements needed
+
+**Testing Plan:**
+- **Student Testing**: Have students use the system for actual hall passes
+- **Teacher Testing**: Have teachers monitor and assist with pass management
+- **Performance Testing**: Ensure the system handles concurrent users well
+- **Edge Case Testing**: Test unusual scenarios and error conditions
+- **Usability Testing**: Gather feedback on UI/UX and workflow
+
+**Success Criteria:**
+- ✅ System works reliably in real-world conditions
+- ✅ Users can complete all intended workflows without issues
+- ✅ Performance is acceptable under normal load
+- ✅ No critical bugs or data integrity issues
+- ✅ User feedback is positive and actionable
+
+---
+
 ## Learning Journey Status
 
 - [x] **Phase 1: Foundation & "Hello World"** (Completed)
@@ -121,16 +168,24 @@ Ready for **Phase 3: Real Data Storage** - Connect to Firebase and implement rea
   - [x] Task 3.1: Firebase Integration
 - [x] **Phase 4: Authentication & Security** (Completed)
   - [x] Task 4.1: Google SSO & Role-Based Access
-- [ ] **Phase 5: The Core State Machine** (Next)
-- [ ] **Phase 6: Real-World Testing**
+- [x] **Phase 5: The Core State Machine** (Completed)
+  - [x] Task 5.1: State Machine Refactoring
+- [ ] **Phase 6: Real-World Testing** (In Progress)
+  - [ ] Task 6.1: User Acceptance Testing
 
 ---
 
 ## Current Status
 
-**🎉 Eagle Pass now has a live database and secure authentication!**
+**🎉 Eagle Pass now has a robust, testable state machine architecture!**
 
-The application has been successfully migrated from mock data to a persistent Firestore database. The core pass lifecycle is fully functional with real data. We have also implemented a complete Google SSO authentication flow, ensuring that only authorized students (and developers in "dev mode") can access the application.
+The application has been successfully refactored with a clean separation of concerns. The core state machine logic is now isolated in a dedicated module with comprehensive test coverage. The service layer provides a clean abstraction for Firebase operations, making the system more maintainable and reliable.
+
+**Key Achievements:**
+- ✅ **Production-Ready Architecture**: Clean separation between UI, business logic, and data access
+- ✅ **Comprehensive Testing**: Full test coverage for all state transitions
+- ✅ **Maintainable Codebase**: Well-documented interfaces and clear responsibility boundaries
+- ✅ **Reliable State Management**: Robust validation and error handling throughout
 
 **Next Steps:**
-Ready for **Phase 5: The Core State Machine**. We will refactor the state transition logic out of the UI components and into a dedicated, testable module to improve maintainability and prepare for more complex features. 
+Ready for **Phase 6: Real-World Testing**. We will conduct user acceptance testing with actual students and teachers to validate the system works correctly in real-world conditions and gather feedback for any final improvements. 
