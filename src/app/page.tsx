@@ -33,6 +33,18 @@ export default function Home() {
     return pass.legs.length + 1;
   };
 
+  // Helper to find the last non-restroom location
+  const getLastNonRestroomLocationId = (pass: Pass): string => {
+    for (let i = pass.legs.length - 1; i >= 0; i--) {
+      const leg = pass.legs[i];
+      if (getLocationById(leg.destinationLocationId)?.locationType !== 'bathroom') {
+        return leg.destinationLocationId;
+      }
+    }
+    // Fallback to scheduled class if none found
+    return currentStudent.assignedLocationId!;
+  };
+
   const handleCreatePass = async (formData: PassFormData) => {
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -199,24 +211,55 @@ export default function Home() {
             );
           }
           if (currentLeg.state === 'OUT') {
+            const isRestroomTrip = getLocationById(currentLeg.destinationLocationId)?.locationType === 'bathroom';
+            const returnLocationId = isRestroomTrip
+              ? getLastNonRestroomLocationId(currentPass)
+              : currentStudent.assignedLocationId;
+            const returnLocationName = getLocationById(returnLocationId)?.name || 'class';
             return (
               <Card>
                 <CardHeader>
                   <CardTitle>Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {(getLocationById(currentLeg.destinationLocationId)?.locationType === 'bathroom' ||
+                  {isRestroomTrip && (
+                    <Button
+                      onClick={async () => {
+                        setIsLoading(true);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        const newLeg: Leg = {
+                          legNumber: getNextLegNumber(currentPass),
+                          originLocationId: currentLeg.destinationLocationId!,
+                          destinationLocationId: returnLocationId!,
+                          state: 'IN',
+                          timestamp: new Date(),
+                        };
+                        const updatedPass: Pass = {
+                          ...currentPass,
+                          lastUpdatedAt: new Date(),
+                          legs: [...currentPass.legs, newLeg],
+                        };
+                        setCurrentPass(updatedPass);
+                        setIsLoading(false);
+                      }}
+                      disabled={isLoading}
+                      className="w-full"
+                    >
+                      {isLoading ? 'Returning...' : `I'm back in ${returnLocationName}`}
+                    </Button>
+                  )}
+                  {!isRestroomTrip && (getLocationById(currentLeg.destinationLocationId)?.locationType === 'bathroom' ||
                     currentLeg.destinationLocationId === currentStudent.assignedLocationId) && (
                     <Button
                       onClick={handleClosePass}
                       disabled={isLoading}
                       className="w-full"
                     >
-                      {isLoading ? 'Closing...' : 'I\'m back in class'}
+                      {isLoading ? 'Closing...' : `I'm back in class`}
                     </Button>
                   )}
                   {getLocationById(currentLeg.destinationLocationId)?.locationType !== 'bathroom' &&
-                    currentLeg.destinationLocationId !== currentStudent.assignedLocationId && (
+                    currentLeg.destinationLocationId !== currentStudent.assignedLocationId && !isRestroomTrip && (
                       <>
                         <Button
                           onClick={handleReturn}
@@ -231,7 +274,7 @@ export default function Home() {
                           disabled={isLoading}
                           className="w-full"
                         >
-                          {isLoading ? 'Closing...' : 'I\'m back in class'}
+                          {isLoading ? 'Closing...' : `I'm back in class`}
                         </Button>
                       </>
                     )}
