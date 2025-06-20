@@ -6,6 +6,7 @@ import { PassStatus } from '@/components/PassStatus';
 import { CreatePassForm } from '@/components/CreatePassForm';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   getLocationById,
@@ -13,6 +14,7 @@ import {
   createPass,
   updatePass,
   getUserByEmail,
+  getStudentById,
 } from '@/lib/firebase/firestore';
 import { useAuth } from '@/components/AuthProvider';
 import { Login } from '@/components/Login';
@@ -26,6 +28,7 @@ export default function Home() {
   const [currentPass, setCurrentPass] = useState<Pass | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDevMode, setIsDevMode] = useState(false);
 
   const [actionState, setActionState] = useState({
     isRestroomTrip: false,
@@ -66,6 +69,17 @@ export default function Home() {
         const userProfile = await getUserByEmail(authUser.email!);
         if (userProfile?.role === 'student') {
           setCurrentStudent(userProfile);
+          setIsDevMode(false);
+        } else if (userProfile?.role === 'dev') {
+          console.log("Developer mode activated. Loading test student profile.");
+          const testStudent = await getStudentById('student-1');
+          if (testStudent) {
+            setCurrentStudent(testStudent);
+            setIsDevMode(true);
+          } else {
+            setError('Could not load test student profile for dev mode.');
+            setCurrentStudent(null);
+          }
         } else if (userProfile) {
           setError(`This application is for students only. Your role is: ${userProfile.role}.`);
           setCurrentStudent(null);
@@ -297,6 +311,7 @@ export default function Home() {
             <h1 className="text-3xl font-bold">Eagle Pass</h1>
             <p className="text-muted-foreground">
               Welcome, {currentStudent.name}
+              {isDevMode && <Badge variant="destructive" className="ml-2">DEV MODE</Badge>}
             </p>
           </div>
           <Button onClick={signOut} variant="outline" size="sm">Sign Out</Button>
