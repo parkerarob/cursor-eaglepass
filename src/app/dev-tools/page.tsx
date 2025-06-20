@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { mockUsers, mockLocations } from "@/lib/mockData";
-import { collection, writeBatch, getFirestore, doc } from "firebase/firestore";
+import { writeBatch, getFirestore, doc } from "firebase/firestore";
 import { firebaseApp } from "@/lib/firebase/config";
 
 const db = getFirestore(firebaseApp);
