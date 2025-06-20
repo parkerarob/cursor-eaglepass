@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pass, User, Location, PassFormData, Leg } from '@/types';
 import { PassStatus } from '@/components/PassStatus';
 import { CreatePassForm } from '@/components/CreatePassForm';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -147,6 +148,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background p-4">
+      <ThemeToggle />
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
