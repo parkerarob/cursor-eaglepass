@@ -202,7 +202,7 @@ export default function Home() {
     const result = await PassService.handleRestroomReturn(currentPass, currentStudent);
     if (result.success && result.updatedPass) {
       setCurrentPass(result.updatedPass);
-      // If it's a simple trip that was closed, clear the pass after a delay
+      // If returning to assigned class, the pass will be closed
       if (result.updatedPass.status === 'CLOSED') {
         setTimeout(() => {
           setCurrentPass(null);
@@ -314,7 +314,6 @@ export default function Home() {
             if (currentLeg.state === 'OUT') {
               const {
                 isRestroomTrip,
-                isSimpleTrip,
                 returnLocationName,
                 canArrive,
               } = actionState;
@@ -333,9 +332,7 @@ export default function Home() {
                       >
                         {isLoading
                           ? 'Returning...'
-                          : `I'm back in ${
-                              isSimpleTrip ? 'class' : returnLocationName
-                            }`}
+                          : `I'm back in ${returnLocationName}`}
                       </Button>
                     )}
                     {!isRestroomTrip && (

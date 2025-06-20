@@ -54,12 +54,11 @@ export class PassStateMachine {
 
     const destination = await getLocationById(currentLeg.destinationLocationId);
     const isRestroom = destination?.locationType === 'bathroom';
-    const isSimple = this.pass.legs.length === 1 && isRestroom;
-
+    
+    // For restroom trips, determine return location based on origin of current leg
     let returnLocName = 'class';
-    if (isRestroom && !isSimple) {
-      const returnId = await this.findReturnLocationId();
-      const returnLocation = await getLocationById(returnId);
+    if (isRestroom) {
+      const returnLocation = await getLocationById(currentLeg.originLocationId);
       returnLocName = returnLocation?.name ?? 'class';
     }
 
@@ -69,7 +68,7 @@ export class PassStateMachine {
 
     return {
       isRestroomTrip: isRestroom,
-      isSimpleTrip: isSimple,
+      isSimpleTrip: false, // Remove simple trip concept - all bathroom trips work the same way
       returnLocationName: returnLocName,
       canArrive: canArrive,
     };
@@ -131,18 +130,21 @@ export class PassStateMachine {
   }
 
   /**
-   * Close the pass (return to class and mark as closed)
+   * Close the pass (return to specified location and mark as closed)
    */
-  closePass(): Pass {
+  closePass(destinationLocationId?: string): Pass {
     const currentLeg = this.getCurrentLeg();
     if (!currentLeg) {
       throw new Error('Cannot close pass: no current leg');
     }
 
+    // Use provided destination or default to assigned class
+    const destinationId = destinationLocationId || this.student.assignedLocationId!;
+
     const newLeg: Leg = {
       legNumber: this.getNextLegNumber(),
       originLocationId: currentLeg.destinationLocationId,
-      destinationLocationId: this.student.assignedLocationId!,
+      destinationLocationId: destinationId,
       state: 'IN',
       timestamp: new Date(),
     };
@@ -203,17 +205,20 @@ export class PassStateMachine {
       throw new Error('Current destination is not a restroom');
     }
 
-    const isSimple = this.pass.legs.length === 1;
-
-    if (isSimple) {
-      // Simple restroom trip: return directly to class and close
-      return this.closePass();
+    // Always return to the location the student left from (origin of current leg)
+    const returnLocationId = currentLeg.originLocationId;
+    
+    // Check if returning to assigned class
+    const isReturningToAssignedClass = returnLocationId === this.student.assignedLocationId;
+    
+    if (isReturningToAssignedClass) {
+      // Returning to assigned class - close the pass
+      return this.closePass(returnLocationId);
     } else {
-      // Complex restroom trip: return to previous non-restroom location
-      const returnId = await this.findReturnLocationId();
+      // Returning to a different location - add new leg and keep pass open
       return this.addLeg(
         currentLeg.destinationLocationId,
-        returnId,
+        returnLocationId,
         'IN'
       );
     }

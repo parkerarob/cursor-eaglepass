@@ -276,7 +276,7 @@ describe('PassStateMachine', () => {
   });
 
   describe('handleRestroomReturn', () => {
-    it('should close simple restroom trip', async () => {
+    it('should close pass when returning to assigned class from bathroom', async () => {
       const pass: Pass = {
         id: 'pass-1',
         studentId: mockStudent.id,
@@ -286,7 +286,7 @@ describe('PassStateMachine', () => {
         legs: [
           {
             legNumber: 1,
-            originLocationId: 'classroom-1',
+            originLocationId: 'classroom-1', // Assigned class
             destinationLocationId: 'bathroom-1',
             state: 'OUT',
             timestamp: new Date(),
@@ -302,7 +302,38 @@ describe('PassStateMachine', () => {
       expect(updatedPass.legs[1]).toMatchObject({
         legNumber: 2,
         originLocationId: 'bathroom-1',
-        destinationLocationId: mockStudent.assignedLocationId,
+        destinationLocationId: 'classroom-1', // Return to assigned class
+        state: 'IN',
+      });
+    });
+
+    it('should keep pass open when returning to non-assigned location from bathroom', async () => {
+      const pass: Pass = {
+        id: 'pass-1',
+        studentId: mockStudent.id,
+        status: 'OPEN',
+        createdAt: new Date(),
+        lastUpdatedAt: new Date(),
+        legs: [
+          {
+            legNumber: 1,
+            originLocationId: 'library-1', // Not assigned class
+            destinationLocationId: 'bathroom-1',
+            state: 'OUT',
+            timestamp: new Date(),
+          },
+        ],
+      };
+
+      const stateMachine = new PassStateMachine(pass, mockStudent);
+      const updatedPass = await stateMachine.handleRestroomReturn();
+
+      expect(updatedPass.status).toBe('OPEN');
+      expect(updatedPass.legs).toHaveLength(2);
+      expect(updatedPass.legs[1]).toMatchObject({
+        legNumber: 2,
+        originLocationId: 'bathroom-1',
+        destinationLocationId: 'library-1', // Return to library (origin)
         state: 'IN',
       });
     });
@@ -347,7 +378,7 @@ describe('PassStateMachine', () => {
       expect(updatedPass.legs[3]).toMatchObject({
         legNumber: 4,
         originLocationId: 'bathroom-1',
-        destinationLocationId: 'library-1',
+        destinationLocationId: 'library-1', // Return to library (origin of current leg)
         state: 'IN',
       });
     });
@@ -445,8 +476,8 @@ describe('PassStateMachine', () => {
 
       expect(actionState).toMatchObject({
         isRestroomTrip: true,
-        isSimpleTrip: true,
-        returnLocationName: 'class',
+        isSimpleTrip: false,
+        returnLocationName: 'Math 101',
         canArrive: false,
       });
     });
