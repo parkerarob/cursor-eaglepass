@@ -1,60 +1,104 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Pass, User, Location, PassFormData, Leg } from '@/types';
 import { PassStatus } from '@/components/PassStatus';
 import { CreatePassForm } from '@/components/CreatePassForm';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  getLocationById, 
+import {
+  getLocationById,
   getActivePassByStudentId,
-  mockUsers
-} from '@/lib/mockData';
+  getStudentById,
+  createPass,
+  updatePass,
+} from '@/lib/firebase/firestore';
 
 export default function Home() {
-  // For demo purposes, we'll simulate being logged in as the first student
-  const currentStudent = mockUsers.find(u => u.role === 'student') as User;
-  const currentLocation = getLocationById(currentStudent.assignedLocationId!) as Location;
-  const [currentPass, setCurrentPass] = useState<Pass | null>(
-    getActivePassByStudentId(currentStudent.id) || null
-  );
-  const [isLoading, setIsLoading] = useState(false);
+  const currentStudentId = 'student-1';
 
-  // Helper to get the current leg
-  const getCurrentLeg = (pass: Pass | null): Leg | null => {
-    if (!pass || pass.legs.length === 0) return null;
-    return pass.legs[pass.legs.length - 1];
-  };
+  const [currentStudent, setCurrentStudent] = useState<User | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
+  const [currentPass, setCurrentPass] = useState<Pass | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Helper to get the next leg number
+  const [actionState, setActionState] = useState({
+    isRestroomTrip: false,
+    isSimpleTrip: false,
+    returnLocationName: 'class',
+    canArrive: false,
+  });
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      setIsLoading(true);
+      const student = await getStudentById(currentStudentId);
+      if (student) {
+        setCurrentStudent(student);
+        const [location, pass] = await Promise.all([
+          getLocationById(student.assignedLocationId!),
+          getActivePassByStudentId(student.id)
+        ]);
+        setCurrentLocation(location);
+        setCurrentPass(pass);
+      }
+      setIsLoading(false);
+    };
+    fetchInitialData();
+  }, [currentStudentId]);
+
+  useEffect(() => {
+    if (!currentPass || !currentStudent) {
+      return;
+    }
+
+    const determineActionState = async () => {
+      const lastLeg = currentPass.legs[currentPass.legs.length - 1];
+      if (lastLeg.state !== 'OUT') return;
+
+      const destination = await getLocationById(lastLeg.destinationLocationId);
+      const isRestroom = destination?.locationType === 'bathroom';
+      const isSimple = currentPass.legs.length === 1 && isRestroom;
+
+      let returnLocName = 'class';
+      if (isRestroom && !isSimple) {
+        let returnId: string | undefined;
+        for (let i = currentPass.legs.length - 2; i >= 0; i--) {
+            const leg = currentPass.legs[i];
+            const loc = await getLocationById(leg.destinationLocationId);
+            if (loc?.locationType !== 'bathroom') {
+                returnId = leg.destinationLocationId;
+                break;
+            }
+        }
+        if (!returnId) returnId = currentStudent.assignedLocationId;
+        const returnLocation = await getLocationById(returnId!);
+        returnLocName = returnLocation?.name ?? 'class';
+      }
+
+      const canArrive = destination?.locationType !== 'bathroom' &&
+                        lastLeg.destinationLocationId !== currentStudent.assignedLocationId;
+
+      setActionState({
+        isRestroomTrip: isRestroom,
+        isSimpleTrip: isSimple,
+        returnLocationName: returnLocName,
+        canArrive: canArrive,
+      });
+    };
+
+    determineActionState();
+  }, [currentPass, currentStudent]);
+
   const getNextLegNumber = (pass: Pass | null): number => {
     if (!pass) return 1;
     return pass.legs.length + 1;
   };
 
-  // Helper to find the last non-restroom location
-  const getLastNonRestroomLocationId = (pass: Pass): string => {
-    for (let i = pass.legs.length - 1; i >= 0; i--) {
-      const leg = pass.legs[i];
-      if (getLocationById(leg.destinationLocationId)?.locationType !== 'bathroom') {
-        return leg.destinationLocationId;
-      }
-    }
-    // Fallback to scheduled class if none found
-    return currentStudent.assignedLocationId!;
-  };
-
-  // Helper to check if this is a simple restroom trip (first pass to restroom)
-  const isSimpleRestroomTrip = (pass: Pass): boolean => {
-    return pass.legs.length === 1 && 
-           getLocationById(pass.legs[0].destinationLocationId)?.locationType === 'bathroom';
-  };
-
   const handleCreatePass = async (formData: PassFormData) => {
+    if (!currentStudent) return;
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
     const newPass: Pass = {
       id: `pass-${Date.now()}`,
       studentId: currentStudent.id,
@@ -71,6 +115,7 @@ export default function Home() {
         },
       ],
     };
+    await createPass(newPass);
     setCurrentPass(newPass);
     setIsLoading(false);
   };
@@ -78,8 +123,7 @@ export default function Home() {
   const handleReturn = async () => {
     if (!currentPass) return;
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const lastLeg = getCurrentLeg(currentPass)!;
+    const lastLeg = currentPass.legs[currentPass.legs.length - 1];
     const newLeg: Leg = {
       legNumber: getNextLegNumber(currentPass),
       originLocationId: lastLeg.destinationLocationId,
@@ -92,15 +136,15 @@ export default function Home() {
       lastUpdatedAt: new Date(),
       legs: [...currentPass.legs, newLeg],
     };
+    await updatePass(updatedPass.id, updatedPass);
     setCurrentPass(updatedPass);
     setIsLoading(false);
   };
 
   const handleReturnToClass = async () => {
-    if (!currentPass) return;
+    if (!currentPass || !currentStudent) return;
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const lastLeg = getCurrentLeg(currentPass)!;
+    const lastLeg = currentPass.legs[currentPass.legs.length - 1];
     const newLeg: Leg = {
       legNumber: getNextLegNumber(currentPass),
       originLocationId: lastLeg.destinationLocationId,
@@ -113,15 +157,15 @@ export default function Home() {
       lastUpdatedAt: new Date(),
       legs: [...currentPass.legs, newLeg],
     };
+    await updatePass(updatedPass.id, updatedPass);
     setCurrentPass(updatedPass);
     setIsLoading(false);
   };
 
   const handleClosePass = async () => {
-    if (!currentPass) return;
+    if (!currentPass || !currentStudent) return;
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const lastLeg = getCurrentLeg(currentPass)!;
+    const lastLeg = currentPass.legs[currentPass.legs.length - 1];
     const newLeg: Leg = {
       legNumber: getNextLegNumber(currentPass),
       originLocationId: lastLeg.destinationLocationId,
@@ -135,6 +179,7 @@ export default function Home() {
       lastUpdatedAt: new Date(),
       legs: [...currentPass.legs, newLeg],
     };
+    await updatePass(closedPass.id, closedPass);
     setCurrentPass(closedPass);
     setIsLoading(false);
     setTimeout(() => {
@@ -146,11 +191,18 @@ export default function Home() {
     setCurrentPass(null);
   };
 
+  if (isLoading || !currentStudent || !currentLocation) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-4">
       <ThemeToggle />
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Eagle Pass</h1>
           <p className="text-muted-foreground">
@@ -158,24 +210,21 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Current Status */}
-        <PassStatus 
-          pass={currentPass} 
+        <PassStatus
+          pass={currentPass}
           studentName={currentStudent.name}
           currentLocation={currentLocation}
         />
 
-        {/* Create New Pass - Only show when no active pass */}
         {!currentPass && (
-          <CreatePassForm 
+          <CreatePassForm
             onCreatePass={handleCreatePass}
             isLoading={isLoading}
           />
         )}
 
-        {/* When pass is OPEN and last leg is IN, show all destination buttons and Return to Scheduled Class */}
         {currentPass && currentPass.status === 'OPEN' && (() => {
-          const currentLeg = getCurrentLeg(currentPass);
+          const currentLeg = currentPass.legs[currentPass.legs.length - 1];
           if (!currentLeg) return null;
           if (currentLeg.state === 'IN') {
             return (
@@ -189,24 +238,7 @@ export default function Home() {
                   {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
                 </Button>
                 <CreatePassForm
-                  onCreatePass={async (formData) => {
-                    setIsLoading(true);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    const newLeg: Leg = {
-                      legNumber: getNextLegNumber(currentPass),
-                      originLocationId: currentLeg.destinationLocationId,
-                      destinationLocationId: formData.destinationLocationId,
-                      state: 'OUT',
-                      timestamp: new Date(),
-                    };
-                    const updatedPass: Pass = {
-                      ...currentPass,
-                      lastUpdatedAt: new Date(),
-                      legs: [...currentPass.legs, newLeg],
-                    };
-                    setCurrentPass(updatedPass);
-                    setIsLoading(false);
-                  }}
+                  onCreatePass={handleCreatePass}
                   isLoading={isLoading}
                   excludeLocationId={currentLeg.destinationLocationId}
                   heading="Need to go somewhere else?"
@@ -215,12 +247,7 @@ export default function Home() {
             );
           }
           if (currentLeg.state === 'OUT') {
-            const isRestroomTrip = getLocationById(currentLeg.destinationLocationId)?.locationType === 'bathroom';
-            let returnLocationId = isRestroomTrip
-              ? getLastNonRestroomLocationId(currentPass)
-              : currentStudent.assignedLocationId;
-            if (!returnLocationId) returnLocationId = currentStudent.assignedLocationId!;
-            const returnLocationName = getLocationById(returnLocationId)?.name ?? 'class';
+            const { isRestroomTrip, isSimpleTrip, returnLocationName, canArrive } = actionState;
             return (
               <Card>
                 <CardHeader>
@@ -231,10 +258,7 @@ export default function Home() {
                     <Button
                       onClick={async () => {
                         setIsLoading(true);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        
-                        // For simple restroom trips, close the pass
-                        if (isSimpleRestroomTrip(currentPass)) {
+                        if (isSimpleTrip) {
                           const newLeg: Leg = {
                             legNumber: getNextLegNumber(currentPass),
                             originLocationId: currentLeg.destinationLocationId!,
@@ -248,16 +272,27 @@ export default function Home() {
                             lastUpdatedAt: new Date(),
                             legs: [...currentPass.legs, newLeg],
                           };
+                          await updatePass(closedPass.id, closedPass);
                           setCurrentPass(closedPass);
                           setTimeout(() => {
                             setCurrentPass(null);
                           }, 1500);
                         } else {
-                          // For complex trips, return to the last non-restroom location
+                           let returnId: string | undefined;
+                           for (let i = currentPass.legs.length - 2; i >= 0; i--) {
+                               const leg = currentPass.legs[i];
+                               const loc = await getLocationById(leg.destinationLocationId);
+                               if (loc?.locationType !== 'bathroom') {
+                                   returnId = leg.destinationLocationId;
+                                   break;
+                               }
+                           }
+                           if (!returnId) returnId = currentStudent.assignedLocationId;
+
                           const newLeg: Leg = {
                             legNumber: getNextLegNumber(currentPass),
                             originLocationId: currentLeg.destinationLocationId!,
-                            destinationLocationId: returnLocationId!,
+                            destinationLocationId: returnId!,
                             state: 'IN',
                             timestamp: new Date(),
                           };
@@ -266,6 +301,7 @@ export default function Home() {
                             lastUpdatedAt: new Date(),
                             legs: [...currentPass.legs, newLeg],
                           };
+                          await updatePass(updatedPass.id, updatedPass);
                           setCurrentPass(updatedPass);
                         }
                         setIsLoading(false);
@@ -273,42 +309,31 @@ export default function Home() {
                       disabled={isLoading}
                       className="w-full"
                     >
-                      {isLoading ? 'Returning...' : `I'm back in ${isSimpleRestroomTrip(currentPass) ? 'class' : returnLocationName}`}
+                      {isLoading ? 'Returning...' : `I'm back in ${isSimpleTrip ? 'class' : returnLocationName}`}
                     </Button>
                   )}
-                  {!isRestroomTrip && (getLocationById(currentLeg.destinationLocationId)?.locationType === 'bathroom' ||
-                    currentLeg.destinationLocationId === currentStudent.assignedLocationId) && (
-                    <Button
-                      onClick={handleClosePass}
-                      disabled={isLoading}
-                      className="w-full"
-                    >
-                      {isLoading ? 'Closing...' : `I'm back in class`}
-                    </Button>
+                  {!isRestroomTrip && (
+                      <Button
+                        onClick={handleClosePass}
+                        disabled={isLoading}
+                        className="w-full"
+                      >
+                        {isLoading ? 'Closing...' : `I'm back in class`}
+                      </Button>
                   )}
-                  {getLocationById(currentLeg.destinationLocationId)?.locationType !== 'bathroom' &&
-                    currentLeg.destinationLocationId !== currentStudent.assignedLocationId && !isRestroomTrip && (
-                      <>
+                  {canArrive && !isRestroomTrip && (
+                      <div className="text-center pt-2">
+                        <p className="text-sm text-muted-foreground mb-2">Need to stay here for awhile?</p>
                         <Button
-                          onClick={handleClosePass}
+                          onClick={handleReturn}
                           disabled={isLoading}
                           className="w-full"
+                          variant="outline"
                         >
-                          {isLoading ? 'Closing...' : `I'm back in class`}
+                          {isLoading ? 'Updating...' : "I've Arrived"}
                         </Button>
-                        <div className="text-center pt-2">
-                          <p className="text-sm text-muted-foreground mb-2">Need to stay here for awhile?</p>
-                          <Button
-                            onClick={handleReturn}
-                            disabled={isLoading}
-                            className="w-full"
-                            variant="outline"
-                          >
-                            {isLoading ? 'Updating...' : 'I\'ve Arrived'}
-                          </Button>
-                        </div>
-                      </>
-                    )}
+                      </div>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -316,15 +341,14 @@ export default function Home() {
           return null;
         })()}
 
-        {/* Reset Button for Demo */}
         {currentPass && (
           <Card>
             <CardHeader>
               <CardTitle>Demo Controls</CardTitle>
             </CardHeader>
             <CardContent>
-              <Button 
-                onClick={handleResetPass} 
+              <Button
+                onClick={handleResetPass}
                 variant="outline"
                 className="w-full"
               >

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Location, PassFormData } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getAvailableDestinations } from '@/lib/mockData';
+import { getAvailableDestinations } from '@/lib/firebase/firestore';
 
 interface CreatePassFormProps {
   onCreatePass: (formData: PassFormData) => void;
@@ -13,10 +13,18 @@ interface CreatePassFormProps {
 
 export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocationId, heading }: CreatePassFormProps) {
   const [selectedDestination, setSelectedDestination] = useState<string>('');
-  let availableDestinations = getAvailableDestinations();
-  if (excludeLocationId) {
-    availableDestinations = availableDestinations.filter(loc => loc.id !== excludeLocationId);
-  }
+  const [availableDestinations, setAvailableDestinations] = useState<Location[]>([]);
+
+  useEffect(() => {
+    const fetchDests = async () => {
+      let destinations = await getAvailableDestinations();
+      if (excludeLocationId) {
+        destinations = destinations.filter(loc => loc.id !== excludeLocationId);
+      }
+      setAvailableDestinations(destinations);
+    };
+    fetchDests();
+  }, [excludeLocationId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
