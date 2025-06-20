@@ -28,7 +28,7 @@ export function PassStatus({ pass, currentLocation }: PassStatusProps) {
         </CardHeader>
         <CardContent className="text-center">
           <p className="text-muted-foreground mb-4">
-            You're currently in {currentLocation.name}
+            You&apos;re currently in {currentLocation.name}
           </p>
           <Badge variant="success" className="text-sm">
             IN CLASS
@@ -76,7 +76,7 @@ export function PassStatus({ pass, currentLocation }: PassStatusProps) {
           <p>{isOut ? 'Started' : 'Arrived'}: {lastLeg.timestamp.toLocaleTimeString()}</p>
           {isOpen && (
             <p className="mt-1">
-              {isOut ? "You're on your way" : "You've arrived"}
+              {isOut ? "You&apos;re on your way" : "You&apos;ve arrived"}
             </p>
           )}
         </div>
