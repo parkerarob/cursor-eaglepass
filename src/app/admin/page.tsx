@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { signOut } from '@/lib/firebase/auth';
-import { getUserByEmail, getStudentById, getLocationById, getAllPasses } from '@/lib/firebase/firestore';
+import { getUserByEmail, getStudentById, getLocationById } from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
 
 interface PassWithDetails extends Pass {
