@@ -16,8 +16,8 @@ import { User, Location, Pass } from "@/types";
 const db = getFirestore(firebaseApp);
 
 // Function to convert Firestore Timestamps to JS Dates in a deeply nested object
-const convertTimestamps = (data: any): any => {
-  if (data?.toDate) {
+const convertTimestamps = (data: unknown): unknown => {
+  if (data instanceof Timestamp) {
     return data.toDate();
   }
   if (Array.isArray(data)) {
@@ -25,7 +25,7 @@ const convertTimestamps = (data: any): any => {
   }
   if (typeof data === 'object' && data !== null) {
     return Object.fromEntries(
-      Object.entries(data).map(([key, value]) => [
+      Object.entries(data as object).map(([key, value]) => [
         key,
         convertTimestamps(value),
       ])
@@ -35,7 +35,7 @@ const convertTimestamps = (data: any): any => {
 };
 
 // Function to convert JS Dates back to Firestore Timestamps
-const convertDatesToTimestamps = (data: any): any => {
+const convertDatesToTimestamps = (data: unknown): unknown => {
     if (data instanceof Date) {
         return Timestamp.fromDate(data);
     }
@@ -44,7 +44,7 @@ const convertDatesToTimestamps = (data: any): any => {
     }
     if (typeof data === 'object' && data !== null) {
         return Object.fromEntries(
-            Object.entries(data).map(([key, value]) => [
+            Object.entries(data as object).map(([key, value]) => [
                 key,
                 convertDatesToTimestamps(value),
             ])
@@ -82,7 +82,7 @@ export const getActivePassByStudentId = async (studentId: string): Promise<Pass 
   if (!querySnapshot.empty) {
     const passDoc = querySnapshot.docs[0];
     const passData = convertTimestamps(passDoc.data());
-    return { id: passDoc.id, ...passData } as Pass;
+    return { id: passDoc.id, ...(passData as Omit<Pass, 'id'>) };
   }
   return null;
 };
@@ -103,5 +103,5 @@ export const createPass = async (pass: Pass): Promise<void> => {
 export const updatePass = async (passId: string, updates: Partial<Pass>): Promise<void> => {
     const passRef = doc(db, "passes", passId);
     const updateData = convertDatesToTimestamps(updates);
-    await updateDoc(passRef, updateData);
+    await updateDoc(passRef, updateData as Partial<Pass>);
 }; 

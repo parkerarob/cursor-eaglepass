@@ -37,8 +37,10 @@ export default function DevToolsPage() {
         throw new Error("User data must be a JSON array.");
       }
       const batch = writeBatch(db);
-      users.forEach((user: any) => {
-        if (!user.id) throw new Error("A user is missing an 'id' field.");
+      users.forEach((user: Record<string, unknown>) => {
+        if (!user.id || typeof user.id !== 'string') {
+          throw new Error("A user object is missing a string 'id' field.");
+        }
         const ref = doc(db, "users", user.id);
         batch.set(ref, user);
       });
@@ -57,8 +59,10 @@ export default function DevToolsPage() {
         throw new Error("Location data must be a JSON array.");
       }
       const batch = writeBatch(db);
-      locations.forEach((loc: any) => {
-        if (!loc.id) throw new Error("A location is missing an 'id' field.");
+      locations.forEach((loc: Record<string, unknown>) => {
+        if (!loc.id || typeof loc.id !== 'string') {
+          throw new Error("A location object is missing a string 'id' field.");
+        }
         const ref = doc(db, "locations", loc.id);
         batch.set(ref, loc);
       });
