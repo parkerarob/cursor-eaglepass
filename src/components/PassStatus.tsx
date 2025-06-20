@@ -1,7 +1,8 @@
 import { Pass, Location } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getLocationById } from '@/lib/mockData';
+import { getLocationById } from '@/lib/firebase/firestore';
+import { useState, useEffect } from 'react';
 
 interface PassStatusProps {
   pass: Pass | null;
@@ -10,6 +11,15 @@ interface PassStatusProps {
 }
 
 export function PassStatus({ pass, currentLocation }: PassStatusProps) {
+  const [destinationLocation, setDestinationLocation] = useState<Location | null>(null);
+
+  useEffect(() => {
+    if (pass) {
+      const lastLeg = pass.legs[pass.legs.length - 1];
+      getLocationById(lastLeg.destinationLocationId).then(setDestinationLocation);
+    }
+  }, [pass]);
+
   if (!pass) {
     return (
       <Card className="w-full max-w-md mx-auto">
@@ -29,7 +39,6 @@ export function PassStatus({ pass, currentLocation }: PassStatusProps) {
   }
 
   const lastLeg = pass.legs[pass.legs.length - 1];
-  const location = getLocationById(lastLeg.destinationLocationId);
   const isOut = lastLeg.state === 'OUT';
   const isOpen = pass.status === 'OPEN';
 
@@ -44,7 +53,7 @@ export function PassStatus({ pass, currentLocation }: PassStatusProps) {
             {isOut ? 'OUT to:' : 'IN'}
           </p>
           <p className="text-lg font-semibold">
-            {location?.name}
+            {destinationLocation?.name || 'Loading...'}
           </p>
         </div>
 
@@ -67,7 +76,7 @@ export function PassStatus({ pass, currentLocation }: PassStatusProps) {
           <p>{isOut ? 'Started' : 'Arrived'}: {lastLeg.timestamp.toLocaleTimeString()}</p>
           {isOpen && (
             <p className="mt-1">
-              {isOut ? "You're on your way" : "You've arrived"}
+              {isOut ? "You&apos;re on your way" : "You&apos;ve arrived"}
             </p>
           )}
         </div>

@@ -227,7 +227,7 @@ export default function Home() {
         <h1 className="text-2xl font-bold text-destructive mb-4">Could Not Load App</h1>
         <p className="text-muted-foreground">{error}</p>
         <p className="text-sm text-muted-foreground mt-4">
-          Please check the data in your Firestore database and ensure it's correct.
+          Please check the data in your Firestore database and ensure it&apos;s correct.
         </p>
       </div>
     );
@@ -352,7 +352,7 @@ export default function Home() {
                       disabled={isLoading}
                       className="w-full"
                     >
-                      {isLoading ? 'Returning...' : `I'm back in ${isSimpleTrip ? 'class' : returnLocationName}`}
+                      {isLoading ? 'Returning...' : `I&apos;m back in ${isSimpleTrip ? 'class' : returnLocationName}`}
                     </Button>
                   )}
                   {!isRestroomTrip && (
@@ -361,7 +361,7 @@ export default function Home() {
                         disabled={isLoading}
                         className="w-full"
                       >
-                        {isLoading ? 'Closing...' : `I'm back in class`}
+                        {isLoading ? 'Closing...' : `I&apos;m back in class`}
                       </Button>
                   )}
                   {canArrive && !isRestroomTrip && (
@@ -373,7 +373,7 @@ export default function Home() {
                           className="w-full"
                           variant="outline"
                         >
-                          {isLoading ? 'Updating...' : "I've Arrived"}
+                          {isLoading ? 'Updating...' : "I&apos;ve Arrived"}
                         </Button>
                       </div>
                   )}
