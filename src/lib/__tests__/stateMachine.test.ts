@@ -1,6 +1,5 @@
 import { PassStateMachine } from '../stateMachine';
 import { Pass, User, PassFormData } from '@/types';
-import * as firestore from '@/lib/firebase/firestore';
 
 // Mock the Firebase function
 jest.mock('@/lib/firebase/firestore', () => ({
