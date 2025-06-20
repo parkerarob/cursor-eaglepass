@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { signOut } from '@/lib/firebase/auth';
-import { getUserByEmail, getStudentById, getLocationById } from '@/lib/firebase/firestore';
+import { getUserByEmail, getStudentById, getLocationById, getAllPasses } from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
 
 interface PassWithDetails extends Pass {
@@ -55,13 +55,13 @@ export default function AdminPage() {
 
   const fetchPassData = async () => {
     try {
-      // For now, we'll fetch all passes from the mock data
-      // In a real implementation, you'd query Firestore for all passes
-      const { mockPasses } = await import('@/lib/mockData');
-      
+      // Fetch all passes from Firestore
+      const { getAllPasses } = await import('@/lib/firebase/firestore');
+      const allPasses = await getAllPasses();
+
       // Enrich passes with student and location details
       const enrichedPasses: PassWithDetails[] = await Promise.all(
-        mockPasses.map(async (pass) => {
+        allPasses.map(async (pass) => {
           const student = await getStudentById(pass.studentId);
           const legsWithDetails = await Promise.all(
             pass.legs.map(async (leg) => ({
@@ -70,7 +70,6 @@ export default function AdminPage() {
               destinationLocation: await getLocationById(leg.destinationLocationId),
             }))
           );
-          
           return {
             ...pass,
             student: student || undefined,
@@ -82,7 +81,6 @@ export default function AdminPage() {
           };
         })
       );
-      
       setPasses(enrichedPasses);
     } catch (e) {
       setError((e as Error).message);

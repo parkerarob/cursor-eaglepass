@@ -118,4 +118,13 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
   }
   const userDoc = querySnapshot.docs[0];
   return { id: userDoc.id, ...userDoc.data() } as User;
+};
+
+export const getAllPasses = async (): Promise<Pass[]> => {
+  const passesRef = collection(db, "passes");
+  const querySnapshot = await getDocs(passesRef);
+  return querySnapshot.docs.map(doc => {
+    const passData = convertTimestamps(doc.data());
+    return { id: doc.id, ...(passData as Omit<Pass, 'id'>) };
+  });
 }; 
