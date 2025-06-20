@@ -111,14 +111,23 @@ export default function Home() {
             </CardHeader>
             <CardContent className="space-y-3">
               {currentPass.state === 'OUT' && (
-                <Button 
-                  onClick={handleReturn} 
-                  disabled={isLoading}
-                  className="w-full"
-                  variant="outline"
-                >
-                  {isLoading ? 'Updating...' : 'I\'ve Arrived'}
-                </Button>
+                <>
+                  <Button 
+                    onClick={handleReturn} 
+                    disabled={isLoading}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    {isLoading ? 'Updating...' : 'I\'ve Arrived'}
+                  </Button>
+                  <Button 
+                    onClick={handleClosePass} 
+                    disabled={isLoading}
+                    className="w-full"
+                  >
+                    {isLoading ? 'Closing...' : 'I\'m back in class'}
+                  </Button>
+                </>
               )}
               
               {currentPass.state === 'IN' && (
@@ -127,7 +136,7 @@ export default function Home() {
                   disabled={isLoading}
                   className="w-full"
                 >
-                  {isLoading ? 'Closing...' : 'Return to Class'}
+                  {isLoading ? 'Closing...' : 'I\'m back in class'}
                 </Button>
               )}
             </CardContent>
