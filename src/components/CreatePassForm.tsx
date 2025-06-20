@@ -54,7 +54,7 @@ export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocatio
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-center">{heading || 'Where are you going?'}</CardTitle>
+        <CardTitle className="text-center">{heading || `Where are you going?`}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
