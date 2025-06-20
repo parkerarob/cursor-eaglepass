@@ -172,6 +172,14 @@ export default function Home() {
           if (currentLeg.state === 'IN') {
             return (
               <>
+                <Button
+                  onClick={handleReturnToClass}
+                  disabled={isLoading}
+                  className="w-full mb-4 text-base font-semibold"
+                  style={{ minHeight: 48 }}
+                >
+                  {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
+                </Button>
                 <CreatePassForm
                   onCreatePass={async (formData) => {
                     setIsLoading(true);
@@ -194,20 +202,6 @@ export default function Home() {
                   isLoading={isLoading}
                   excludeLocationId={currentLeg.destinationLocationId}
                 />
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button
-                      onClick={handleReturnToClass}
-                      disabled={isLoading}
-                      className="w-full"
-                    >
-                      {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
-                    </Button>
-                  </CardContent>
-                </Card>
               </>
             );
           }
