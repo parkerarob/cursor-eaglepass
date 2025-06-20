@@ -109,7 +109,7 @@ export const mockLocations: Location[] = [
 export const mockPasses: Pass[] = [
   {
     id: 'pass-1',
-    studentId: 'student-1',
+    studentId: 'student-2',
     originLocationId: 'location-1',
     destinationLocationId: 'location-3',
     status: 'OPEN',
@@ -129,7 +129,7 @@ export const mockPasses: Pass[] = [
   },
   {
     id: 'pass-3',
-    studentId: 'student-2',
+    studentId: 'student-4',
     originLocationId: 'location-1',
     destinationLocationId: 'location-5',
     status: 'CLOSED',
