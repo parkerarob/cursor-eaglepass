@@ -22,6 +22,7 @@ export default function Home() {
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [currentPass, setCurrentPass] = useState<Pass | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [actionState, setActionState] = useState({
     isRestroomTrip: false,
@@ -32,18 +33,39 @@ export default function Home() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      setIsLoading(true);
-      const student = await getStudentById(currentStudentId);
-      if (student) {
-        setCurrentStudent(student);
+      try {
+        setIsLoading(true);
+        setError(null);
+        const student = await getStudentById(currentStudentId);
+
+        if (!student) {
+          throw new Error(`Student with ID '${currentStudentId}' not found in the database.`);
+        }
+        
+        if (!student.assignedLocationId) {
+          throw new Error(`Student with ID '${currentStudentId}' is missing an assignedLocationId.`);
+        }
+
         const [location, pass] = await Promise.all([
-          getLocationById(student.assignedLocationId!),
+          getLocationById(student.assignedLocationId),
           getActivePassByStudentId(student.id)
         ]);
+
+        if (!location) {
+          throw new Error(`Could not find assigned location for student '${currentStudentId}'. Check if a location with ID '${student.assignedLocationId}' exists.`);
+        }
+
+        setCurrentStudent(student);
         setCurrentLocation(location);
         setCurrentPass(pass);
+
+      } catch (e) {
+        const err = e as Error;
+        console.error("Failed to fetch initial data:", err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     fetchInitialData();
   }, [currentStudentId]);
@@ -191,11 +213,32 @@ export default function Home() {
     setCurrentPass(null);
   };
 
-  if (isLoading || !currentStudent || !currentLocation) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
         <p>Loading...</p>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-center text-center">
+        <h1 className="text-2xl font-bold text-destructive mb-4">Could Not Load App</h1>
+        <p className="text-muted-foreground">{error}</p>
+        <p className="text-sm text-muted-foreground mt-4">
+          Please check the data in your Firestore database and ensure it's correct.
+        </p>
+      </div>
+    );
+  }
+
+  if (!currentStudent || !currentLocation) {
+    // This case should ideally not be reached if error handling is exhaustive
+    return (
+        <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+            <p>An unknown error occurred while loading student data.</p>
+        </div>
     );
   }
 
