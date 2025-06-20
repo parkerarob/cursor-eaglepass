@@ -127,7 +127,15 @@ export default function Home() {
           currentLocation={currentLocation}
         />
 
-        {/* Action Buttons */}
+        {/* Create New Pass - Only show when no active pass */}
+        {!currentPass && (
+          <CreatePassForm 
+            onCreatePass={handleCreatePass}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* Action Buttons - Only show for OPEN passes */}
         {currentPass && currentPass.status === 'OPEN' && (
           <Card>
             <CardHeader>
@@ -136,53 +144,53 @@ export default function Home() {
             <CardContent className="space-y-3">
               {currentPass.state === 'OUT' && (
                 <>
-                  <Button 
-                    onClick={handleReturn} 
-                    disabled={isLoading}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    {isLoading ? 'Updating...' : 'I\'ve Arrived'}
-                  </Button>
-                  <Button 
-                    onClick={handleClosePass} 
-                    disabled={isLoading}
-                    className="w-full"
-                  >
-                    {isLoading ? 'Closing...' : 'I\'m back in class'}
-                  </Button>
+                  {/* For restroom or return-to-class, only show "I'm back in class" */}
+                  {(getLocationById(currentPass.destinationLocationId)?.locationType === 'bathroom' || 
+                    currentPass.destinationLocationId === currentStudent.assignedLocationId) && (
+                    <Button 
+                      onClick={handleClosePass} 
+                      disabled={isLoading}
+                      className="w-full"
+                    >
+                      {isLoading ? 'Closing...' : 'I\'m back in class'}
+                    </Button>
+                  )}
+                  
+                  {/* For other destinations, show both options */}
+                  {getLocationById(currentPass.destinationLocationId)?.locationType !== 'bathroom' && 
+                   currentPass.destinationLocationId !== currentStudent.assignedLocationId && (
+                    <>
+                      <Button 
+                        onClick={handleReturn} 
+                        disabled={isLoading}
+                        className="w-full"
+                        variant="outline"
+                      >
+                        {isLoading ? 'Updating...' : 'I\'ve Arrived'}
+                      </Button>
+                      <Button 
+                        onClick={handleClosePass} 
+                        disabled={isLoading}
+                        className="w-full"
+                      >
+                        {isLoading ? 'Closing...' : 'I\'m back in class'}
+                      </Button>
+                    </>
+                  )}
                 </>
               )}
               
               {currentPass.state === 'IN' && (
-                <>
-                  <Button 
-                    onClick={handleReturnToClass} 
-                    disabled={isLoading}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
-                  </Button>
-                  <Button 
-                    onClick={handleClosePass} 
-                    disabled={isLoading}
-                    className="w-full"
-                  >
-                    {isLoading ? 'Closing...' : 'I\'m back in class'}
-                  </Button>
-                </>
+                <Button 
+                  onClick={handleReturnToClass} 
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  {isLoading ? 'Returning...' : 'Return to Scheduled Class'}
+                </Button>
               )}
             </CardContent>
           </Card>
-        )}
-
-        {/* Create New Pass */}
-        {!currentPass && (
-          <CreatePassForm 
-            onCreatePass={handleCreatePass}
-            isLoading={isLoading}
-          />
         )}
 
         {/* Reset Button for Demo */}
