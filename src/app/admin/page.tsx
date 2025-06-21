@@ -45,7 +45,7 @@ export default function AdminPage() {
   
   // Filters
   const [studentFilter, setStudentFilter] = useState('');
-  const [locationFilter, setLocationFilter] = useState('');
+  const [locationFilter, setLocationFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'OPEN' | 'CLOSED'>('all');
 
   // Auto-refresh
@@ -247,7 +247,7 @@ export default function AdminPage() {
       return false;
     }
     
-    if (locationFilter && pass.currentLocation?.id !== locationFilter) {
+    if (locationFilter && locationFilter !== 'all' && pass.currentLocation?.id !== locationFilter) {
       return false;
     }
     
@@ -370,7 +370,7 @@ export default function AdminPage() {
                       <SelectValue placeholder="All locations" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All locations</SelectItem>
+                      <SelectItem value="all">All locations</SelectItem>
                       {locations.map((location) => (
                         <SelectItem key={location.id} value={location.id}>
                           {location.name}
