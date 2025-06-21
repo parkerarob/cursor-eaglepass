@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { updateUser } from '@/lib/firebase/firestore';
 import { User } from '@/types';
+import Link from 'next/link';
 
 export default function TeacherSettingsPage() {
   const { currentUser, setCurrentUser } = useRole();
@@ -94,7 +95,12 @@ export default function TeacherSettingsPage() {
               className="mt-1 bg-muted/50"
             />
           </div>
-          <Button onClick={handleProfileUpdate}>Save Changes</Button>
+          <div className="flex items-center space-x-2">
+            <Button onClick={handleProfileUpdate}>Save Changes</Button>
+            <Link href="/teacher" passHref>
+              <Button variant="outline">Back to Dashboard</Button>
+            </Link>
+          </div>
           {status && <p className="text-sm text-green-500 mt-2">{status}</p>}
           {error && <p className="text-sm text-destructive mt-2">{error}</p>}
         </CardContent>
