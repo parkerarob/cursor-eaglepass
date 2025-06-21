@@ -7,6 +7,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  schoolId?: string;
   // For students: their assigned classroom/location
   // For teachers: their assigned classroom/location
   assignedLocationId?: string;

@@ -11,12 +11,16 @@ import { User } from '@/types';
 export default function TeacherSettingsPage() {
   const { currentUser, setCurrentUser } = useRole();
   const [name, setName] = useState(currentUser?.name || '');
+  const [roomNumber, setRoomNumber] = useState(currentUser?.assignedLocationId || '');
+  const [schoolId, setSchoolId] = useState(currentUser?.schoolId || '');
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (currentUser) {
       setName(currentUser.name);
+      setRoomNumber(currentUser.assignedLocationId || '');
+      setSchoolId(currentUser.schoolId || '');
     }
   }, [currentUser]);
 
@@ -26,7 +30,11 @@ export default function TeacherSettingsPage() {
     setError('');
 
     try {
-      const updatedUser: Partial<User> = { name };
+      const updatedUser: Partial<User> = { 
+        name,
+        assignedLocationId: roomNumber,
+        schoolId,
+      };
       await updateUser(currentUser.id, updatedUser);
       
       // Update local state in RoleProvider
@@ -59,6 +67,22 @@ export default function TeacherSettingsPage() {
             <Input 
               value={name}
               onChange={(e) => setName(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Room Number</label>
+            <Input 
+              value={roomNumber}
+              onChange={(e) => setRoomNumber(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">School ID</label>
+            <Input 
+              value={schoolId}
+              onChange={(e) => setSchoolId(e.target.value)}
               className="mt-1"
             />
           </div>

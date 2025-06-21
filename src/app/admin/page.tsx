@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { signOut } from '@/lib/firebase/auth';
 import { 
-  getStudentById, 
+  getUserById, 
   getLocationById, 
   getEmergencyState, 
   setEmergencyState, 
@@ -151,7 +151,7 @@ export default function AdminPage() {
       // Enrich passes with student and location details
       const enrichedPasses: PassWithDetails[] = await Promise.all(
         openPasses.map(async (pass) => {
-          const student = await getStudentById(pass.studentId);
+          const student = await getUserById(pass.studentId);
           const legsWithDetails = await Promise.all(
             pass.legs.map(async (leg) => ({
               leg,
@@ -398,7 +398,7 @@ export default function AdminPage() {
           .sort(([,a], [,b]) => b.passCount - a.passCount)
           .slice(0, 10)
           .map(async ([studentId, stats]) => {
-            const student = await getStudentById(studentId);
+            const student = await getUserById(studentId);
             return { student: student!, ...stats };
           })
       );

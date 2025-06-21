@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useAuth } from './AuthProvider';
-import { getUserByEmail, getStudentById } from '@/lib/firebase/firestore';
+import { getUserByEmail, getUserById } from '@/lib/firebase/firestore';
 import { User, UserRole } from '@/types';
 
 interface RoleContextType {
@@ -76,22 +76,23 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       let newUser: User | null = null;
+      const userId = TEST_USERS[role];
+      if (!userId) {
+        throw new Error(`No test user ID found for role: ${role}`);
+      }
 
-      if (role === 'student') {
-        // Load a test student
-        newUser = await getStudentById(TEST_USERS.student);
-        if (!newUser) {
-          throw new Error('Test student not found. Please ensure student-1 exists in your database.');
-        }
-      } else {
-        // For other roles, we'll create a mock user based on the original user
+      newUser = await getUserById(userId);
+
+      if (!newUser) {
+        // Fallback to mock user if test user not in DB, but log a warning.
+        console.warn(`Test user with ID '${userId}' for role '${role}' not found in database. Falling back to a mock user object. Profile updates will not persist.`);
         if (originalUser) {
           newUser = {
             ...originalUser,
-            id: TEST_USERS[role],
+            id: userId,
             role: role,
-            name: `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`,
-            email: `test-${role}@school.com`
+            name: `Mock ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+            email: `mock-${role}@school.com`
           };
         }
       }
@@ -99,6 +100,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       if (newUser) {
         setCurrentUser(newUser);
         setCurrentRole(role);
+      } else {
+        throw new Error(`Could not load or create a user for role: ${role}`);
       }
     } catch (error) {
       console.error('Failed to switch role:', error);

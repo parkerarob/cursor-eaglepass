@@ -60,14 +60,12 @@ const convertDatesToTimestamps = (data: unknown): unknown => {
     return data;
 }
 
-export const getStudentById = async (id: string): Promise<User | null> => {
+export const getUserById = async (id: string): Promise<User | null> => {
   const userDocRef = doc(db, "users", id);
   const userSnap = await getDoc(userDocRef);
   if (userSnap.exists()) {
     const userData = userSnap.data();
-    if (userData.role === 'student') {
-      return { id: userSnap.id, ...userData } as User;
-    }
+    return { id: userSnap.id, ...userData } as User;
   }
   return null;
 };

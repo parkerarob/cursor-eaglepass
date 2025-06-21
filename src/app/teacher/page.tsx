@@ -9,10 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { signOut } from '@/lib/firebase/auth';
 import { 
-  getStudentById, 
-  getLocationById, 
-  getAllLocations,
   getAllPasses,
+  getUserById,
+  getLocationById,
+  getAllLocations,
   getStudentsByAssignedLocation
 } from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
@@ -91,7 +91,7 @@ export default function TeacherPage() {
       // Enrich passes with details
       const enrichedPasses: PassWithDetails[] = await Promise.all(
         teacherResponsiblePasses.map(async (pass) => {
-          const student = await getStudentById(pass.studentId);
+          const student = await getUserById(pass.studentId);
           const legsWithDetails = await Promise.all(
             pass.legs.map(async (leg) => ({
               leg,

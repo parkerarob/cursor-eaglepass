@@ -248,8 +248,8 @@ export const mockEventLogs: EventLog[] = [
 ];
 
 // Helper functions
-export const getStudentById = (id: string): User | undefined => {
-  return mockUsers.find(user => user.id === id && user.role === 'student');
+export const getAllLocations = (): Location[] => {
+  return mockLocations;
 };
 
 export const getTeacherById = (id: string): User | undefined => {

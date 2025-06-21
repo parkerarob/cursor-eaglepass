@@ -9,10 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  getLocationById,
+  getUserById,
   getActivePassByStudentId,
   getUserByEmail,
-  getStudentById,
+  getLocationById,
 } from '@/lib/firebase/firestore';
 import { PassService } from '@/lib/passService';
 import { useAuth } from '@/components/AuthProvider';
@@ -73,7 +73,7 @@ export default function Home() {
           setIsDevMode(false);
         } else if (userProfile?.role === 'dev') {
           console.log("Developer mode activated. Loading test student profile.");
-          const testStudent = await getStudentById('student-1');
+          const testStudent = await getUserById('student-1');
           if (testStudent) {
             setCurrentStudent(testStudent);
             setIsDevMode(true);
