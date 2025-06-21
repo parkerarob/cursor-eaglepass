@@ -49,10 +49,6 @@ export default function TeacherPage() {
   const [error, setError] = useState<string | null>(null);
   const [isClosingPass, setIsClosingPass] = useState<string | null>(null);
   
-  // Filters
-  const [studentFilter, setStudentFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'OUT' | 'IN'>('all');
-
   // Auto-refresh
   const autoRefresh = true;
 
@@ -261,31 +257,18 @@ export default function TeacherPage() {
     return null;
   };
 
-  // Filter passes based on current filters
-  const filteredPasses = passes.filter(pass => {
-    const matchesStudent = !studentFilter || 
-      pass.student?.name.toLowerCase().includes(studentFilter.toLowerCase()) ||
-      pass.student?.email.toLowerCase().includes(studentFilter.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'OUT' && pass.legs[pass.legs.length - 1]?.state === 'OUT') ||
-      (statusFilter === 'IN' && pass.legs[pass.legs.length - 1]?.state === 'IN');
-    
-    return matchesStudent && matchesStatus;
-  });
-
   // Separate students into three groups for clarity
-  const outFromMyClass = filteredPasses.filter(pass =>
+  const outFromMyClass = passes.filter(pass =>
     pass.teacherResponsibility === 'origin' &&
     pass.legs[pass.legs.length - 1]?.state === 'OUT'
   );
 
-  const outToMyClass = filteredPasses.filter(pass =>
+  const outToMyClass = passes.filter(pass =>
     pass.teacherResponsibility === 'destination' &&
     pass.legs[pass.legs.length - 1]?.state === 'OUT'
   );
 
-  const inMyClass = filteredPasses.filter(pass => 
+  const inMyClass = passes.filter(pass => 
     pass.legs[pass.legs.length - 1]?.state === 'IN' && 
     (pass.teacherResponsibility === 'destination' || pass.teacherResponsibility === 'both')
   );
@@ -332,38 +315,6 @@ export default function TeacherPage() {
         </header>
 
         <GlobalEmergencyBanner />
-
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Student Name</label>
-                <Input
-                  placeholder="Filter by student name..."
-                  value={studentFilter}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStudentFilter(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Status</label>
-                <Select value={statusFilter} onValueChange={(value: 'all' | 'OUT' | 'IN') => setStatusFilter(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All students</SelectItem>
-                    <SelectItem value="OUT">Students OUT</SelectItem>
-                    <SelectItem value="IN">Students IN (non-origin)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Students OUT - From My Class */}
         <Card className="mb-6">
