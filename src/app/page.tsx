@@ -197,7 +197,6 @@ export default function Home() {
     setIsLoading(false);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleReturnToClass = async () => {
     if (!currentPass || !currentStudent) return;
     setIsLoading(true);
@@ -205,7 +204,6 @@ export default function Home() {
     const result = await PassService.returnToClass(currentPass, currentStudent);
     if (result.success && result.updatedPass) {
       setCurrentPass(result.updatedPass);
-      // Update current location to reflect the new pass state
       await updateCurrentLocation(result.updatedPass);
     } else {
       setError(result.error || 'Failed to return to class');
@@ -213,7 +211,6 @@ export default function Home() {
     setIsLoading(false);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleClosePass = async () => {
     if (!currentPass || !currentStudent) return;
     setIsLoading(true);
@@ -238,33 +235,6 @@ export default function Home() {
     setIsLoading(false);
   };
 
-  const handleRestroomReturn = async () => {
-    if (!currentPass || !currentStudent) return;
-    setIsLoading(true);
-    
-    const result = await PassService.handleRestroomReturn(currentPass, currentStudent);
-    if (result.success && result.updatedPass) {
-      setCurrentPass(result.updatedPass);
-      // Update current location to reflect the new pass state
-      await updateCurrentLocation(result.updatedPass);
-      // If returning to assigned class, the pass will be closed
-      if (result.updatedPass.status === 'CLOSED') {
-        setTimeout(() => {
-          setCurrentPass(null);
-          // Reset to assigned class when pass is closed
-          if (currentStudent.assignedLocationId) {
-            getLocationById(currentStudent.assignedLocationId).then(location => {
-              if (location) setCurrentLocation(location);
-            });
-          }
-        }, 1500);
-      }
-    } else {
-      setError(result.error || 'Failed to return from restroom');
-    }
-    setIsLoading(false);
-  };
-
   const updateCurrentLocation = async (pass: Pass) => {
     if (pass.legs.length === 0) return;
     
@@ -275,18 +245,6 @@ export default function Home() {
     } else {
       const location = await getLocationById(currentLeg.originLocationId);
       if (location) setCurrentLocation(location);
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleResetPass = () => {
-    setCurrentPass(null);
-    setError(null);
-    // Reset to assigned class
-    if (currentStudent?.assignedLocationId) {
-      getLocationById(currentStudent.assignedLocationId).then(location => {
-        if (location) setCurrentLocation(location);
-      });
     }
   };
 
@@ -314,8 +272,8 @@ export default function Home() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h2 className="text-xl font-semibold text-card-foreground mb-2">Access Error</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
           <button
             onClick={() => window.location.reload()}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -366,63 +324,63 @@ export default function Home() {
         {!currentPass ? (
           <CreatePassForm onCreatePass={handleCreatePass} isLoading={isLoading} />
         ) : currentLocation ? (
-          <div className="space-y-4">
-            <PassStatus 
-              pass={currentPass} 
-              studentName={currentStudent?.name || ''}
-              currentLocation={currentLocation}
-            />
-            
-            <DurationTimer pass={currentPass} />
-            
-            {/* Action Buttons */}
-            <div className="bg-card rounded-lg shadow-sm p-6 space-y-4">
-              <h3 className="text-lg font-semibold text-card-foreground">Actions</h3>
-
-              {actionState.canReturnToClass && (
-                <button
-                  onClick={handleClosePass}
-                  disabled={isLoading}
-                  className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  I&apos;m back in class
-                </button>
-              )}
-              
-              {actionState.canArrive && (
-                <div className="text-center space-y-2 pt-2 border-t border-border">
-                   <p className="text-sm text-muted-foreground">Need to stay awhile?</p>
-                   <button
-                    onClick={handleReturn}
-                    disabled={isLoading}
-                    className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {`Check-In at ${actionState.destinationName || 'Destination'}`}
-                  </button>
-                </div>
-              )}
-              
-              {actionState.isRestroomTrip && (
-                <button
-                  onClick={handleRestroomReturn}
-                  disabled={isLoading}
-                  className="w-full bg-yellow-600 text-white py-3 px-4 rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Return from Restroom
-                </button>
-              )}
-              
-            </div>
-
-            {actionState.isInLocation && (
-              <CreatePassForm
-                onCreatePass={handleCreatePass}
-                isLoading={isLoading}
-                excludeLocationId={currentLocation?.id}
-                heading="Need to go somewhere else?"
+          <>
+            <div className="w-full max-w-md bg-card rounded-lg shadow-lg p-6">
+              <PassStatus 
+                pass={currentPass} 
+                studentName={currentStudent?.name || ''}
+                currentLocation={currentLocation}
               />
-            )}
-          </div>
+              <DurationTimer pass={currentPass} />
+            
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-center mb-4">Actions</h3>
+                <div className="flex flex-col items-center space-y-4">
+                  
+                  {actionState.canReturnToClass && (
+                    <button
+                      onClick={handleClosePass}
+                      className="w-full px-4 py-3 text-lg font-bold text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    >
+                      {`I'm back in ${actionState.returnLocationName}`}
+                    </button>
+                  )}
+
+                  {actionState.canArrive && (
+                    <div className="w-full text-center space-y-2 pt-2">
+                      <p className="text-sm text-muted-foreground">Need to stay awhile?</p>
+                      <button
+                        onClick={handleReturn}
+                        className="w-full px-4 py-2 text-base font-semibold text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        {`Check-In at ${actionState.destinationName || 'Destination'}`}
+                      </button>
+                    </div>
+                  )}
+        
+                  {actionState.isInLocation && (
+                    <>
+                      <button
+                        onClick={handleReturnToClass}
+                        className="w-full px-4 py-3 text-lg font-bold text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        {`I'm going back to ${actionState.returnLocationName}`}
+                      </button>
+
+                      <div className="w-full pt-4 mt-4 border-t border-border">
+                        <CreatePassForm
+                          onCreatePass={handleCreatePass}
+                          isLoading={isLoading}
+                          excludeLocationId={currentLocation?.id}
+                          heading="Need to go somewhere else?"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
         ) : (
           <div className="text-center text-gray-600">
             Loading location information...
