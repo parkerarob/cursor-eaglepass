@@ -259,19 +259,6 @@ export default function TeacherPage() {
     return null;
   };
 
-  const getResponsibilityBadge = (responsibility: string) => {
-    switch (responsibility) {
-      case 'origin':
-        return <Badge className="bg-purple-100 text-purple-800">My Student</Badge>;
-      case 'destination':
-        return <Badge className="bg-blue-100 text-blue-800">Coming to My Class</Badge>;
-      case 'both':
-        return <Badge className="bg-green-100 text-green-800">My Student + Destination</Badge>;
-      default:
-        return null;
-    }
-  };
-
   // Filter passes based on current filters
   const filteredPasses = passes.filter(pass => {
     const matchesStudent = !studentFilter || 
@@ -391,8 +378,8 @@ export default function TeacherPage() {
                     <tr className="border-b">
                       <th className="text-left p-2">Student</th>
                       <th className="text-left p-2">Current Location</th>
+                      <th className="text-left p-2">Destination</th>
                       <th className="text-left p-2">Duration</th>
-                      <th className="text-left p-2">Responsibility</th>
                       <th className="text-left p-2">Created</th>
                       <th className="text-left p-2">Actions</th>
                     </tr>
@@ -413,13 +400,15 @@ export default function TeacherPage() {
                           </div>
                         </td>
                         <td className="p-2">
+                          {pass.legsWithDetails && pass.legsWithDetails.length > 0 ?
+                            pass.legsWithDetails[pass.legsWithDetails.length - 1].destinationLocation?.name : 'Unknown'
+                          }
+                        </td>
+                        <td className="p-2">
                           <div className="flex items-center gap-2">
                             <span className="font-mono">{formatDuration(pass.durationMinutes || 0)}</span>
                             {getEscalationBadge(pass)}
                           </div>
-                        </td>
-                        <td className="p-2">
-                          {pass.teacherResponsibility && getResponsibilityBadge(pass.teacherResponsibility)}
                         </td>
                         <td className="p-2 text-sm text-muted-foreground">
                           {formatDate(pass.createdAt)}<br />
@@ -462,7 +451,6 @@ export default function TeacherPage() {
                       <th className="text-left p-2">Student</th>
                       <th className="text-left p-2">From</th>
                       <th className="text-left p-2">Duration</th>
-                      <th className="text-left p-2">Responsibility</th>
                       <th className="text-left p-2">Arrived</th>
                       <th className="text-left p-2">Actions</th>
                     </tr>
@@ -488,9 +476,6 @@ export default function TeacherPage() {
                             <span className="font-mono">{formatDuration(pass.durationMinutes || 0)}</span>
                             {getEscalationBadge(pass)}
                           </div>
-                        </td>
-                        <td className="p-2">
-                          {pass.teacherResponsibility && getResponsibilityBadge(pass.teacherResponsibility)}
                         </td>
                         <td className="p-2 text-sm text-muted-foreground">
                           {pass.legs.length > 0 && pass.legs[pass.legs.length - 1]?.timestamp ? 
