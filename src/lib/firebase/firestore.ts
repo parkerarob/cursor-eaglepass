@@ -107,6 +107,24 @@ export const getAvailableDestinations = async (): Promise<Location[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Location));
 };
 
+export const getClassroomDestinations = async (): Promise<Location[]> => {
+  const locationsRef = collection(db, "locations");
+  const q = query(locationsRef, where("locationType", "==", "classroom"));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Location));
+};
+
+export const getStudentsByAssignedLocation = async (locationId: string): Promise<User[]> => {
+  const usersRef = collection(db, "users");
+  const q = query(
+    usersRef, 
+    where("role", "==", "student"),
+    where("assignedLocationId", "==", locationId)
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+};
+
 export const createPass = async (pass: Pass): Promise<void> => {
     const passRef = doc(db, "passes", pass.id);
     const passData = convertDatesToTimestamps(pass);

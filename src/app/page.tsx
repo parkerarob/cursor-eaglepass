@@ -81,8 +81,12 @@ export default function Home() {
             setError('Could not load test student profile for dev mode.');
             setCurrentStudent(null);
           }
-        } else if (userProfile?.role === 'teacher' || userProfile?.role === 'admin') {
-          // Redirect teachers and admins to admin interface
+        } else if (userProfile?.role === 'teacher') {
+          // Redirect teachers to teacher interface
+          router.push('/teacher');
+          return;
+        } else if (userProfile?.role === 'admin') {
+          // Redirect admins to admin interface
           router.push('/admin');
           return;
         } else if (userProfile) {
