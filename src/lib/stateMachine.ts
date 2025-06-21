@@ -6,6 +6,7 @@ export interface ActionState {
   isSimpleTrip: boolean;
   returnLocationName: string;
   canArrive: boolean;
+  canReturnToClass: boolean;
   destinationName?: string;
 }
 
@@ -50,6 +51,7 @@ export class PassStateMachine {
         isSimpleTrip: false,
         returnLocationName: 'class',
         canArrive: false,
+        canReturnToClass: false,
       };
     }
 
@@ -66,12 +68,16 @@ export class PassStateMachine {
     const canArrive =
       destination?.locationType !== 'bathroom' &&
       currentLeg.destinationLocationId !== this.student.assignedLocationId;
+    
+    const canReturnToClass =
+      currentLeg.destinationLocationId === this.student.assignedLocationId;
 
     return {
       isRestroomTrip: isRestroom,
       isSimpleTrip: false, // Remove simple trip concept - all bathroom trips work the same way
       returnLocationName: returnLocName,
       canArrive: canArrive,
+      canReturnToClass: canReturnToClass,
       destinationName: destination?.name,
     };
   }
@@ -249,14 +255,14 @@ export class PassStateMachine {
         }
         break;
       case 'return_to_class':
-        if (currentLeg.state !== 'IN') {
-          return { valid: false, error: 'Cannot return to class: not currently in' };
+        if (currentLeg.state !== 'OUT') {
+          return { valid: false, error: 'Cannot return to class: not currently out' };
         }
         break;
       case 'close_pass':
-        if (currentLeg.state !== 'OUT') {
-          return { valid: false, error: 'Cannot close pass: not currently out' };
-        }
+        // This is a more generic close, can be triggered by staff.
+        // For students, this is handled by returnToClass.
+        // No specific state validation here, can be closed from IN or OUT by staff.
         break;
       case 'restroom_return':
         if (currentLeg.state !== 'OUT') {

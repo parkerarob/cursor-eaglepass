@@ -29,6 +29,7 @@ export default function Home() {
     isSimpleTrip: false,
     returnLocationName: 'class',
     canArrive: false,
+    canReturnToClass: false,
     destinationName: '',
   });
   const [emergencyState, setEmergencyState] = useState<{ active: boolean; activatedBy?: string; activatedAt?: Date } | null>(null);
@@ -377,7 +378,7 @@ export default function Home() {
             <div className="bg-card rounded-lg shadow-sm p-6 space-y-4">
               <h3 className="text-lg font-semibold text-card-foreground">Actions</h3>
 
-              {!actionState.isRestroomTrip && (
+              {actionState.canReturnToClass && (
                 <button
                   onClick={handleClosePass}
                   disabled={isLoading}
