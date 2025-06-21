@@ -35,6 +35,18 @@ Eagle Pass is a modern, web-based digital hall pass system designed for schools.
 - **Event Logging**: Comprehensive audit trail for all system activities.
 - **FERPA Compliance**: Secure data handling and privacy protection.
 
+### Admin & Dev Tools
+
+#### Bulk CSV Upload (Production Readiness)
+
+- Upload CSV files for users, locations, groups, autonomy matrix, and restrictions via the /dev-tools page
+- Schema validation before ingesting data
+- Efficient Firestore batch writes for large data sets
+- Audit logging and error reporting shown in the UI and stored in Firestore
+- Extensible schema-driven design for future data types
+
+See `src/lib/dataIngestionService.ts` for implementation details and supported schemas.
+
 ## Tech Stack
 
 - **Framework**: [Next.js](https://nextjs.org/) (App Router)

@@ -20,6 +20,8 @@ import { EventLog } from '@/lib/eventLogger';
 
 const db = getFirestore(firebaseApp);
 
+export { db };
+
 // Function to convert Firestore Timestamps to JS Dates in a deeply nested object
 const convertTimestamps = (data: unknown): unknown => {
   if (data instanceof Timestamp) {
