@@ -38,6 +38,10 @@ export interface Pass {
   createdAt: Date;
   lastUpdatedAt: Date;
   legs: Leg[];
+  // Duration tracking for notifications
+  durationMinutes?: number; // Current duration in minutes
+  lastNotificationAt?: Date; // Last time a notification was sent
+  notificationLevel?: 'none' | 'student' | 'teacher' | 'admin'; // Current notification level
 }
 
 export interface EventLog {
@@ -46,7 +50,9 @@ export interface EventLog {
   studentId: string;
   actorId: string; // Who performed the action
   timestamp: Date;
-  eventType: 'DEPARTED' | 'RETURNED' | 'PASS_CREATED' | 'PASS_CLOSED';
+  eventType: 'DEPARTED' | 'RETURNED' | 'PASS_CREATED' | 'PASS_CLOSED' | 'ARRIVED' | 'INVALID_TRANSITION' | 'POLICY_DENIED' | 'ERROR' | 'NOTIFICATION_SENT' | 'NOTIFICATION_FAILED';
+  details?: string;
+  notificationLevel?: 'student' | 'teacher' | 'admin';
 }
 
 // Simple interfaces for UI components

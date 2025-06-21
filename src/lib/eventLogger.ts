@@ -8,13 +8,16 @@ export type EventType =
   | 'DEPARTED'
   | 'ARRIVED'
   | 'RETURNED'
+  | 'PASS_CLOSED'
   | 'CLAIMED'
   | 'EMERGENCY_ACTIVATED'
   | 'INVALID_TRANSITION'
   | 'POLICY_DENIED'
   | 'POLICY_APPROVED'
   | 'ERROR'
-  | 'INFO';
+  | 'INFO'
+  | 'NOTIFICATION_SENT'
+  | 'NOTIFICATION_FAILED';
 
 export interface EventLog {
   id?: string;
@@ -25,6 +28,7 @@ export interface EventLog {
   eventType: EventType;
   details?: string;
   policyContext?: unknown;
+  notificationLevel?: 'student' | 'teacher' | 'admin';
 }
 
 export async function logEvent(event: Omit<EventLog, 'id'>): Promise<void> {

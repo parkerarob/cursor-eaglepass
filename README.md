@@ -14,6 +14,7 @@ Eagle Pass is a modern, web-based digital hall pass system designed for schools.
 - **Google SSO**: Secure and easy login with Google accounts.
 - **Dark/Light Mode**: A modern UI with theme toggling.
 - **Vercel Analytics**: Built-in analytics to monitor application usage.
+- **Duration Timers & Escalation Notifications**: All active passes are tracked in real time. Automatic notifications escalate to teachers at 10 minutes and to admins at 20 minutes. Students see a live duration timer and escalation status on their dashboard.
 
 ## Tech Stack
 

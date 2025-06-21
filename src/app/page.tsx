@@ -5,6 +5,7 @@ import { Pass, User, Location, PassFormData } from '@/types';
 import { PassStatus } from '@/components/PassStatus';
 import { CreatePassForm } from '@/components/CreatePassForm';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { DurationTimer } from '@/components/DurationTimer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -357,6 +358,10 @@ export default function Home() {
           studentName={currentStudent.name}
           currentLocation={currentLocation}
         />
+
+        {currentPass && currentPass.status === 'OPEN' && (
+          <DurationTimer pass={currentPass} />
+        )}
 
         {!currentPass && (
           <CreatePassForm

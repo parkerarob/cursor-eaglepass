@@ -4,6 +4,7 @@ import { PassStateMachine, ActionState } from '@/lib/stateMachine';
 import { PolicyEngine } from '@/lib/policyEngine';
 import { PolicyContext } from '@/types/policy';
 import { logEvent } from '@/lib/eventLogger';
+import { NotificationService } from '@/lib/notificationService';
 
 export interface PassServiceResult {
   success: boolean;
@@ -159,16 +160,20 @@ export class PassService {
       }
 
       const updatedPass = stateMachine.arriveAtDestination();
-      await updatePass(updatedPass.id, updatedPass);
+      
+      // Check for notifications before updating
+      const passWithNotifications = await this.checkAndSendNotifications(updatedPass, student);
+      
+      await updatePass(passWithNotifications.id, passWithNotifications);
       await logEvent({
-        passId: updatedPass.id,
+        passId: passWithNotifications.id,
         studentId: student.id,
         actorId: student.id,
         timestamp: new Date(),
         eventType: 'ARRIVED',
-        details: `Arrived at destination for pass: ${updatedPass.id}`,
+        details: `Arrived at destination for pass: ${passWithNotifications.id}`,
       });
-      return { success: true, updatedPass };
+      return { success: true, updatedPass: passWithNotifications };
     } catch (error) {
       await logEvent({
         passId: pass.id,
@@ -206,16 +211,20 @@ export class PassService {
       }
 
       const updatedPass = stateMachine.returnToClass();
-      await updatePass(updatedPass.id, updatedPass);
+      
+      // Check for notifications before updating
+      const passWithNotifications = await this.checkAndSendNotifications(updatedPass, student);
+      
+      await updatePass(passWithNotifications.id, passWithNotifications);
       await logEvent({
-        passId: updatedPass.id,
+        passId: passWithNotifications.id,
         studentId: student.id,
         actorId: student.id,
         timestamp: new Date(),
         eventType: 'RETURNED',
-        details: `Returned to class for pass: ${updatedPass.id}`,
+        details: `Returned to class for pass: ${passWithNotifications.id}`,
       });
-      return { success: true, updatedPass };
+      return { success: true, updatedPass: passWithNotifications };
     } catch (error) {
       await logEvent({
         passId: pass.id,
@@ -253,16 +262,20 @@ export class PassService {
       }
 
       const updatedPass = stateMachine.closePass();
-      await updatePass(updatedPass.id, updatedPass);
+      
+      // Check for notifications before updating (even though pass is closing)
+      const passWithNotifications = await this.checkAndSendNotifications(updatedPass, student);
+      
+      await updatePass(passWithNotifications.id, passWithNotifications);
       await logEvent({
-        passId: updatedPass.id,
+        passId: passWithNotifications.id,
         studentId: student.id,
         actorId: student.id,
         timestamp: new Date(),
-        eventType: 'RETURNED',
-        details: `Closed pass: ${updatedPass.id}`,
+        eventType: 'PASS_CLOSED',
+        details: `Closed pass: ${passWithNotifications.id}`,
       });
-      return { success: true, updatedPass };
+      return { success: true, updatedPass: passWithNotifications };
     } catch (error) {
       await logEvent({
         passId: pass.id,
@@ -300,16 +313,20 @@ export class PassService {
       }
 
       const updatedPass = await stateMachine.handleRestroomReturn();
-      await updatePass(updatedPass.id, updatedPass);
+      
+      // Check for notifications before updating
+      const passWithNotifications = await this.checkAndSendNotifications(updatedPass, student);
+      
+      await updatePass(passWithNotifications.id, passWithNotifications);
       await logEvent({
-        passId: updatedPass.id,
+        passId: passWithNotifications.id,
         studentId: student.id,
         actorId: student.id,
         timestamp: new Date(),
-        eventType: updatedPass.status === 'CLOSED' ? 'RETURNED' : 'ARRIVED',
-        details: `Restroom return for pass: ${updatedPass.id}`,
+        eventType: passWithNotifications.status === 'CLOSED' ? 'PASS_CLOSED' : 'ARRIVED',
+        details: `Restroom return for pass: ${passWithNotifications.id}`,
       });
-      return { success: true, updatedPass };
+      return { success: true, updatedPass: passWithNotifications };
     } catch (error) {
       await logEvent({
         passId: pass.id,
@@ -377,5 +394,42 @@ export class PassService {
     const stateMachine = new PassStateMachine(pass, {} as User);
     const currentLeg = stateMachine.getCurrentLeg();
     return currentLeg?.state === 'IN';
+  }
+
+  /**
+   * Check and send notifications for a pass
+   */
+  private static async checkAndSendNotifications(pass: Pass, student: User): Promise<Pass> {
+    try {
+      const notificationCheck = NotificationService.shouldSendNotification(pass);
+      
+      if (notificationCheck.success && notificationCheck.notificationSent && notificationCheck.notificationLevel) {
+        const notificationResult = await NotificationService.sendNotification(pass, student, notificationCheck.notificationLevel);
+        
+        if (notificationResult.success) {
+          // Update pass with notification information
+          return NotificationService.updatePassWithNotification(pass, notificationCheck.notificationLevel);
+        }
+      }
+      
+      // Update duration even if no notification was sent
+      return {
+        ...pass,
+        durationMinutes: NotificationService.calculateDuration(pass),
+        lastUpdatedAt: new Date()
+      };
+    } catch (error) {
+      // Log error but don't fail the pass operation
+      await logEvent({
+        passId: pass.id,
+        studentId: student.id,
+        actorId: 'system',
+        timestamp: new Date(),
+        eventType: 'ERROR',
+        details: `Failed to check notifications: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
+      
+      return pass;
+    }
   }
 } 
