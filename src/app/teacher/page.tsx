@@ -274,13 +274,20 @@ export default function TeacherPage() {
     return matchesStudent && matchesStatus;
   });
 
-  // Separate OUT and IN students
-  const outStudents = filteredPasses.filter(pass => 
+  // Separate students into three groups for clarity
+  const outFromMyClass = filteredPasses.filter(pass =>
+    pass.teacherResponsibility === 'origin' &&
     pass.legs[pass.legs.length - 1]?.state === 'OUT'
   );
-  const inStudents = filteredPasses.filter(pass => 
+
+  const outToMyClass = filteredPasses.filter(pass =>
+    pass.teacherResponsibility === 'destination' &&
+    pass.legs[pass.legs.length - 1]?.state === 'OUT'
+  );
+
+  const inMyClass = filteredPasses.filter(pass => 
     pass.legs[pass.legs.length - 1]?.state === 'IN' && 
-    pass.teacherResponsibility !== 'origin'
+    (pass.teacherResponsibility === 'destination' || pass.teacherResponsibility === 'both')
   );
 
   if (isLoading || authLoading || roleLoading) {
@@ -358,20 +365,20 @@ export default function TeacherPage() {
           </CardContent>
         </Card>
 
-        {/* Students OUT */}
+        {/* Students OUT - From My Class */}
         <Card className="mb-6">
           <CardHeader>
             <div className="flex justify-between items-center">
-              <CardTitle>Students OUT ({outStudents.length})</CardTitle>
+              <CardTitle>Students OUT - From My Class ({outFromMyClass.length})</CardTitle>
               <Button onClick={fetchPassData} variant="outline" size="sm">
                 Refresh
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            {outStudents.length === 0 ? (
+            {outFromMyClass.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No students are currently out.
+                No students are currently out from your class.
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -387,7 +394,7 @@ export default function TeacherPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {outStudents.map((pass) => (
+                    {outFromMyClass.map((pass) => (
                       <tr key={pass.id} className="border-b hover:bg-muted/50">
                         <td className="p-2">
                           <div>
@@ -435,13 +442,80 @@ export default function TeacherPage() {
           </CardContent>
         </Card>
 
+        {/* Students OUT - En Route to My Class */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Students OUT - En Route To My Class ({outToMyClass.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {outToMyClass.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No students are currently en route to your classroom.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">Student</th>
+                      <th className="text-left p-2">From</th>
+                      <th className="text-left p-2">Duration</th>
+                      <th className="text-left p-2">Created</th>
+                      <th className="text-left p-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {outToMyClass.map((pass) => (
+                      <tr key={pass.id} className="border-b hover:bg-muted/50">
+                        <td className="p-2">
+                          <div>
+                            <div className="font-medium">{pass.student?.name || 'Unknown Student'}</div>
+                            <div className="text-sm text-muted-foreground">{pass.student?.email}</div>
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <div className="flex items-center gap-2">
+                            <span>{pass.currentLocation?.name || 'Unknown'}</span>
+                             {getStateBadge('OUT')}
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono">{formatDuration(pass.durationMinutes || 0)}</span>
+                            {getEscalationBadge(pass)}
+                          </div>
+                        </td>
+                        <td className="p-2 text-sm text-muted-foreground">
+                          {formatDate(pass.createdAt)}<br />
+                          {formatTime(pass.createdAt)}
+                        </td>
+                        <td className="p-2">
+                           <Button
+                            onClick={() => handleClosePass(pass)}
+                            disabled={isClosingPass === pass.id}
+                            variant="outline"
+                            size="sm"
+                          >
+                            {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+
         {/* Students IN (non-origin) */}
         <Card>
           <CardHeader>
-            <CardTitle>Students IN - Visiting My Class ({inStudents.length})</CardTitle>
+            <CardTitle>Students IN - Visiting My Class ({inMyClass.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {inStudents.length === 0 ? (
+            {inMyClass.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No students are currently visiting your classroom.
               </div>
@@ -458,7 +532,7 @@ export default function TeacherPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {inStudents.map((pass) => (
+                    {inMyClass.map((pass) => (
                       <tr key={pass.id} className="border-b hover:bg-muted/50">
                         <td className="p-2">
                           <div>
@@ -504,4 +578,4 @@ export default function TeacherPage() {
       </div>
     </div>
   );
-} 
+}

@@ -3,7 +3,10 @@ const { getFirestore, collection, addDoc, getDocs, query, where } = require('fir
 require('dotenv').config({ path: '.env.local' });
 
 // --- CONFIGURATION ---
-const TEACHER_EMAIL = 'robert.parker@nhcs.net'; // The email of the teacher to generate passes for.
+// Get teacher email from command line arguments. Falls back to default if not provided.
+const args = process.argv.slice(2);
+const teacherEmailArg = args.find(arg => arg.startsWith('--teacher='));
+const TEACHER_EMAIL = teacherEmailArg ? teacherEmailArg.split('=')[1] : 'robert.parker@nhcs.net'; 
 // Note: The script will find the teacher's assigned classroom automatically.
 
 // Firebase config from environment variables
@@ -117,6 +120,14 @@ async function createTargetedPasses() {
         }
     }
     
+    // Scenario C: Other students en-route to my class (should appear in "Students OUT")
+    if (otherStudents.length > 2) {
+        const studentOrigin = allLocations.find(l => l.id === otherStudents[2].assignedLocationId);
+        if (studentOrigin) {
+            testPasses.push(createPassData(otherStudents[2], studentOrigin, teacherClassroom, 'OUT', 4, 'none'));
+        }
+    }
+
     console.log(`📝 Generated ${testPasses.length} targeted pass scenarios.`);
 
     // --- 3. Add Passes to Firestore ---
