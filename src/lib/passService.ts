@@ -5,6 +5,7 @@ import { PolicyEngine } from '@/lib/policyEngine';
 import { PolicyContext } from '@/types/policy';
 import { logEvent } from '@/lib/eventLogger';
 import { NotificationService } from '@/lib/notificationService';
+import { measureApiCall, logError, logUserAction } from '@/lib/monitoringService';
 
 export interface PassServiceResult {
   success: boolean;
@@ -21,95 +22,111 @@ export class PassService {
    * Create a new pass
    */
   static async createPass(formData: PassFormData, student: User): Promise<PassServiceResult> {
-    try {
-      // Policy check for pass creation
-      const policyResult = await this.checkPolicy(student, 'create_pass', student.assignedLocationId!, formData.destinationLocationId);
-      if (!policyResult.allowed) {
+    return measureApiCall('createPass', async () => {
+      try {
+        // Log user action
+        logUserAction('create_pass', {
+          destinationLocationId: formData.destinationLocationId,
+          studentId: student.id,
+          studentRole: student.role,
+        }, student.id, student.role);
+
+        // Policy check for pass creation
+        const policyResult = await this.checkPolicy(student, 'create_pass', student.assignedLocationId!, formData.destinationLocationId);
+        if (!policyResult.allowed) {
+          await logEvent({
+            passId: undefined,
+            studentId: student.id,
+            actorId: student.id,
+            timestamp: new Date(),
+            eventType: 'POLICY_DENIED',
+            details: policyResult.reason,
+            policyContext: policyResult,
+          });
+          return { 
+            success: false, 
+            error: policyResult.reason || 'Policy check failed',
+            requiresApproval: policyResult.requiresApproval,
+            approvalRequiredBy: policyResult.approvalRequiredBy
+          };
+        }
+
+        // Check if student already has an active pass
+        const existingPass = await getActivePassByStudentId(student.id);
+        
+        if (existingPass) {
+          // Student has an active pass - add a new leg to it
+          const stateMachine = new PassStateMachine(existingPass, student);
+          const currentLeg = stateMachine.getCurrentLeg();
+          
+          if (currentLeg && currentLeg.state === 'IN') {
+            // Student is currently "IN" at a location - add new leg from current location
+            const updatedPass = stateMachine.addLeg(
+              currentLeg.destinationLocationId, // Origin is current location
+              formData.destinationLocationId,   // Destination is new location
+              'OUT'                             // State is OUT (traveling)
+            );
+            await updatePass(updatedPass.id, updatedPass);
+            await logEvent({
+              passId: updatedPass.id,
+              studentId: student.id,
+              actorId: student.id,
+              timestamp: new Date(),
+              eventType: 'DEPARTED',
+              details: `Added new leg to existing pass: ${updatedPass.id}`,
+            });
+            return { success: true, updatedPass };
+          } else {
+            // Student is "OUT" - they can't create a new pass
+            await logEvent({
+              passId: existingPass.id,
+              studentId: student.id,
+              actorId: student.id,
+              timestamp: new Date(),
+              eventType: 'INVALID_TRANSITION',
+              details: 'Attempted to create new pass while already traveling',
+            });
+            return { 
+              success: false, 
+              error: 'Cannot create new pass while already traveling' 
+            };
+          }
+        } else {
+          // No active pass - create new pass from assigned class
+          const newPass = PassStateMachine.createPass(formData, student);
+          await createPass(newPass);
+          await logEvent({
+            passId: newPass.id,
+            studentId: student.id,
+            actorId: student.id,
+            timestamp: new Date(),
+            eventType: 'PASS_CREATED',
+            details: `Created new pass: ${newPass.id}`,
+          });
+          return { success: true, updatedPass: newPass };
+        }
+      } catch (error) {
+        logError('Failed to create pass', {
+          studentId: student.id,
+          destinationLocationId: formData.destinationLocationId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        }, 'high');
+
         await logEvent({
           passId: undefined,
           studentId: student.id,
           actorId: student.id,
           timestamp: new Date(),
-          eventType: 'POLICY_DENIED',
-          details: policyResult.reason,
-          policyContext: policyResult,
+          eventType: 'ERROR',
+          details: error instanceof Error ? error.message : 'Failed to create pass',
         });
         return { 
           success: false, 
-          error: policyResult.reason || 'Policy check failed',
-          requiresApproval: policyResult.requiresApproval,
-          approvalRequiredBy: policyResult.approvalRequiredBy
+          error: error instanceof Error ? error.message : 'Failed to create pass' 
         };
       }
-
-      // Check if student already has an active pass
-      const existingPass = await getActivePassByStudentId(student.id);
-      
-      if (existingPass) {
-        // Student has an active pass - add a new leg to it
-        const stateMachine = new PassStateMachine(existingPass, student);
-        const currentLeg = stateMachine.getCurrentLeg();
-        
-        if (currentLeg && currentLeg.state === 'IN') {
-          // Student is currently "IN" at a location - add new leg from current location
-          const updatedPass = stateMachine.addLeg(
-            currentLeg.destinationLocationId, // Origin is current location
-            formData.destinationLocationId,   // Destination is new location
-            'OUT'                             // State is OUT (traveling)
-          );
-          await updatePass(updatedPass.id, updatedPass);
-          await logEvent({
-            passId: updatedPass.id,
-            studentId: student.id,
-            actorId: student.id,
-            timestamp: new Date(),
-            eventType: 'DEPARTED',
-            details: `Added new leg to existing pass: ${updatedPass.id}`,
-          });
-          return { success: true, updatedPass };
-        } else {
-          // Student is "OUT" - they can't create a new pass
-          await logEvent({
-            passId: existingPass.id,
-            studentId: student.id,
-            actorId: student.id,
-            timestamp: new Date(),
-            eventType: 'INVALID_TRANSITION',
-            details: 'Attempted to create new pass while already traveling',
-          });
-          return { 
-            success: false, 
-            error: 'Cannot create new pass while already traveling' 
-          };
-        }
-      } else {
-        // No active pass - create new pass from assigned class
-        const newPass = PassStateMachine.createPass(formData, student);
-        await createPass(newPass);
-        await logEvent({
-          passId: newPass.id,
-          studentId: student.id,
-          actorId: student.id,
-          timestamp: new Date(),
-          eventType: 'PASS_CREATED',
-          details: `Created new pass: ${newPass.id}`,
-        });
-        return { success: true, updatedPass: newPass };
-      }
-    } catch (error) {
-      await logEvent({
-        passId: undefined,
-        studentId: student.id,
-        actorId: student.id,
-        timestamp: new Date(),
-        eventType: 'ERROR',
-        details: error instanceof Error ? error.message : 'Failed to create pass',
-      });
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to create pass' 
-      };
-    }
+    }, { studentId: student.id, action: 'create_pass' });
   }
 
   /**
@@ -143,51 +160,67 @@ export class PassService {
    * Handle "I've Arrived" action
    */
   static async arriveAtDestination(pass: Pass, student: User): Promise<PassServiceResult> {
-    try {
-      const stateMachine = new PassStateMachine(pass, student);
-      const validation = stateMachine.validateTransition('arrive');
-      
-      if (!validation.valid) {
+    return measureApiCall('arriveAtDestination', async () => {
+      try {
+        // Log user action
+        logUserAction('arrive_at_destination', {
+          passId: pass.id,
+          studentId: student.id,
+          studentRole: student.role,
+        }, student.id, student.role);
+
+        const stateMachine = new PassStateMachine(pass, student);
+        const validation = stateMachine.validateTransition('arrive');
+        
+        if (!validation.valid) {
+          await logEvent({
+            passId: pass.id,
+            studentId: student.id,
+            actorId: student.id,
+            timestamp: new Date(),
+            eventType: 'INVALID_TRANSITION',
+            details: validation.error,
+          });
+          return { success: false, error: validation.error };
+        }
+
+        const updatedPass = stateMachine.arriveAtDestination();
+        
+        // Check for notifications before updating
+        const passWithNotifications = await this.checkAndSendNotifications(updatedPass, student);
+        
+        await updatePass(passWithNotifications.id, passWithNotifications);
+        await logEvent({
+          passId: passWithNotifications.id,
+          studentId: student.id,
+          actorId: student.id,
+          timestamp: new Date(),
+          eventType: 'ARRIVED',
+          details: `Arrived at destination for pass: ${passWithNotifications.id}`,
+        });
+        return { success: true, updatedPass: passWithNotifications };
+      } catch (error) {
+        logError('Failed to arrive at destination', {
+          passId: pass.id,
+          studentId: student.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        }, 'high');
+
         await logEvent({
           passId: pass.id,
           studentId: student.id,
           actorId: student.id,
           timestamp: new Date(),
-          eventType: 'INVALID_TRANSITION',
-          details: validation.error,
+          eventType: 'ERROR',
+          details: error instanceof Error ? error.message : 'Failed to arrive at destination',
         });
-        return { success: false, error: validation.error };
+        return { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Failed to arrive at destination' 
+        };
       }
-
-      const updatedPass = stateMachine.arriveAtDestination();
-      
-      // Check for notifications before updating
-      const passWithNotifications = await this.checkAndSendNotifications(updatedPass, student);
-      
-      await updatePass(passWithNotifications.id, passWithNotifications);
-      await logEvent({
-        passId: passWithNotifications.id,
-        studentId: student.id,
-        actorId: student.id,
-        timestamp: new Date(),
-        eventType: 'ARRIVED',
-        details: `Arrived at destination for pass: ${passWithNotifications.id}`,
-      });
-      return { success: true, updatedPass: passWithNotifications };
-    } catch (error) {
-      await logEvent({
-        passId: pass.id,
-        studentId: student.id,
-        actorId: student.id,
-        timestamp: new Date(),
-        eventType: 'ERROR',
-        details: error instanceof Error ? error.message : 'Failed to arrive at destination',
-      });
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to arrive at destination' 
-      };
-    }
+    }, { studentId: student.id, action: 'arrive_at_destination', passId: pass.id });
   }
 
   /**

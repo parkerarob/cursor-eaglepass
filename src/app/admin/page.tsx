@@ -24,6 +24,7 @@ import { NotificationService } from '@/lib/notificationService';
 import { PassService } from '@/lib/passService';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MonitoringDashboard } from '@/components/MonitoringDashboard';
 
 interface PassWithDetails extends Pass {
   student?: User;
@@ -80,7 +81,7 @@ export default function AdminPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Reporting state
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'reports' | 'monitoring'>('dashboard');
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'custom'>('week');
@@ -552,6 +553,13 @@ export default function AdminPage() {
           >
             Reports
           </Button>
+          <Button
+            variant={activeTab === 'monitoring' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('monitoring')}
+          >
+            Monitoring
+          </Button>
         </div>
 
         {activeTab === 'dashboard' && (
@@ -940,6 +948,20 @@ export default function AdminPage() {
                 </Card>
               </>
             )}
+          </div>
+        )}
+
+        {activeTab === 'monitoring' && (
+          <div className="grid gap-6">
+            {/* Monitoring Dashboard */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Monitoring Dashboard</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MonitoringDashboard />
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

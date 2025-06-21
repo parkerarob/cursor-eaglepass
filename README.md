@@ -18,6 +18,7 @@ Eagle Pass is a modern, web-based digital hall pass system designed for schools.
 - **Teacher Assist**: Teachers can manually close student passes and assist with pass management.
 - **Advanced Reporting**: Comprehensive reporting system with analytics, student activity tracking, and location usage statistics.
 - **CSV Export**: Export pass data and event logs for external analysis.
+- **System Health Monitoring**: Real-time monitoring dashboard for system health, error tracking, and performance metrics (Phase 10).
 
 ### Safety & Emergency Features
 - **Emergency Freeze Mode**: Global emergency banner and system freeze functionality for crisis situations.
@@ -57,6 +58,7 @@ Eagle Pass is a modern, web-based digital hall pass system designed for schools.
 - ✅ **Phase 7**: Policy Engine & Security - Policy enforcement and event logging
 - ✅ **Phase 8**: Emergency Features - Emergency freeze mode and duration tracking
 - ✅ **Phase 9**: Enhanced Admin Features - Teacher dashboard and advanced reporting
+- ✅ **Phase 10**: Production Readiness - Monitoring, observability, and data management (in progress)
 
 ### Current Phase
 - 🔄 **Phase 10**: Production Readiness - Monitoring and data management
@@ -132,6 +134,13 @@ The core state machine manages pass lifecycles with binary states:
 - **Location Analytics**: Most popular destinations and usage patterns
 - **Event Logs**: Comprehensive audit trail for all system activities
 - **Data Export**: CSV export for external analysis
+
+### Monitoring & Observability (Phase 10)
+- **System Health Dashboard**: Admins can view real-time system health, event queue size, and active performance traces.
+- **Error Tracking**: Automatic logging of unhandled errors and promise rejections.
+- **Performance Monitoring**: API call durations and performance traces tracked via Firebase Performance Monitoring (client-only).
+- **User Action Logging**: All critical user actions are logged for audit and debugging.
+- **Security Event Logging**: Security-related events are tracked and surfaced in the admin dashboard.
 
 ## Deployment
 

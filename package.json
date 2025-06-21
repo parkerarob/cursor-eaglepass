@@ -11,6 +11,7 @@
     "test:basic": "dotenv -e .env.local -- node scripts/test-basic-functionality.js"
   },
   "dependencies": {
+    "@firebase/performance": "^0.7.6",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-dropdown-menu": "^2.1.15",
     "@radix-ui/react-select": "^2.2.5",

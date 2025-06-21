@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/AuthProvider";
+import { MonitoringProvider } from "@/components/MonitoringProvider";
 import { Analytics } from "@vercel/analytics/next";
 import { GlobalEmergencyBanner } from '@/components/GlobalEmergencyBanner';
 
@@ -33,9 +34,11 @@ export default function RootLayout({
       >
         <GlobalEmergencyBanner />
         <ThemeProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <MonitoringProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </MonitoringProvider>
         </ThemeProvider>
         <Analytics />
       </body>
