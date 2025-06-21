@@ -54,14 +54,13 @@ export function RoleProvider({ children }: { children: ReactNode }) {
         
         if (!userProfile) {
           console.warn(`No user profile found for ${authUser.email}. Creating a new one.`);
-          const newUser: User = {
-            id: authUser.uid, // Use the UID from Firebase Auth as the document ID
+          const newUserPayload: Omit<User, 'id'> = {
             email: authUser.email!,
             name: authUser.displayName || 'New User',
             role: 'teacher', // Default role for new users
+            schoolId: '', // Default empty schoolId, can be updated in settings
           };
-          await createUser(newUser);
-          userProfile = newUser;
+          userProfile = await createUser(newUserPayload);
         }
 
         if (userProfile) {

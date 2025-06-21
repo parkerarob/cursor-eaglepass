@@ -135,9 +135,14 @@ export const updatePass = async (passId: string, updates: Partial<Pass>): Promis
     await updateDoc(passRef, updateData as Partial<Pass>);
 };
 
-export const createUser = async (user: User): Promise<void> => {
-  const userRef = doc(db, "users", user.id);
-  await setDoc(userRef, user);
+export const createUser = async (userData: Omit<User, 'id'>): Promise<User> => {
+  const usersRef = collection(db, 'users');
+  const docRef = await addDoc(usersRef, userData);
+  const newUser = {
+    id: docRef.id,
+    ...userData,
+  } as User;
+  return newUser;
 };
 
 export const updateUser = async (userId: string, updates: Partial<User>): Promise<void> => {
