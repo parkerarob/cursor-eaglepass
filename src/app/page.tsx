@@ -29,6 +29,7 @@ export default function Home() {
     isSimpleTrip: false,
     returnLocationName: 'class',
     canArrive: false,
+    destinationName: '',
   });
   const [emergencyState, setEmergencyState] = useState<{ active: boolean; activatedBy?: string; activatedAt?: Date } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -373,17 +374,30 @@ export default function Home() {
             <DurationTimer pass={currentPass} />
             
             {/* Action Buttons */}
-            <div className="bg-card rounded-lg shadow-sm p-6 space-y-3">
+            <div className="bg-card rounded-lg shadow-sm p-6 space-y-4">
               <h3 className="text-lg font-semibold text-card-foreground">Actions</h3>
+
+              {!actionState.isRestroomTrip && (
+                <button
+                  onClick={handleClosePass}
+                  disabled={isLoading}
+                  className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  I&apos;m back in class
+                </button>
+              )}
               
               {actionState.canArrive && (
-                <button
-                  onClick={handleReturn}
-                  disabled={isLoading}
-                  className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Arrive at Destination
-                </button>
+                <div className="text-center space-y-2 pt-2 border-t border-border">
+                   <p className="text-sm text-muted-foreground">Need to stay awhile?</p>
+                   <button
+                    onClick={handleReturn}
+                    disabled={isLoading}
+                    className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {`Check-In at ${actionState.destinationName || 'Destination'}`}
+                  </button>
+                </div>
               )}
               
               {actionState.isRestroomTrip && (
@@ -396,15 +410,6 @@ export default function Home() {
                 </button>
               )}
               
-              {!actionState.isRestroomTrip && (
-                <button
-                  onClick={handleClosePass}
-                  disabled={isLoading}
-                  className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Close Pass
-                </button>
-              )}
             </div>
           </div>
         ) : (

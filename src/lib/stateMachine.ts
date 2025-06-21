@@ -6,6 +6,7 @@ export interface ActionState {
   isSimpleTrip: boolean;
   returnLocationName: string;
   canArrive: boolean;
+  destinationName?: string;
 }
 
 export interface StateTransitionResult {
@@ -71,6 +72,7 @@ export class PassStateMachine {
       isSimpleTrip: false, // Remove simple trip concept - all bathroom trips work the same way
       returnLocationName: returnLocName,
       canArrive: canArrive,
+      destinationName: destination?.name,
     };
   }
 
