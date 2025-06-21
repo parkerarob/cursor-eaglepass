@@ -406,12 +406,15 @@ class DataIngestionService {
           
           // Create location document with custom ID from spreadsheet
           const locationDoc = doc(db, 'locations', locationData.id);
-          const location: Location = {
+          const location: Partial<Location> = {
             id: locationData.id,
             name: locationData.name,
             locationType: locationData.locationType.toLowerCase() as 'classroom' | 'bathroom' | 'nurse' | 'office' | 'library' | 'cafeteria',
-            responsiblePartyId: locationData.responsiblePartyId
           };
+
+          if (locationData.responsiblePartyId) {
+            location.responsiblePartyId = locationData.responsiblePartyId;
+          }
 
           batch.set(locationDoc, location);
           successfulRecords++;

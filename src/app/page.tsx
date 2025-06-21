@@ -325,7 +325,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Role Switcher for Dev Users */}
       <RoleSwitcher />
       
@@ -338,23 +338,23 @@ export default function Home() {
       
       <div className="max-w-md mx-auto p-4">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
+        <div className="bg-card rounded-lg shadow-sm p-6 mb-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Eagle Pass</h1>
-              <p className="text-gray-600">Digital Hall Pass System</p>
+              <h1 className="text-2xl font-bold text-card-foreground">Eagle Pass</h1>
+              <p className="text-muted-foreground">Digital Hall Pass System</p>
             </div>
             <div className="text-right">
-              <div className="text-sm font-medium text-gray-900">{currentStudent?.name}</div>
-              <div className="text-xs text-gray-500">{currentStudent?.email}</div>
+              <div className="text-sm font-medium text-card-foreground">{currentStudent?.name}</div>
+              <div className="text-xs text-muted-foreground">{currentStudent?.email}</div>
               <ThemeToggle />
             </div>
           </div>
           
           {currentLocation && (
-            <div className="bg-blue-50 rounded-lg p-3">
-              <div className="text-xs text-blue-600 font-medium mb-1">Current Location</div>
-              <div className="text-sm text-blue-900">{currentLocation.name}</div>
+            <div className="bg-muted rounded-lg p-3">
+              <div className="text-xs text-muted-foreground font-medium mb-1">Current Location</div>
+              <div className="text-sm text-muted-foreground">{currentLocation.name}</div>
             </div>
           )}
         </div>
@@ -373,8 +373,8 @@ export default function Home() {
             <DurationTimer pass={currentPass} />
             
             {/* Action Buttons */}
-            <div className="bg-white rounded-lg shadow-sm p-6 space-y-3">
-              <h3 className="text-lg font-semibold text-gray-900">Actions</h3>
+            <div className="bg-card rounded-lg shadow-sm p-6 space-y-3">
+              <h3 className="text-lg font-semibold text-card-foreground">Actions</h3>
               
               {actionState.canArrive && (
                 <button
