@@ -38,6 +38,8 @@ export interface Pass {
   createdAt: Date;
   lastUpdatedAt: Date;
   legs: Leg[];
+  closedBy?: string; // User ID of who closed the pass
+  closedAt?: Date;
   // Duration tracking for notifications
   durationMinutes?: number; // Current duration in minutes
   lastNotificationAt?: Date; // Last time a notification was sent

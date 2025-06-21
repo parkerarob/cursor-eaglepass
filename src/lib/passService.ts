@@ -99,20 +99,27 @@ export class PassService {
   }
 
   /**
-   * Handle "Close Pass" action (return to class and close)
+   * Handle "Close Pass" action (administrative close)
    */
-  static async closePass(pass: Pass, student: User): Promise<PassServiceResult> {
+  static async closePass(pass: Pass, closer: User): Promise<PassServiceResult> {
     try {
-      const stateMachine = new PassStateMachine(pass, student);
-      const validation = stateMachine.validateTransition('close_pass');
-      
-      if (!validation.valid) {
-        return { success: false, error: validation.error };
+      // This is an administrative action. We directly close the pass
+      // without going through the state machine's normal flow.
+      if (pass.status === 'CLOSED') {
+        return { success: false, error: 'Pass is already closed.' };
       }
+      
+      const updatedPassData = {
+        ...pass,
+        status: 'CLOSED' as const,
+        lastUpdatedAt: new Date(),
+        closedBy: closer.id,
+        closedAt: new Date()
+      };
 
-      const updatedPass = stateMachine.closePass();
-      await updatePass(updatedPass.id, updatedPass);
-      return { success: true, updatedPass };
+      await updatePass(updatedPassData.id, updatedPassData);
+      return { success: true, updatedPass: updatedPassData };
+
     } catch (error) {
       return { 
         success: false, 
