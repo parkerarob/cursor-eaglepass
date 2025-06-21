@@ -166,14 +166,27 @@ export class NotificationService {
     shouldEscalate: boolean;
   } {
     const durationMinutes = this.calculateDuration(pass);
-    const isOverdue = durationMinutes >= this.config.adminEscalationMinutes;
-    const shouldEscalate = durationMinutes >= this.config.studentNotificationMinutes;
 
+    // Only apply escalation logic if the student is currently OUT
+    const currentLeg = pass.legs[pass.legs.length - 1];
+    if (currentLeg && currentLeg.state === 'OUT') {
+      const isOverdue = durationMinutes >= this.config.adminEscalationMinutes;
+      const shouldEscalate = durationMinutes >= this.config.studentNotificationMinutes;
+
+      return {
+        durationMinutes,
+        notificationLevel: pass.notificationLevel || 'none',
+        isOverdue,
+        shouldEscalate
+      };
+    }
+
+    // Default status for students who are IN a location
     return {
       durationMinutes,
       notificationLevel: pass.notificationLevel || 'none',
-      isOverdue,
-      shouldEscalate
+      isOverdue: false,
+      shouldEscalate: false
     };
   }
 } 

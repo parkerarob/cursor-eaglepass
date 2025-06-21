@@ -526,7 +526,6 @@ export default function TeacherPage() {
                     <tr className="border-b">
                       <th className="text-left p-2">Student</th>
                       <th className="text-left p-2">From</th>
-                      <th className="text-left p-2">Duration</th>
                       <th className="text-left p-2">Arrived</th>
                       <th className="text-left p-2">Actions</th>
                     </tr>
@@ -545,12 +544,6 @@ export default function TeacherPage() {
                             <span>{pass.legs[0]?.originLocationId ? 
                               locations.find(l => l.id === pass.legs[0].originLocationId)?.name : 'Unknown'}</span>
                             {getStateBadge('IN')}
-                          </div>
-                        </td>
-                        <td className="p-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono">{formatDuration(pass.durationMinutes || 0)}</span>
-                            {getEscalationBadge(pass)}
                           </div>
                         </td>
                         <td className="p-2 text-sm text-muted-foreground">
