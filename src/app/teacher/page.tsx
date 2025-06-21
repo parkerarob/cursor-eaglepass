@@ -54,7 +54,6 @@ export default function TeacherPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'OUT' | 'IN'>('all');
 
   // Auto-refresh
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const fetchLocations = useCallback(async () => {
@@ -158,6 +157,12 @@ export default function TeacherPage() {
   }, [currentUser]);
 
   useEffect(() => {
+    if (currentUser) {
+      fetchPassData();
+    }
+  }, [currentUser, fetchPassData]);
+
+  useEffect(() => {
     if (authLoading || roleLoading) return;
     if (!authUser || !roleUser) {
       setIsLoading(false);
@@ -169,7 +174,7 @@ export default function TeacherPage() {
         // Only allow teachers to access this page
         if (roleUser?.role === 'teacher') {
           setCurrentUser(roleUser);
-          await Promise.all([fetchPassData(), fetchLocations()]);
+          await fetchLocations(); // fetchPassData is now called in a separate useEffect
         } else {
           setError(`Access denied. Your role (${roleUser?.role || 'unknown'}) does not have teacher privileges.`);
         }
@@ -181,7 +186,6 @@ export default function TeacherPage() {
     };
 
     fetchUserData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser, roleUser, authLoading, roleLoading, fetchLocations]);
 
   // Auto-refresh effect
@@ -193,7 +197,6 @@ export default function TeacherPage() {
     }, 30000); // Refresh every 30 seconds
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefresh, currentUser, fetchPassData]);
 
   const handleClosePass = async (pass: PassWithDetails) => {
