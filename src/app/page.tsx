@@ -30,6 +30,7 @@ export default function Home() {
     returnLocationName: 'class',
     canArrive: false,
     canReturnToClass: false,
+    isInLocation: false,
     destinationName: '',
   });
   const [emergencyState, setEmergencyState] = useState<{ active: boolean; activatedBy?: string; activatedAt?: Date } | null>(null);
@@ -412,6 +413,15 @@ export default function Home() {
               )}
               
             </div>
+
+            {actionState.isInLocation && (
+              <CreatePassForm
+                onCreatePass={handleCreatePass}
+                isLoading={isLoading}
+                excludeLocationId={currentLocation?.id}
+                heading="Need to go somewhere else?"
+              />
+            )}
           </div>
         ) : (
           <div className="text-center text-gray-600">

@@ -7,6 +7,7 @@ export interface ActionState {
   returnLocationName: string;
   canArrive: boolean;
   canReturnToClass: boolean;
+  isInLocation: boolean;
   destinationName?: string;
 }
 
@@ -45,20 +46,23 @@ export class PassStateMachine {
    */
   async determineActionState(): Promise<ActionState> {
     const currentLeg = this.getCurrentLeg();
-    if (!currentLeg || currentLeg.state !== 'OUT') {
+    
+    // Default state for when student is IN a location or has no pass
+    if (!currentLeg || currentLeg.state === 'IN') {
       return {
         isRestroomTrip: false,
         isSimpleTrip: false,
         returnLocationName: 'class',
         canArrive: false,
         canReturnToClass: false,
+        isInLocation: true,
       };
     }
-
+    
+    // State for when student is OUT (traveling)
     const destination = await getLocationById(currentLeg.destinationLocationId);
     const isRestroom = destination?.locationType === 'bathroom';
     
-    // For restroom trips, determine return location based on origin of current leg
     let returnLocName = 'class';
     if (isRestroom) {
       const returnLocation = await getLocationById(currentLeg.originLocationId);
@@ -74,10 +78,11 @@ export class PassStateMachine {
 
     return {
       isRestroomTrip: isRestroom,
-      isSimpleTrip: false, // Remove simple trip concept - all bathroom trips work the same way
+      isSimpleTrip: false,
       returnLocationName: returnLocName,
       canArrive: canArrive,
       canReturnToClass: canReturnToClass,
+      isInLocation: false,
       destinationName: destination?.name,
     };
   }

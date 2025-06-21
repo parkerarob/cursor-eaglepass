@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { mockUsers, mockLocations } from "@/lib/mockData";
-import { writeBatch, getFirestore, doc } from "firebase/firestore";
+import { writeBatch, getFirestore, doc, collection, query, where, getDocs } from "firebase/firestore";
 import { firebaseApp } from "@/lib/firebase/config";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,7 @@ export default function DevToolsPage() {
   const [csvStatus, setCsvStatus] = useState<string>('');
   const [csvResult, setCsvResult] = useState<IngestionResult | null>(null);
   const [csvLoading, setCsvLoading] = useState(false);
+  const [passStatus, setPassStatus] = useState<string>('');
 
   if (!isDev()) {
     return (
@@ -130,6 +131,31 @@ export default function DevToolsPage() {
     setCsvLoading(false);
   };
 
+  const closeAllPasses = async () => {
+    setPassStatus('Closing all active passes...');
+    try {
+      const passesRef = collection(db, 'passes');
+      const q = query(passesRef, where('status', '==', 'OPEN'));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        setPassStatus('No active passes found to close.');
+        return;
+      }
+      
+      const batch = writeBatch(db);
+      querySnapshot.forEach(passDoc => {
+        const passRef = doc(db, 'passes', passDoc.id);
+        batch.update(passRef, { status: 'CLOSED' });
+      });
+      
+      await batch.commit();
+      setPassStatus(`Successfully closed ${querySnapshot.size} active pass(es).`);
+    } catch (err) {
+      setPassStatus('Error closing passes: ' + (err as Error).message);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-8 space-y-8">
       <h1 className="text-3xl font-bold text-center">
@@ -232,6 +258,31 @@ export default function DevToolsPage() {
                   </ul>
                 </div>
               )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pass Management</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Use these tools to manage pass states for testing purposes.
+          </p>
+          <Button onClick={closeAllPasses} variant="destructive">
+            Close All Active Passes
+          </Button>
+          {passStatus && (
+            <div
+              className={`text-sm ${
+                passStatus.includes("Error")
+                  ? "text-destructive"
+                  : "text-green-500"
+              }`}
+            >
+              {passStatus}
             </div>
           )}
         </CardContent>
