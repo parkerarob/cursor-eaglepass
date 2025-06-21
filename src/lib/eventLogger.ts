@@ -24,7 +24,7 @@ export interface EventLog {
   timestamp: Date;
   eventType: EventType;
   details?: string;
-  policyContext?: any;
+  policyContext?: unknown;
 }
 
 export async function logEvent(event: Omit<EventLog, 'id'>): Promise<void> {
