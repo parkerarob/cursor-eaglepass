@@ -7,14 +7,32 @@ Eagle Pass is a modern, web-based digital hall pass system designed for schools.
 
 ## Features
 
+### Core Functionality
 - **Student Pass Management**: Students can create, manage, and close digital hall passes.
 - **Real-time State Machine**: A robust state machine handles all pass logic, including multi-leg trips (e.g., library to bathroom) and special location rules.
-- **Admin Dashboard**: A dedicated interface for teachers and administrators to view a live, human-readable log of all pass activity.
 - **Role-Based Access Control**: Different user roles (student, teacher, admin, dev) with appropriate permissions.
 - **Google SSO**: Secure and easy login with Google accounts.
+
+### Admin & Teacher Features
+- **Admin Dashboard**: A dedicated interface for teachers and administrators to view a live, human-readable log of all pass activity.
+- **Teacher Assist**: Teachers can manually close student passes and assist with pass management.
+- **Advanced Reporting**: Comprehensive reporting system with analytics, student activity tracking, and location usage statistics.
+- **CSV Export**: Export pass data and event logs for external analysis.
+
+### Safety & Emergency Features
+- **Emergency Freeze Mode**: Global emergency banner and system freeze functionality for crisis situations.
+- **Duration Timers & Escalation Notifications**: All active passes are tracked in real time. Automatic notifications escalate to teachers at 10 minutes and to admins at 20 minutes.
+- **Real-time Monitoring**: Students see a live duration timer and escalation status on their dashboard.
+
+### User Experience
 - **Dark/Light Mode**: A modern UI with theme toggling.
-- **Vercel Analytics**: Built-in analytics to monitor application usage.
-- **Duration Timers & Escalation Notifications**: All active passes are tracked in real time. Automatic notifications escalate to teachers at 10 minutes and to admins at 20 minutes. Students see a live duration timer and escalation status on their dashboard.
+- **Responsive Design**: Works seamlessly on desktop and mobile devices.
+- **Real-time Updates**: Live data updates with auto-refresh functionality.
+
+### Security & Compliance
+- **Policy Engine**: Configurable rules and restrictions for pass creation and management.
+- **Event Logging**: Comprehensive audit trail for all system activities.
+- **FERPA Compliance**: Secure data handling and privacy protection.
 
 ## Tech Stack
 
@@ -25,6 +43,23 @@ Eagle Pass is a modern, web-based digital hall pass system designed for schools.
 - **State Management**: React Hooks & Context API
 - **Testing**: [Jest](https://jestjs.io/) & [React Testing Library](https://testing-library.com/)
 - **Deployment**: [Vercel](https://vercel.com/)
+
+## Project Status
+
+**🎉 Eagle Pass is now in MVP completion phase!**
+
+### Completed Phases
+- ✅ **Phase 1**: Foundation & "Hello World" - Project setup and deployment
+- ✅ **Phase 2**: Understanding Data - Data models and mock data
+- ✅ **Phase 3**: Real Data Storage - Firebase integration
+- ✅ **Phase 4**: Authentication & Security - Google SSO and role-based access
+- ✅ **Phase 5**: Core State Machine - Robust pass lifecycle management
+- ✅ **Phase 7**: Policy Engine & Security - Policy enforcement and event logging
+- ✅ **Phase 8**: Emergency Features - Emergency freeze mode and duration tracking
+- ✅ **Phase 9**: Enhanced Admin Features - Teacher dashboard and advanced reporting
+
+### Current Phase
+- 🔄 **Phase 10**: Production Readiness - Monitoring and data management
 
 ## Getting Started
 
@@ -66,14 +101,37 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Project Structure
 Here is a high-level overview of the important files and directories:
 
-- `/src/app/`: Main application routes (student view, admin dashboard).
-- `/src/components/`: Shared React components.
+- `/src/app/`: Main application routes (student view, admin dashboard, dev tools).
+- `/src/components/`: Shared React components including UI components and specialized components.
 - `/src/lib/`: Core application logic.
   - `/firebase/`: Firebase configuration and service functions.
   - `/stateMachine.ts`: The core logic for pass state transitions.
   - `/passService.ts`: Service layer for pass management.
+  - `/notificationService.ts`: Duration tracking and escalation logic.
+  - `/eventLogger.ts`: Event logging and audit trail functionality.
+  - `/policyEngine.ts`: Policy enforcement and rule management.
 - `/src/types/`: TypeScript type definitions.
 - `/src/lib/__tests__/`: Jest tests for the application logic.
+
+## Key Features in Detail
+
+### State Machine
+The core state machine manages pass lifecycles with binary states:
+- **Pass Status**: OPEN or CLOSED
+- **Movement State**: IN or OUT
+- **Multi-leg Support**: Complex movement patterns (e.g., classroom → library → bathroom → library → classroom)
+
+### Emergency Features
+- **Emergency Freeze**: Global system freeze with real-time banner
+- **Duration Tracking**: Real-time pass duration with escalation at 10min (teacher) and 20min (admin)
+- **Notification System**: Automated escalation with failure logging
+
+### Reporting System
+- **Historical Analysis**: Date-range filtered reports
+- **Student Activity**: Individual student movement patterns and statistics
+- **Location Analytics**: Most popular destinations and usage patterns
+- **Event Logs**: Comprehensive audit trail for all system activities
+- **Data Export**: CSV export for external analysis
 
 ## Deployment
 
@@ -84,3 +142,11 @@ The easiest way to deploy this Next.js app is to use the [Vercel Platform](https
 - **Environment Variables**: Make sure to add your Firebase environment variables to the Vercel project settings.
 
 Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Contributing
+
+This project follows a structured development approach with clear phases and milestones. See `TASK_PROGRESS.md` for detailed progress tracking and `docs/PRD.md` for product requirements.
+
+## License
+
+This project is designed for educational use and school safety. Please ensure compliance with local privacy and data protection regulations.

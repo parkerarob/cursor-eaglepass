@@ -8,7 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { signOut } from '@/lib/firebase/auth';
-import { getUserByEmail, getStudentById, getLocationById, getEmergencyState, setEmergencyState, getAllLocations } from '@/lib/firebase/firestore';
+import { 
+  getUserByEmail, 
+  getStudentById, 
+  getLocationById, 
+  getEmergencyState, 
+  setEmergencyState, 
+  getAllLocations,
+  getAllPasses,
+  getEventLogsByDateRange
+} from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
 import { EmergencyBanner } from '@/components/EmergencyBanner';
 import { NotificationService } from '@/lib/notificationService';
@@ -32,6 +41,25 @@ interface PassWithDetails extends Pass {
   };
 }
 
+interface ReportData {
+  totalPasses: number;
+  activePasses: number;
+  completedPasses: number;
+  averageDuration: number;
+  mostPopularLocations: Array<{ location: Location; count: number }>;
+  studentActivity: Array<{ student: User; passCount: number; totalDuration: number }>;
+  recentEvents: Array<{
+    id?: string;
+    passId?: string;
+    studentId?: string;
+    actorId: string;
+    timestamp: Date;
+    eventType: string;
+    details?: string;
+    notificationLevel?: string;
+  }>;
+}
+
 export default function AdminPage() {
   const { user: authUser, isLoading: authLoading } = useAuth();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -50,6 +78,14 @@ export default function AdminPage() {
 
   // Auto-refresh
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // Reporting state
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'reports'>('dashboard');
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [isLoadingReports, setIsLoadingReports] = useState(false);
+  const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'custom'>('week');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
 
   useEffect(() => {
     if (authLoading) return;
@@ -256,6 +292,200 @@ export default function AdminPage() {
 
   const activePasses = filteredPasses.filter(p => p.status === 'OPEN');
 
+  // Reporting functions
+  const getDateRange = () => {
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (dateRange) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        break;
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          return {
+            startDate: new Date(customStartDate),
+            endDate: new Date(customEndDate)
+          };
+        }
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+    
+    return { startDate, endDate: now };
+  };
+
+  const generateReports = async () => {
+    setIsLoadingReports(true);
+    try {
+      const { startDate, endDate } = getDateRange();
+      
+      // Fetch all passes and events for the date range
+      const allPasses = await getAllPasses();
+      const allEvents = await getEventLogsByDateRange(startDate, endDate);
+      
+      // Filter passes by date range
+      const filteredPasses = allPasses.filter(pass => {
+        const passDate = new Date(pass.createdAt);
+        return passDate >= startDate && passDate <= endDate;
+      });
+
+      // Calculate statistics
+      const totalPasses = filteredPasses.length;
+      const activePasses = filteredPasses.filter(p => p.status === 'OPEN').length;
+      const completedPasses = filteredPasses.filter(p => p.status === 'CLOSED').length;
+      
+      // Calculate average duration
+      const completedPassesWithDuration = filteredPasses
+        .filter(p => p.status === 'CLOSED')
+        .map(p => {
+          const duration = (new Date(p.lastUpdatedAt).getTime() - new Date(p.createdAt).getTime()) / (1000 * 60);
+          return duration;
+        });
+      
+      const averageDuration = completedPassesWithDuration.length > 0 
+        ? completedPassesWithDuration.reduce((sum, duration) => sum + duration, 0) / completedPassesWithDuration.length 
+        : 0;
+
+      // Calculate most popular locations
+      const locationCounts = new Map<string, number>();
+      filteredPasses.forEach(pass => {
+        pass.legs.forEach(leg => {
+          const locationId = leg.destinationLocationId;
+          locationCounts.set(locationId, (locationCounts.get(locationId) || 0) + 1);
+        });
+      });
+
+      const mostPopularLocations = await Promise.all(
+        Array.from(locationCounts.entries())
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 5)
+          .map(async ([locationId, count]) => {
+            const location = await getLocationById(locationId);
+            return { location: location!, count };
+          })
+      );
+
+      // Calculate student activity
+      const studentCounts = new Map<string, { passCount: number; totalDuration: number }>();
+      filteredPasses.forEach(pass => {
+        const studentId = pass.studentId;
+        const existing = studentCounts.get(studentId) || { passCount: 0, totalDuration: 0 };
+        const duration = pass.status === 'CLOSED' ? (new Date(pass.lastUpdatedAt).getTime() - new Date(pass.createdAt).getTime()) / (1000 * 60) : 0;
+        
+        studentCounts.set(studentId, {
+          passCount: existing.passCount + 1,
+          totalDuration: existing.totalDuration + duration
+        });
+      });
+
+      const studentActivity = await Promise.all(
+        Array.from(studentCounts.entries())
+          .sort(([,a], [,b]) => b.passCount - a.passCount)
+          .slice(0, 10)
+          .map(async ([studentId, stats]) => {
+            const student = await getStudentById(studentId);
+            return { student: student!, ...stats };
+          })
+      );
+
+      // Get recent events
+      const recentEvents = allEvents
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 20);
+
+      setReportData({
+        totalPasses,
+        activePasses,
+        completedPasses,
+        averageDuration,
+        mostPopularLocations,
+        studentActivity,
+        recentEvents
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setIsLoadingReports(false);
+    }
+  };
+
+  const exportToCSV = (data: Record<string, unknown>[], filename: string) => {
+    if (data.length === 0) return;
+    
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => 
+        headers.map(header => {
+          const value = row[header];
+          if (typeof value === 'string' && value.includes(',')) {
+            return `"${value}"`;
+          }
+          return value;
+        }).join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const exportPassData = () => {
+    if (!reportData) return;
+    
+    const { startDate, endDate } = getDateRange();
+    const filename = `eagle-pass-data-${startDate.toISOString().split('T')[0]}-to-${endDate.toISOString().split('T')[0]}.csv`;
+    
+    // Export pass data
+    const passData = passes.map(pass => ({
+      passId: pass.id,
+      studentName: pass.student?.name || 'Unknown',
+      studentEmail: pass.student?.email || 'Unknown',
+      originLocation: pass.legs[0]?.originLocationId || 'Unknown',
+      destinationLocation: pass.legs[0]?.destinationLocationId || 'Unknown',
+      status: pass.status,
+      createdAt: new Date(pass.createdAt).toISOString(),
+      lastUpdatedAt: new Date(pass.lastUpdatedAt).toISOString(),
+      duration: pass.status === 'CLOSED' ? ((new Date(pass.lastUpdatedAt).getTime() - new Date(pass.createdAt).getTime()) / (1000 * 60)).toFixed(2) : ''
+    }));
+    
+    exportToCSV(passData, filename);
+  };
+
+  const exportEventData = () => {
+    if (!reportData) return;
+    
+    const { startDate, endDate } = getDateRange();
+    const filename = `eagle-pass-events-${startDate.toISOString().split('T')[0]}-to-${endDate.toISOString().split('T')[0]}.csv`;
+    
+    const eventData = reportData.recentEvents.map(event => ({
+      eventId: event.id || 'Unknown',
+      passId: event.passId || 'N/A',
+      studentId: event.studentId || 'N/A',
+      actorId: event.actorId,
+      eventType: event.eventType,
+      timestamp: new Date(event.timestamp).toISOString(),
+      details: event.details || '',
+      notificationLevel: event.notificationLevel || 'N/A'
+    }));
+    
+    exportToCSV(eventData, filename);
+  };
+
   if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
@@ -306,199 +536,412 @@ export default function AdminPage() {
           </div>
         </header>
 
-        <div className="grid gap-6">
-          {/* System Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle>System Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {passes.filter(p => p.status === 'OPEN').length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Active Passes</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {passes.filter(p => p.status === 'CLOSED').length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Completed Passes</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-orange-600">
-                    {passes.filter(p => p.status === 'OPEN' && p.escalationStatus?.shouldEscalate).length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Escalated</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">
-                    {passes.filter(p => p.status === 'OPEN' && p.escalationStatus?.isOverdue).length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Overdue</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Active Passes Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Active Passes ({activePasses.length})</CardTitle>
-                <Button onClick={fetchPassData} variant="outline" size="sm">
-                  Refresh
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Filters */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Student Name</label>
-                  <Input
-                    placeholder="Filter by student name..."
-                    value={studentFilter}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStudentFilter(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Location</label>
-                  <Select value={locationFilter} onValueChange={setLocationFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All locations" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All locations</SelectItem>
-                      {locations.map((location) => (
-                        <SelectItem key={location.id} value={location.id}>
-                          {location.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Status</label>
-                  <Select value={statusFilter} onValueChange={(value: 'all' | 'OPEN' | 'CLOSED') => setStatusFilter(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All passes</SelectItem>
-                      <SelectItem value="OPEN">Active only</SelectItem>
-                      <SelectItem value="CLOSED">Closed only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Active Passes Table */}
-              {activePasses.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No active passes found.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">Student</th>
-                        <th className="text-left p-2">Current Location</th>
-                        <th className="text-left p-2">Duration</th>
-                        <th className="text-left p-2">Status</th>
-                        <th className="text-left p-2">Created</th>
-                        <th className="text-left p-2">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activePasses.map((pass) => (
-                        <tr key={pass.id} className="border-b hover:bg-muted/50">
-                          <td className="p-2">
-                            <div>
-                              <div className="font-medium">{pass.student?.name || 'Unknown Student'}</div>
-                              <div className="text-sm text-muted-foreground">{pass.student?.email}</div>
-                            </div>
-                          </td>
-                          <td className="p-2">
-                            <div className="flex items-center gap-2">
-                              <span>{pass.currentLocation?.name || 'Unknown'}</span>
-                              {pass.legsWithDetails && pass.legsWithDetails.length > 0 && (
-                                getStateBadge(pass.legsWithDetails[pass.legsWithDetails.length - 1].leg.state)
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono">{formatDuration(pass.durationMinutes || 0)}</span>
-                              {getEscalationBadge(pass)}
-                            </div>
-                          </td>
-                          <td className="p-2">
-                            <div className="flex items-center gap-2">
-                              {getStatusBadge(pass.status)}
-                              {pass.notificationLevel && pass.notificationLevel !== 'none' && (
-                                <Badge variant="outline" className="text-xs">
-                                  {pass.notificationLevel.toUpperCase()} NOTIFIED
-                                </Badge>
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-2 text-sm text-muted-foreground">
-                            {formatDate(pass.createdAt)}<br />
-                            {formatTime(pass.createdAt)}
-                          </td>
-                          <td className="p-2">
-                            <Button
-                              onClick={() => handleClosePass(pass)}
-                              disabled={isClosingPass === pass.id}
-                              variant="outline"
-                              size="sm"
-                            >
-                              {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Emergency Freeze Controls */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Emergency Freeze Controls</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-2 items-start">
-                <div>
-                  <span className="font-semibold">Current State:</span>{' '}
-                  {emergencyState?.active ? (
-                    <span className="text-red-600 font-bold">ACTIVE</span>
-                  ) : (
-                    <span className="text-green-600 font-bold">INACTIVE</span>
-                  )}
-                  {emergencyState?.activatedBy && (
-                    <span className="ml-2 text-sm text-muted-foreground">(by {emergencyState.activatedBy})</span>
-                  )}
-                </div>
-                <Button
-                  onClick={handleToggleEmergency}
-                  variant={emergencyState?.active ? 'destructive' : 'default'}
-                  disabled={isTogglingEmergency}
-                >
-                  {isTogglingEmergency
-                    ? (emergencyState?.active ? 'Deactivating...' : 'Activating...')
-                    : (emergencyState?.active ? 'Deactivate Emergency Freeze' : 'Activate Emergency Freeze')}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 bg-muted p-1 rounded-lg">
+          <Button
+            variant={activeTab === 'dashboard' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('dashboard')}
+          >
+            Dashboard
+          </Button>
+          <Button
+            variant={activeTab === 'reports' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('reports')}
+          >
+            Reports
+          </Button>
         </div>
+
+        {activeTab === 'dashboard' && (
+          <div className="grid gap-6">
+            {/* System Overview */}
+            <Card>
+              <CardHeader>
+                <CardTitle>System Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {passes.filter(p => p.status === 'OPEN').length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Active Passes</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {passes.filter(p => p.status === 'CLOSED').length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Completed Passes</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600">
+                      {passes.filter(p => p.status === 'OPEN' && p.escalationStatus?.shouldEscalate).length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Escalated</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-600">
+                      {passes.filter(p => p.status === 'OPEN' && p.escalationStatus?.isOverdue).length}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Overdue</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Active Passes Table */}
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Active Passes ({activePasses.length})</CardTitle>
+                  <Button onClick={fetchPassData} variant="outline" size="sm">
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Filters */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Student Name</label>
+                    <Input
+                      placeholder="Filter by student name..."
+                      value={studentFilter}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStudentFilter(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Location</label>
+                    <Select value={locationFilter} onValueChange={setLocationFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All locations" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All locations</SelectItem>
+                        {locations.map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Status</label>
+                    <Select value={statusFilter} onValueChange={(value: 'all' | 'OPEN' | 'CLOSED') => setStatusFilter(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All passes</SelectItem>
+                        <SelectItem value="OPEN">Active only</SelectItem>
+                        <SelectItem value="CLOSED">Closed only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Active Passes Table */}
+                {activePasses.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No active passes found.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Student</th>
+                          <th className="text-left p-2">Current Location</th>
+                          <th className="text-left p-2">Duration</th>
+                          <th className="text-left p-2">Status</th>
+                          <th className="text-left p-2">Created</th>
+                          <th className="text-left p-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activePasses.map((pass) => (
+                          <tr key={pass.id} className="border-b hover:bg-muted/50">
+                            <td className="p-2">
+                              <div>
+                                <div className="font-medium">{pass.student?.name || 'Unknown Student'}</div>
+                                <div className="text-sm text-muted-foreground">{pass.student?.email}</div>
+                              </div>
+                            </td>
+                            <td className="p-2">
+                              <div className="flex items-center gap-2">
+                                <span>{pass.currentLocation?.name || 'Unknown'}</span>
+                                {pass.legsWithDetails && pass.legsWithDetails.length > 0 && (
+                                  getStateBadge(pass.legsWithDetails[pass.legsWithDetails.length - 1].leg.state)
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono">{formatDuration(pass.durationMinutes || 0)}</span>
+                                {getEscalationBadge(pass)}
+                              </div>
+                            </td>
+                            <td className="p-2">
+                              <div className="flex items-center gap-2">
+                                {getStatusBadge(pass.status)}
+                                {pass.notificationLevel && pass.notificationLevel !== 'none' && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {pass.notificationLevel.toUpperCase()} NOTIFIED
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-2 text-sm text-muted-foreground">
+                              {formatDate(pass.createdAt)}<br />
+                              {formatTime(pass.createdAt)}
+                            </td>
+                            <td className="p-2">
+                              <Button
+                                onClick={() => handleClosePass(pass)}
+                                disabled={isClosingPass === pass.id}
+                                variant="outline"
+                                size="sm"
+                              >
+                                {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Emergency Freeze Controls */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Emergency Freeze Controls</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-2 items-start">
+                  <div>
+                    <span className="font-semibold">Current State:</span>{' '}
+                    {emergencyState?.active ? (
+                      <span className="text-red-600 font-bold">ACTIVE</span>
+                    ) : (
+                      <span className="text-green-600 font-bold">INACTIVE</span>
+                    )}
+                    {emergencyState?.activatedBy && (
+                      <span className="ml-2 text-sm text-muted-foreground">(by {emergencyState.activatedBy})</span>
+                    )}
+                  </div>
+                  <Button
+                    onClick={handleToggleEmergency}
+                    variant={emergencyState?.active ? 'destructive' : 'default'}
+                    disabled={isTogglingEmergency}
+                  >
+                    {isTogglingEmergency
+                      ? (emergencyState?.active ? 'Deactivating...' : 'Activating...')
+                      : (emergencyState?.active ? 'Deactivate Emergency Freeze' : 'Activate Emergency Freeze')}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'reports' && (
+          <div className="grid gap-6">
+            {/* Report Controls */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Report Configuration</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Date Range</label>
+                    <Select value={dateRange} onValueChange={(value: 'today' | 'week' | 'month' | 'custom') => setDateRange(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="week">Last 7 Days</SelectItem>
+                        <SelectItem value="month">Last 30 Days</SelectItem>
+                        <SelectItem value="custom">Custom Range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {dateRange === 'custom' && (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">Start Date</label>
+                        <Input
+                          type="date"
+                          value={customStartDate}
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium mb-2 block">End Date</label>
+                        <Input
+                          type="date"
+                          value={customEndDate}
+                          onChange={(e) => setCustomEndDate(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+                  <div className="flex items-end">
+                    <Button 
+                      onClick={generateReports} 
+                      disabled={isLoadingReports}
+                      className="w-full"
+                    >
+                      {isLoadingReports ? 'Generating...' : 'Generate Report'}
+                    </Button>
+                  </div>
+                </div>
+                
+                {reportData && (
+                  <div className="flex gap-2">
+                    <Button onClick={exportPassData} variant="outline" size="sm">
+                      Export Pass Data (CSV)
+                    </Button>
+                    <Button onClick={exportEventData} variant="outline" size="sm">
+                      Export Event Data (CSV)
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Report Results */}
+            {reportData && (
+              <>
+                {/* Summary Statistics */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Summary Statistics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {reportData.totalPasses}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Total Passes</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {reportData.completedPasses}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Completed</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-600">
+                          {reportData.activePasses}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Active</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {reportData.averageDuration.toFixed(1)}m
+                        </div>
+                        <div className="text-sm text-muted-foreground">Avg Duration</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Most Popular Locations */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Most Popular Locations</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {reportData.mostPopularLocations.map((item, index) => (
+                        <div key={item.location.id} className="flex justify-between items-center p-2 bg-muted rounded">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm text-muted-foreground">#{index + 1}</span>
+                            <span className="font-medium">{item.location.name}</span>
+                            <Badge variant="outline">{item.location.locationType}</Badge>
+                          </div>
+                          <span className="font-bold">{item.count} visits</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Student Activity */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Student Activity</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Student</th>
+                            <th className="text-left p-2">Pass Count</th>
+                            <th className="text-left p-2">Total Duration</th>
+                            <th className="text-left p-2">Avg Duration</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reportData.studentActivity.map((item) => (
+                            <tr key={item.student.id} className="border-b">
+                              <td className="p-2">
+                                <div>
+                                  <div className="font-medium">{item.student.name}</div>
+                                  <div className="text-sm text-muted-foreground">{item.student.email}</div>
+                                </div>
+                              </td>
+                              <td className="p-2 font-bold">{item.passCount}</td>
+                              <td className="p-2">{formatDuration(item.totalDuration)}</td>
+                              <td className="p-2">{formatDuration(item.totalDuration / item.passCount)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Recent Events */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Events</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {reportData.recentEvents.map((event, index) => (
+                        <div key={index} className="flex justify-between items-center p-2 bg-muted rounded">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{event.eventType}</Badge>
+                            <span className="text-sm">
+                              {event.studentId ? `Student: ${event.studentId}` : 'System Event'}
+                            </span>
+                            {event.details && (
+                              <span className="text-sm text-muted-foreground">{event.details}</span>
+                            )}
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            {formatTime(new Date(event.timestamp))}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
