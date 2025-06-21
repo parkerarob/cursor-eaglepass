@@ -13,6 +13,7 @@ interface RoleContextType {
   switchRole: (role: UserRole) => Promise<void>;
   resetToOriginalRole: () => Promise<void>;
   isLoading: boolean;
+  setCurrentUser: (user: User) => void;
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
@@ -121,7 +122,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     isDevMode,
     switchRole,
     resetToOriginalRole,
-    isLoading
+    isLoading,
+    setCurrentUser
   };
 
   return (

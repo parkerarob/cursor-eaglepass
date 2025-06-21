@@ -137,6 +137,11 @@ export const updatePass = async (passId: string, updates: Partial<Pass>): Promis
     await updateDoc(passRef, updateData as Partial<Pass>);
 };
 
+export const updateUser = async (userId: string, updates: Partial<User>): Promise<void> => {
+  const userRef = doc(db, "users", userId);
+  await updateDoc(userRef, updates);
+};
+
 export const getUserByEmail = async (email: string): Promise<User | null> => {
   if (!email) return null;
   const usersRef = collection(db, "users");

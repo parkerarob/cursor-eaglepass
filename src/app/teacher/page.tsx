@@ -19,8 +19,7 @@ import { User, Pass, Location, Leg } from '@/types';
 import { GlobalEmergencyBanner } from '@/components/GlobalEmergencyBanner';
 import { NotificationService } from '@/lib/notificationService';
 import { PassService } from '@/lib/passService';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Link from 'next/link';
 
 interface PassWithDetails extends Pass {
   student?: User;
@@ -307,6 +306,9 @@ export default function TeacherPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/teacher/settings">
+              <Button variant="outline" size="sm">Settings</Button>
+            </Link>
             <ThemeToggle />
             <Button onClick={signOut} variant="outline" size="sm">
               Sign Out
