@@ -9,9 +9,12 @@ import {
   setDoc,
   updateDoc,
   Timestamp,
+  addDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { firebaseApp } from "./config";
 import { User, Location, Pass } from "@/types";
+import { Group, Restriction, AutonomyMatrix } from "@/types/policy";
 
 const db = getFirestore(firebaseApp);
 
@@ -127,4 +130,131 @@ export const getAllPasses = async (): Promise<Pass[]> => {
     const passData = convertTimestamps(doc.data());
     return { id: doc.id, ...(passData as Omit<Pass, 'id'>) };
   });
+};
+
+// Policy-related functions
+
+export const getGroups = async (): Promise<Group[]> => {
+  const groupsRef = collection(db, "groups");
+  const querySnapshot = await getDocs(groupsRef);
+  return querySnapshot.docs.map(doc => {
+    const groupData = convertTimestamps(doc.data()) as Omit<Group, 'id'>;
+    return { id: doc.id, ...groupData };
+  });
+};
+
+export const getGroupById = async (id: string): Promise<Group | null> => {
+  const groupDocRef = doc(db, "groups", id);
+  const groupSnap = await getDoc(groupDocRef);
+  if (groupSnap.exists()) {
+    const groupData = convertTimestamps(groupSnap.data()) as Omit<Group, 'id'>;
+    return { id: groupSnap.id, ...groupData };
+  }
+  return null;
+};
+
+export const createGroup = async (group: Omit<Group, 'id'>): Promise<string> => {
+  const groupsRef = collection(db, "groups");
+  const groupData = convertDatesToTimestamps(group);
+  const docRef = await addDoc(groupsRef, groupData);
+  return docRef.id;
+};
+
+export const updateGroup = async (groupId: string, updates: Partial<Group>): Promise<void> => {
+  const groupRef = doc(db, "groups", groupId);
+  const updateData = convertDatesToTimestamps(updates);
+  await updateDoc(groupRef, updateData as Partial<Group>);
+};
+
+export const deleteGroup = async (groupId: string): Promise<void> => {
+  const groupRef = doc(db, "groups", groupId);
+  await deleteDoc(groupRef);
+};
+
+export const getRestrictions = async (): Promise<Restriction[]> => {
+  const restrictionsRef = collection(db, "restrictions");
+  const querySnapshot = await getDocs(restrictionsRef);
+  return querySnapshot.docs.map(doc => {
+    const restrictionData = convertTimestamps(doc.data()) as Omit<Restriction, 'id'>;
+    return { id: doc.id, ...restrictionData };
+  });
+};
+
+export const getRestrictionsByStudentId = async (studentId: string): Promise<Restriction[]> => {
+  const restrictionsRef = collection(db, "restrictions");
+  const q = query(restrictionsRef, where("studentId", "==", studentId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const restrictionData = convertTimestamps(doc.data()) as Omit<Restriction, 'id'>;
+    return { id: doc.id, ...restrictionData };
+  });
+};
+
+export const getActiveRestrictionsByStudentId = async (studentId: string): Promise<Restriction[]> => {
+  const restrictionsRef = collection(db, "restrictions");
+  const q = query(
+    restrictionsRef, 
+    where("studentId", "==", studentId),
+    where("isActive", "==", true)
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const restrictionData = convertTimestamps(doc.data()) as Omit<Restriction, 'id'>;
+    return { id: doc.id, ...restrictionData };
+  });
+};
+
+export const createRestriction = async (restriction: Omit<Restriction, 'id'>): Promise<string> => {
+  const restrictionsRef = collection(db, "restrictions");
+  const restrictionData = convertDatesToTimestamps(restriction);
+  const docRef = await addDoc(restrictionsRef, restrictionData);
+  return docRef.id;
+};
+
+export const updateRestriction = async (restrictionId: string, updates: Partial<Restriction>): Promise<void> => {
+  const restrictionRef = doc(db, "restrictions", restrictionId);
+  const updateData = convertDatesToTimestamps(updates);
+  await updateDoc(restrictionRef, updateData as Partial<Restriction>);
+};
+
+export const deleteRestriction = async (restrictionId: string): Promise<void> => {
+  const restrictionRef = doc(db, "restrictions", restrictionId);
+  await deleteDoc(restrictionRef);
+};
+
+export const getAutonomyMatrix = async (): Promise<AutonomyMatrix[]> => {
+  const autonomyRef = collection(db, "autonomyMatrix");
+  const querySnapshot = await getDocs(autonomyRef);
+  return querySnapshot.docs.map(doc => {
+    const autonomyData = convertTimestamps(doc.data()) as Omit<AutonomyMatrix, 'id'>;
+    return { id: doc.id, ...autonomyData };
+  });
+};
+
+export const getAutonomyMatrixByLocationId = async (locationId: string): Promise<AutonomyMatrix[]> => {
+  const autonomyRef = collection(db, "autonomyMatrix");
+  const q = query(autonomyRef, where("locationId", "==", locationId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const autonomyData = convertTimestamps(doc.data()) as Omit<AutonomyMatrix, 'id'>;
+    return { id: doc.id, ...autonomyData };
+  });
+};
+
+export const createAutonomyMatrix = async (autonomy: Omit<AutonomyMatrix, 'id'>): Promise<string> => {
+  const autonomyRef = collection(db, "autonomyMatrix");
+  const autonomyData = convertDatesToTimestamps(autonomy);
+  const docRef = await addDoc(autonomyRef, autonomyData);
+  return docRef.id;
+};
+
+export const updateAutonomyMatrix = async (autonomyId: string, updates: Partial<AutonomyMatrix>): Promise<void> => {
+  const autonomyRef = doc(db, "autonomyMatrix", autonomyId);
+  const updateData = convertDatesToTimestamps(updates);
+  await updateDoc(autonomyRef, updateData as Partial<AutonomyMatrix>);
+};
+
+export const deleteAutonomyMatrix = async (autonomyId: string): Promise<void> => {
+  const autonomyRef = doc(db, "autonomyMatrix", autonomyId);
+  await deleteDoc(autonomyRef);
 }; 

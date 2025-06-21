@@ -1,19 +1,36 @@
 import { Pass, User, PassFormData } from '@/types';
-import { createPass, updatePass, getActivePassByStudentId } from '@/lib/firebase/firestore';
+import { createPass, updatePass, getActivePassByStudentId, getGroups, getActiveRestrictionsByStudentId, getAutonomyMatrix } from '@/lib/firebase/firestore';
 import { PassStateMachine, ActionState } from '@/lib/stateMachine';
+import { PolicyEngine } from '@/lib/policyEngine';
+import { PolicyContext } from '@/types/policy';
 
 export interface PassServiceResult {
   success: boolean;
   updatedPass?: Pass;
   error?: string;
+  requiresApproval?: boolean;
+  approvalRequiredBy?: string;
 }
 
 export class PassService {
+  private static policyEngine = new PolicyEngine();
+
   /**
    * Create a new pass
    */
   static async createPass(formData: PassFormData, student: User): Promise<PassServiceResult> {
     try {
+      // Policy check for pass creation
+      const policyResult = await this.checkPolicy(student, 'create_pass', student.assignedLocationId!, formData.destinationLocationId);
+      if (!policyResult.allowed) {
+        return { 
+          success: false, 
+          error: policyResult.reason || 'Policy check failed',
+          requiresApproval: policyResult.requiresApproval,
+          approvalRequiredBy: policyResult.approvalRequiredBy
+        };
+      }
+
       // Check if student already has an active pass
       const existingPass = await getActivePassByStudentId(student.id);
       
@@ -50,6 +67,33 @@ export class PassService {
         error: error instanceof Error ? error.message : 'Failed to create pass' 
       };
     }
+  }
+
+  /**
+   * Check policy for a specific action
+   */
+  private static async checkPolicy(
+    student: User, 
+    action: PolicyContext['action'], 
+    locationId: string, 
+    destinationLocationId?: string
+  ) {
+    const context: PolicyContext = {
+      studentId: student.id,
+      locationId,
+      action,
+      destinationLocationId,
+      timestamp: new Date()
+    };
+
+    // Load policy data
+    const [groups, restrictions, autonomyMatrix] = await Promise.all([
+      getGroups(),
+      getActiveRestrictionsByStudentId(student.id),
+      getAutonomyMatrix()
+    ]);
+
+    return await this.policyEngine.evaluatePolicy(context, student, groups, restrictions, autonomyMatrix);
   }
 
   /**

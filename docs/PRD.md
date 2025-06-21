@@ -49,6 +49,7 @@ Schools require a digital hall pass system to track student movement for safety 
 * Group rules enforcement for both Positive and Negative student groups.
 * Student-specific lockouts (global and class-level).
 * Lightweight Policy Engine mock will be built early to unblock eligibility and governor testing.
+* **[UPDATE 2024-06] Policy Engine, group/restriction/autonomy data models, and enforcement logic are now implemented and fully tested. Pass creation is now policy-governed.**
 
 ### Deferred Features (Post-MVP Roadmap)
 
@@ -133,6 +134,8 @@ Schools require a digital hall pass system to track student movement for safety 
 ### SIS Import Staging Table (Future)
 
 * `sourceFileId`, `importType`, `mappingRules`
+
+**[UPDATE 2024-06] All policy-related data models (groups, restrictions, autonomy matrix) are now implemented in code and Firestore, with full CRUD support.**
 
 ---
 
@@ -303,5 +306,7 @@ All deployments, tests, and build operations must target an explicitly specified
 * None Remaining. System architecture remains fully locked.
 
 ### 6. Implementation Readiness Status
+
+> **[UPDATE 2024-06] Policy Engine, group/restriction/autonomy data models, and enforcement logic are now implemented and tested. Pass creation is now policy-governed and all policy engine tests are passing.**
 
 > This system is now considered fully defined for one-shot MVP build initiation.
