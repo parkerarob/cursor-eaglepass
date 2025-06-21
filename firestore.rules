@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isSelf(userId) || isAdmin() || isDev();
+      allow write: if isAdmin() || isDev();
+    }
+
+    // Passes collection
+    match /passes/{passId} {
+      allow read: if isSelf(resource.data.studentId) || isTeacherFor(resource.data.studentId) || isAdmin() || isDev();
+      allow create: if isSelf(request.resource.data.studentId) && !hasOpenPass(request.resource.data.studentId);
+      allow update: if isSelf(resource.data.studentId) || isTeacherFor(resource.data.studentId) || isAdmin() || isDev();
+      allow delete: if isAdmin() || isDev();
+    }
+
+    // Locations collection
+    match /locations/{locationId} {
+      allow read: if isStudent() || isTeacher() || isAdmin() || isDev();
+      allow write: if isAdmin() || isDev();
+    }
+
+    // EventLogs collection
+    match /eventLogs/{eventId} {
+      allow read: if isTeacher() || isAdmin() || isDev();
+      allow create: if isSystem(); // Only via Cloud Functions
+      allow update, delete: if false;
+    }
+
+    // Groups collection
+    match /groups/{groupId} {
+      allow read: if isTeacher() || isAdmin() || isDev();
+      allow write: if isAdmin() || isDev();
+    }
+
+    // AutonomyMatrix collection
+    match /autonomyMatrix/{matrixId} {
+      allow read: if isTeacher() || isAdmin() || isDev();
+      allow write: if isAdmin() || isDev();
+    }
+
+    // Restrictions collection
+    match /restrictions/{restrictionId} {
+      allow read: if isSelf(resource.data.studentId) || isTeacherFor(resource.data.studentId) || isAdmin() || isDev();
+      allow write: if isAdmin() || isDev();
+    }
+
+    // Helper functions
+    function isSelf(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    function isStudent() {
+      return request.auth != null && getUserRole() == 'student';
+    }
+    function isTeacher() {
+      return request.auth != null && getUserRole() == 'teacher';
+    }
+    function isTeacherFor(studentId) {
+      // TODO: Implement teacher-student assignment logic
+      return isTeacher();
+    }
+    function isAdmin() {
+      return request.auth != null && getUserRole() == 'admin';
+    }
+    function isDev() {
+      return request.auth != null && getUserRole() == 'dev';
+    }
+    function isSystem() {
+      // Only allow server-side (Cloud Functions) writes
+      return request.auth.token.firebase.sign_in_provider == 'custom';
+    }
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+    function hasOpenPass(studentId) {
+      // Prevent multiple open passes per student (enforced in app logic, double-checked here)
+      return exists(/databases/$(database)/documents/passes/$(studentId)) &&
+        get(/databases/$(database)/documents/passes/$(studentId)).data.status == 'OPEN';
+    }
+  }
+} 
