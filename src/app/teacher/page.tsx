@@ -54,7 +54,7 @@ export default function TeacherPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'OUT' | 'IN'>('all');
 
   // Auto-refresh
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const autoRefresh = true;
 
   const fetchLocations = useCallback(async () => {
     try {
