@@ -78,8 +78,10 @@ export default function TeacherPage() {
       // Get students assigned to this teacher's classroom
       const assignedStudents = await getStudentsByAssignedLocation(currentUser.assignedLocationId);
 
-      // Filter passes where teacher is responsible
+      // Filter passes where teacher is responsible and pass is OPEN
       const teacherResponsiblePasses = allPasses.filter(pass => {
+        if (pass.status !== 'OPEN') return false;
+        
         // Teacher is responsible if:
         // 1. Student is assigned to teacher's classroom (origin responsibility)
         // 2. Student is headed to teacher's classroom (destination responsibility)

@@ -145,9 +145,12 @@ export default function AdminPage() {
       const { getAllPasses } = await import('@/lib/firebase/firestore');
       const allPasses = await getAllPasses();
 
+      // Filter for open passes first
+      const openPasses = allPasses.filter(p => p.status === 'OPEN');
+
       // Enrich passes with student and location details
       const enrichedPasses: PassWithDetails[] = await Promise.all(
-        allPasses.map(async (pass) => {
+        openPasses.map(async (pass) => {
           const student = await getStudentById(pass.studentId);
           const legsWithDetails = await Promise.all(
             pass.legs.map(async (leg) => ({
@@ -199,7 +202,7 @@ export default function AdminPage() {
     
     setIsClosingPass(pass.id);
     try {
-      const result = await PassService.closePass(pass, pass.student);
+      const result = await PassService.closePass(pass, currentUser);
       if (result.success) {
         // Refresh the pass data
         await fetchPassData();
