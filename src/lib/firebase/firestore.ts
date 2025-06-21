@@ -80,6 +80,12 @@ export const getLocationById = async (id: string): Promise<Location | null> => {
   return null;
 }
 
+export const getAllLocations = async (): Promise<Location[]> => {
+  const locationsRef = collection(db, "locations");
+  const querySnapshot = await getDocs(locationsRef);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Location));
+};
+
 export const getActivePassByStudentId = async (studentId: string): Promise<Pass | null> => {
   const passesRef = collection(db, "passes");
   const q = query(passesRef, where("studentId", "==", studentId), where("status", "==", "OPEN"));
