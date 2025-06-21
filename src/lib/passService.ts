@@ -3,6 +3,7 @@ import { createPass, updatePass, getActivePassByStudentId, getGroups, getActiveR
 import { PassStateMachine, ActionState } from '@/lib/stateMachine';
 import { PolicyEngine } from '@/lib/policyEngine';
 import { PolicyContext } from '@/types/policy';
+import { logEvent } from '@/lib/eventLogger';
 
 export interface PassServiceResult {
   success: boolean;
@@ -23,6 +24,15 @@ export class PassService {
       // Policy check for pass creation
       const policyResult = await this.checkPolicy(student, 'create_pass', student.assignedLocationId!, formData.destinationLocationId);
       if (!policyResult.allowed) {
+        await logEvent({
+          passId: undefined,
+          studentId: student.id,
+          actorId: student.id,
+          timestamp: new Date(),
+          eventType: 'POLICY_DENIED',
+          details: policyResult.reason,
+          policyContext: policyResult,
+        });
         return { 
           success: false, 
           error: policyResult.reason || 'Policy check failed',
@@ -47,9 +57,25 @@ export class PassService {
             'OUT'                             // State is OUT (traveling)
           );
           await updatePass(updatedPass.id, updatedPass);
+          await logEvent({
+            passId: updatedPass.id,
+            studentId: student.id,
+            actorId: student.id,
+            timestamp: new Date(),
+            eventType: 'DEPARTED',
+            details: `Added new leg to existing pass: ${updatedPass.id}`,
+          });
           return { success: true, updatedPass };
         } else {
           // Student is "OUT" - they can't create a new pass
+          await logEvent({
+            passId: existingPass.id,
+            studentId: student.id,
+            actorId: student.id,
+            timestamp: new Date(),
+            eventType: 'INVALID_TRANSITION',
+            details: 'Attempted to create new pass while already traveling',
+          });
           return { 
             success: false, 
             error: 'Cannot create new pass while already traveling' 
@@ -59,9 +85,25 @@ export class PassService {
         // No active pass - create new pass from assigned class
         const newPass = PassStateMachine.createPass(formData, student);
         await createPass(newPass);
+        await logEvent({
+          passId: newPass.id,
+          studentId: student.id,
+          actorId: student.id,
+          timestamp: new Date(),
+          eventType: 'PASS_CREATED',
+          details: `Created new pass: ${newPass.id}`,
+        });
         return { success: true, updatedPass: newPass };
       }
     } catch (error) {
+      await logEvent({
+        passId: undefined,
+        studentId: student.id,
+        actorId: student.id,
+        timestamp: new Date(),
+        eventType: 'ERROR',
+        details: error instanceof Error ? error.message : 'Failed to create pass',
+      });
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to create pass' 
@@ -105,13 +147,37 @@ export class PassService {
       const validation = stateMachine.validateTransition('arrive');
       
       if (!validation.valid) {
+        await logEvent({
+          passId: pass.id,
+          studentId: student.id,
+          actorId: student.id,
+          timestamp: new Date(),
+          eventType: 'INVALID_TRANSITION',
+          details: validation.error,
+        });
         return { success: false, error: validation.error };
       }
 
       const updatedPass = stateMachine.arriveAtDestination();
       await updatePass(updatedPass.id, updatedPass);
+      await logEvent({
+        passId: updatedPass.id,
+        studentId: student.id,
+        actorId: student.id,
+        timestamp: new Date(),
+        eventType: 'ARRIVED',
+        details: `Arrived at destination for pass: ${updatedPass.id}`,
+      });
       return { success: true, updatedPass };
     } catch (error) {
+      await logEvent({
+        passId: pass.id,
+        studentId: student.id,
+        actorId: student.id,
+        timestamp: new Date(),
+        eventType: 'ERROR',
+        details: error instanceof Error ? error.message : 'Failed to arrive at destination',
+      });
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to arrive at destination' 
@@ -128,13 +194,37 @@ export class PassService {
       const validation = stateMachine.validateTransition('return_to_class');
       
       if (!validation.valid) {
+        await logEvent({
+          passId: pass.id,
+          studentId: student.id,
+          actorId: student.id,
+          timestamp: new Date(),
+          eventType: 'INVALID_TRANSITION',
+          details: validation.error,
+        });
         return { success: false, error: validation.error };
       }
 
       const updatedPass = stateMachine.returnToClass();
       await updatePass(updatedPass.id, updatedPass);
+      await logEvent({
+        passId: updatedPass.id,
+        studentId: student.id,
+        actorId: student.id,
+        timestamp: new Date(),
+        eventType: 'RETURNED',
+        details: `Returned to class for pass: ${updatedPass.id}`,
+      });
       return { success: true, updatedPass };
     } catch (error) {
+      await logEvent({
+        passId: pass.id,
+        studentId: student.id,
+        actorId: student.id,
+        timestamp: new Date(),
+        eventType: 'ERROR',
+        details: error instanceof Error ? error.message : 'Failed to return to class',
+      });
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to return to class' 
@@ -151,13 +241,37 @@ export class PassService {
       const validation = stateMachine.validateTransition('close_pass');
       
       if (!validation.valid) {
+        await logEvent({
+          passId: pass.id,
+          studentId: student.id,
+          actorId: student.id,
+          timestamp: new Date(),
+          eventType: 'INVALID_TRANSITION',
+          details: validation.error,
+        });
         return { success: false, error: validation.error };
       }
 
       const updatedPass = stateMachine.closePass();
       await updatePass(updatedPass.id, updatedPass);
+      await logEvent({
+        passId: updatedPass.id,
+        studentId: student.id,
+        actorId: student.id,
+        timestamp: new Date(),
+        eventType: 'RETURNED',
+        details: `Closed pass: ${updatedPass.id}`,
+      });
       return { success: true, updatedPass };
     } catch (error) {
+      await logEvent({
+        passId: pass.id,
+        studentId: student.id,
+        actorId: student.id,
+        timestamp: new Date(),
+        eventType: 'ERROR',
+        details: error instanceof Error ? error.message : 'Failed to close pass',
+      });
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to close pass' 
@@ -174,13 +288,37 @@ export class PassService {
       const validation = stateMachine.validateTransition('restroom_return');
       
       if (!validation.valid) {
+        await logEvent({
+          passId: pass.id,
+          studentId: student.id,
+          actorId: student.id,
+          timestamp: new Date(),
+          eventType: 'INVALID_TRANSITION',
+          details: validation.error,
+        });
         return { success: false, error: validation.error };
       }
 
       const updatedPass = await stateMachine.handleRestroomReturn();
       await updatePass(updatedPass.id, updatedPass);
+      await logEvent({
+        passId: updatedPass.id,
+        studentId: student.id,
+        actorId: student.id,
+        timestamp: new Date(),
+        eventType: updatedPass.status === 'CLOSED' ? 'RETURNED' : 'ARRIVED',
+        details: `Restroom return for pass: ${updatedPass.id}`,
+      });
       return { success: true, updatedPass };
     } catch (error) {
+      await logEvent({
+        passId: pass.id,
+        studentId: student.id,
+        actorId: student.id,
+        timestamp: new Date(),
+        eventType: 'ERROR',
+        details: error instanceof Error ? error.message : 'Failed to handle restroom return',
+      });
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to handle restroom return' 

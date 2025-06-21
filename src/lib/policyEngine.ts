@@ -4,12 +4,9 @@ import {
   AutonomyMatrix, 
   PolicyEvaluationResult, 
   PolicyContext, 
-  PolicyEngineConfig,
-  GroupType,
-  RestrictionType,
-  AutonomyType
+  PolicyEngineConfig
 } from '@/types/policy';
-import { User, Location } from '@/types';
+import { User } from '@/types';
 
 export class PolicyEngine {
   private config: PolicyEngineConfig;

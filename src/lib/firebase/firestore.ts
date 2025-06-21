@@ -15,6 +15,7 @@ import {
 import { firebaseApp } from "./config";
 import { User, Location, Pass } from "@/types";
 import { Group, Restriction, AutonomyMatrix } from "@/types/policy";
+import { EventLog } from '@/lib/eventLogger';
 
 const db = getFirestore(firebaseApp);
 
@@ -257,4 +258,59 @@ export const updateAutonomyMatrix = async (autonomyId: string, updates: Partial<
 export const deleteAutonomyMatrix = async (autonomyId: string): Promise<void> => {
   const autonomyRef = doc(db, "autonomyMatrix", autonomyId);
   await deleteDoc(autonomyRef);
+};
+
+// Event Log functions
+
+export const getEventLogs = async (): Promise<EventLog[]> => {
+  const eventLogsRef = collection(db, "eventLogs");
+  const querySnapshot = await getDocs(eventLogsRef);
+  return querySnapshot.docs.map(doc => {
+    const eventLogData = convertTimestamps(doc.data()) as Omit<EventLog, 'id'>;
+    return { id: doc.id, ...eventLogData };
+  });
+};
+
+export const getEventLogsByStudentId = async (studentId: string): Promise<EventLog[]> => {
+  const eventLogsRef = collection(db, "eventLogs");
+  const q = query(eventLogsRef, where("studentId", "==", studentId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const eventLogData = convertTimestamps(doc.data()) as Omit<EventLog, 'id'>;
+    return { id: doc.id, ...eventLogData };
+  });
+};
+
+export const getEventLogsByPassId = async (passId: string): Promise<EventLog[]> => {
+  const eventLogsRef = collection(db, "eventLogs");
+  const q = query(eventLogsRef, where("passId", "==", passId));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const eventLogData = convertTimestamps(doc.data()) as Omit<EventLog, 'id'>;
+    return { id: doc.id, ...eventLogData };
+  });
+};
+
+export const getEventLogsByType = async (eventType: string): Promise<EventLog[]> => {
+  const eventLogsRef = collection(db, "eventLogs");
+  const q = query(eventLogsRef, where("eventType", "==", eventType));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const eventLogData = convertTimestamps(doc.data()) as Omit<EventLog, 'id'>;
+    return { id: doc.id, ...eventLogData };
+  });
+};
+
+export const getEventLogsByDateRange = async (startDate: Date, endDate: Date): Promise<EventLog[]> => {
+  const eventLogsRef = collection(db, "eventLogs");
+  const q = query(
+    eventLogsRef, 
+    where("timestamp", ">=", startDate),
+    where("timestamp", "<=", endDate)
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const eventLogData = convertTimestamps(doc.data()) as Omit<EventLog, 'id'>;
+    return { id: doc.id, ...eventLogData };
+  });
 }; 
