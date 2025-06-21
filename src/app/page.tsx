@@ -1,62 +1,42 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Pass, User, Location, PassFormData } from '@/types';
-import { PassStatus } from '@/components/PassStatus';
-import { CreatePassForm } from '@/components/CreatePassForm';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { DurationTimer } from '@/components/DurationTimer';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  getLocationById,
-  getActivePassByStudentId,
-  getUserByEmail,
-  getStudentById,
-} from '@/lib/firebase/firestore';
-import { PassService } from '@/lib/passService';
-import { useAuth } from '@/components/AuthProvider';
-import { Login } from '@/components/Login';
-import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/AuthProvider';
+import { useRole } from '@/components/RoleProvider';
+import { Login } from '@/components/Login';
+import { CreatePassForm } from '@/components/CreatePassForm';
+import { PassStatus } from '@/components/PassStatus';
+import { DurationTimer } from '@/components/DurationTimer';
+import { EmergencyBanner } from '@/components/EmergencyBanner';
+import { RoleSwitcher } from '@/components/RoleSwitcher';
+import { PassService } from '@/lib/passService';
+import { getLocationById, getActivePassByStudentId, getEmergencyState } from '@/lib/firebase/firestore';
+import { User, Location, Pass, PassFormData } from '@/types';
+import { ActionState } from '@/lib/stateMachine';
 
 export default function Home() {
-  const { user: authUser, isLoading: authLoading } = useAuth();
   const router = useRouter();
-
+  const { user: authUser, isLoading: authLoading } = useAuth();
+  const { currentUser, currentRole, isDevMode, isLoading: roleLoading } = useRole();
+  
   const [currentStudent, setCurrentStudent] = useState<User | null>(null);
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [currentPass, setCurrentPass] = useState<Pass | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isDevMode, setIsDevMode] = useState(false);
-
-  const [actionState, setActionState] = useState({
+  const [actionState, setActionState] = useState<ActionState>({
     isRestroomTrip: false,
     isSimpleTrip: false,
     returnLocationName: 'class',
     canArrive: false,
   });
+  const [emergencyState, setEmergencyState] = useState<{ active: boolean; activatedBy?: string; activatedAt?: Date } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // Handle role-based routing and user setup
   useEffect(() => {
-    const isFirebaseConfigured =
-      !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
-      !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-
-    if (!isFirebaseConfigured) {
-      setError(
-        'Firebase configuration is missing. Please ensure all NEXT_PUBLIC_FIREBASE_* environment variables are set in your Vercel project settings.'
-      );
-      setIsLoading(false);
-      return;
-    }
-
-    if (authLoading) {
-      setIsLoading(true);
-      return;
-    }
-
+    if (authLoading || roleLoading) return;
+    
     if (!authUser) {
       setIsLoading(false);
       setCurrentStudent(null);
@@ -64,47 +44,56 @@ export default function Home() {
       return;
     }
 
-    const fetchUserData = async () => {
+    const setupUser = async () => {
       setIsLoading(true);
       setError(null);
+      
       try {
-        const userProfile = await getUserByEmail(authUser.email!);
-        if (userProfile?.role === 'student') {
-          setCurrentStudent(userProfile);
-          setIsDevMode(false);
-        } else if (userProfile?.role === 'dev') {
-          console.log("Developer mode activated. Loading test student profile.");
-          const testStudent = await getStudentById('student-1');
-          if (testStudent) {
-            setCurrentStudent(testStudent);
-            setIsDevMode(true);
-          } else {
-            setError('Could not load test student profile for dev mode.');
-            setCurrentStudent(null);
-          }
-        } else if (userProfile?.role === 'teacher' || userProfile?.role === 'admin') {
-          // Redirect teachers and admins to admin interface
+        if (!currentUser) {
+          setError('User profile not found.');
+          return;
+        }
+
+        if (currentRole === 'student' || (currentRole === 'dev' && isDevMode)) {
+          // For students or dev users in student mode
+          setCurrentStudent(currentUser);
+        } else if (currentRole === 'teacher' || currentRole === 'admin' || currentRole === 'dev') {
+          // Redirect teachers, admins, and dev users to admin interface
           router.push('/admin');
           return;
-        } else if (userProfile) {
-          setError(`This application is for students only. Your role is: ${userProfile.role}.`);
-          setCurrentStudent(null);
         } else {
-          setError(`Your email (${authUser.email}) is not registered in the system.`);
+          setError(`This application is for students only. Your role is: ${currentRole}.`);
           setCurrentStudent(null);
         }
       } catch (e) {
         setError((e as Error).message);
         setCurrentStudent(null);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchUserData();
-  }, [authUser, authLoading, router]);
+    setupUser();
+  }, [authUser, authLoading, currentUser, currentRole, isDevMode, roleLoading, router]);
 
+  // Fetch emergency state
+  useEffect(() => {
+    const fetchEmergencyState = async () => {
+      try {
+        const state = await getEmergencyState();
+        setEmergencyState(state);
+      } catch (error) {
+        console.error('Failed to fetch emergency state:', error);
+      }
+    };
+
+    fetchEmergencyState();
+  }, []);
+
+  // Fetch student data when currentStudent changes
   useEffect(() => {
     if (!currentStudent) {
-      if (!authLoading) {
+      if (!authLoading && !roleLoading) {
         setIsLoading(false);
       }
       return;
@@ -158,8 +147,9 @@ export default function Home() {
     };
 
     fetchStudentData();
-  }, [currentStudent, authLoading]);
+  }, [currentStudent, authLoading, roleLoading]);
 
+  // Update action state when pass or student changes
   useEffect(() => {
     if (!currentPass || !currentStudent) {
       return;
@@ -203,6 +193,7 @@ export default function Home() {
     setIsLoading(false);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleReturnToClass = async () => {
     if (!currentPass || !currentStudent) return;
     setIsLoading(true);
@@ -218,6 +209,7 @@ export default function Home() {
     setIsLoading(false);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleClosePass = async () => {
     if (!currentPass || !currentStudent) return;
     setIsLoading(true);
@@ -264,37 +256,29 @@ export default function Home() {
         }, 1500);
       }
     } else {
-      setError(result.error || 'Failed to handle restroom return');
+      setError(result.error || 'Failed to return from restroom');
     }
     setIsLoading(false);
   };
 
-  // Helper function to update current location based on pass state
   const updateCurrentLocation = async (pass: Pass) => {
-    if (!currentStudent) return;
+    if (pass.legs.length === 0) return;
     
     const currentLeg = pass.legs[pass.legs.length - 1];
-    if (currentLeg) {
-      if (currentLeg.state === 'IN') {
-        // Student is "IN" at the destination of the current leg
-        const actualLocation = await getLocationById(currentLeg.destinationLocationId);
-        if (actualLocation) {
-          setCurrentLocation(actualLocation);
-        }
-      } else if (currentLeg.state === 'OUT') {
-        // Student is "OUT" - they're traveling from origin to destination
-        // Show where they're coming from (origin)
-        const originLocation = await getLocationById(currentLeg.originLocationId);
-        if (originLocation) {
-          setCurrentLocation(originLocation);
-        }
-      }
+    if (currentLeg.state === 'IN') {
+      const location = await getLocationById(currentLeg.destinationLocationId);
+      if (location) setCurrentLocation(location);
+    } else {
+      const location = await getLocationById(currentLeg.originLocationId);
+      if (location) setCurrentLocation(location);
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleResetPass = () => {
     setCurrentPass(null);
-    // Reset to assigned class when pass is reset
+    setError(null);
+    // Reset to assigned class
     if (currentStudent?.assignedLocationId) {
       getLocationById(currentStudent.assignedLocationId).then(location => {
         if (location) setCurrentLocation(location);
@@ -302,10 +286,13 @@ export default function Home() {
     }
   };
 
-  if (isLoading || authLoading) {
+  if (authLoading || roleLoading) {
     return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -316,163 +303,112 @@ export default function Home() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-center text-center">
-        <h1 className="text-2xl font-bold text-destructive mb-4">An Error Occurred</h1>
-        <p className="text-muted-foreground mb-4">{error}</p>
-        <Button onClick={signOut} variant="outline">Sign Out</Button>
-      </div>
-    );
-  }
-
-  if (!currentStudent || !currentLocation) {
-    return (
-      <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-        <p>An unknown error occurred while loading student data.</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-600 mb-4">
+            <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <ThemeToggle />
-      <div className="max-w-2xl mx-auto space-y-6">
-        <header className="flex justify-between items-center">
-          <div className="text-left">
-            <h1 className="text-3xl font-bold">Eagle Pass</h1>
-            <p className="text-muted-foreground">
-              Welcome, {currentStudent.name}
-              {isDevMode && <Badge variant="destructive" className="ml-2">DEV MODE</Badge>}
-            </p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Role Switcher for Dev Users */}
+      <RoleSwitcher />
+      
+      {/* Emergency Banner */}
+      <EmergencyBanner 
+        active={emergencyState?.active || false}
+        activatedBy={emergencyState?.activatedBy}
+        activatedAt={emergencyState?.activatedAt}
+      />
+      
+      <div className="max-w-md mx-auto p-4">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Eagle Pass</h1>
+              <p className="text-gray-600">Digital Hall Pass System</p>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-medium text-gray-900">{currentStudent?.name}</div>
+              <div className="text-xs text-gray-500">{currentStudent?.email}</div>
+            </div>
           </div>
-          <Button onClick={signOut} variant="outline" size="sm">Sign Out</Button>
-        </header>
-        
-        <div className="text-center space-y-2">
-          <p className="text-muted-foreground">
-            You are currently in <strong>{currentLocation.name}</strong>
-          </p>
+          
+          {currentLocation && (
+            <div className="bg-blue-50 rounded-lg p-3">
+              <div className="text-xs text-blue-600 font-medium mb-1">Current Location</div>
+              <div className="text-sm text-blue-900">{currentLocation.name}</div>
+            </div>
+          )}
         </div>
 
-        <PassStatus
-          pass={currentPass}
-          studentName={currentStudent.name}
-          currentLocation={currentLocation}
-        />
-
-        {currentPass && currentPass.status === 'OPEN' && (
-          <DurationTimer pass={currentPass} />
-        )}
-
-        {!currentPass && (
-          <CreatePassForm
-            onCreatePass={handleCreatePass}
-            isLoading={isLoading}
-          />
-        )}
-
-        {currentPass &&
-          currentPass.status === 'OPEN' &&
-          (() => {
-            const currentLeg = currentPass.legs[currentPass.legs.length - 1];
-            if (!currentLeg) return null;
+        {/* Main Content */}
+        {!currentPass ? (
+          <CreatePassForm onCreatePass={handleCreatePass} isLoading={isLoading} />
+        ) : currentLocation ? (
+          <div className="space-y-4">
+            <PassStatus 
+              pass={currentPass} 
+              studentName={currentStudent?.name || ''}
+              currentLocation={currentLocation}
+            />
             
-            if (currentLeg.state === 'IN') {
-              return (
-                <>
-                  <Button
-                    onClick={handleReturnToClass}
-                    disabled={isLoading}
-                    className="w-full mb-4 text-base font-semibold"
-                    style={{ minHeight: 48 }}
-                  >
-                    {isLoading
-                      ? 'Returning...'
-                      : 'Return to Scheduled Class'}
-                  </Button>
-                  <CreatePassForm
-                    onCreatePass={handleCreatePass}
-                    isLoading={isLoading}
-                    excludeLocationId={currentLeg.destinationLocationId}
-                    heading="Need to go somewhere else?"
-                  />
-                </>
-              );
-            }
+            <DurationTimer pass={currentPass} />
             
-            if (currentLeg.state === 'OUT') {
-              const {
-                isRestroomTrip,
-                returnLocationName,
-                canArrive,
-              } = actionState;
+            {/* Action Buttons */}
+            <div className="bg-white rounded-lg shadow-sm p-6 space-y-3">
+              <h3 className="text-lg font-semibold text-gray-900">Actions</h3>
               
-              return (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {isRestroomTrip && (
-                      <Button
-                        onClick={handleRestroomReturn}
-                        disabled={isLoading}
-                        className="w-full"
-                      >
-                        {isLoading
-                          ? 'Returning...'
-                          : `I'm back in ${returnLocationName}`}
-                      </Button>
-                    )}
-                    {!isRestroomTrip && (
-                      <Button
-                        onClick={handleClosePass}
-                        disabled={isLoading}
-                        className="w-full"
-                      >
-                        {isLoading
-                          ? 'Closing...'
-                          : `I'm back in class`}
-                      </Button>
-                    )}
-                    {canArrive && !isRestroomTrip && (
-                      <div className="text-center pt-2">
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Need to stay here for awhile?
-                        </p>
-                        <Button
-                          onClick={handleReturn}
-                          disabled={isLoading}
-                          className="w-full"
-                          variant="outline"
-                        >
-                          {isLoading
-                            ? 'Updating...'
-                            : "I've Arrived"}
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            }
-            return null;
-          })()}
-
-        {currentPass && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Demo Controls</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button
-                onClick={handleResetPass}
-                variant="outline"
-                className="w-full"
-              >
-                Reset Pass (Demo Only)
-              </Button>
-            </CardContent>
-          </Card>
+              {actionState.canArrive && (
+                <button
+                  onClick={handleReturn}
+                  disabled={isLoading}
+                  className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Arrive at Destination
+                </button>
+              )}
+              
+              {actionState.isRestroomTrip && (
+                <button
+                  onClick={handleRestroomReturn}
+                  disabled={isLoading}
+                  className="w-full bg-yellow-600 text-white py-3 px-4 rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Return from Restroom
+                </button>
+              )}
+              
+              {!actionState.isRestroomTrip && (
+                <button
+                  onClick={handleClosePass}
+                  disabled={isLoading}
+                  className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Close Pass
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center text-gray-600">
+            Loading location information...
+          </div>
         )}
       </div>
     </div>

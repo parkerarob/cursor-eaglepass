@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { Login } from '@/components/Login';
+import { useRole } from '@/components/RoleProvider';
+import { RoleSwitcher } from '@/components/RoleSwitcher';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { signOut } from '@/lib/firebase/auth';
 import { 
-  getUserByEmail, 
   getStudentById, 
   getLocationById, 
   getEmergencyState, 
@@ -63,6 +63,7 @@ interface ReportData {
 
 export default function AdminPage() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const { currentUser: roleUser, isLoading: roleLoading } = useRole();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [passes, setPasses] = useState<PassWithDetails[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -78,6 +79,7 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'OPEN' | 'CLOSED'>('all');
 
   // Auto-refresh
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Reporting state
@@ -89,23 +91,23 @@ export default function AdminPage() {
   const [customEndDate, setCustomEndDate] = useState<string>('');
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!authUser) {
+    if (authLoading || roleLoading) return;
+    if (!authUser || !roleUser) {
       setIsLoading(false);
       return;
     }
 
     const fetchUserData = async () => {
       try {
-        const userProfile = await getUserByEmail(authUser.email!);
-        if (userProfile?.role === 'teacher' || userProfile?.role === 'admin' || userProfile?.role === 'dev') {
-          setCurrentUser(userProfile);
+        // Use the current user from RoleProvider
+        if (roleUser?.role === 'teacher' || roleUser?.role === 'admin' || roleUser?.role === 'dev') {
+          setCurrentUser(roleUser);
           await Promise.all([fetchPassData(), fetchLocations()]);
           // Fetch emergency state
           const state = await getEmergencyState();
           setEmergencyStateLocal(state);
         } else {
-          setError(`Access denied. Your role (${userProfile?.role || 'unknown'}) does not have admin privileges.`);
+          setError(`Access denied. Your role (${roleUser?.role || 'unknown'}) does not have admin privileges.`);
         }
       } catch (e) {
         setError((e as Error).message);
@@ -115,7 +117,7 @@ export default function AdminPage() {
     };
 
     fetchUserData();
-  }, [authUser, authLoading]);
+  }, [authUser, roleUser, authLoading, roleLoading]);
 
   // Auto-refresh effect
   useEffect(() => {
@@ -487,7 +489,7 @@ export default function AdminPage() {
     exportToCSV(eventData, filename);
   };
 
-  if (isLoading || authLoading) {
+  if (isLoading || authLoading || roleLoading) {
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
         <p>Loading...</p>
@@ -495,11 +497,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!authUser) {
-    return <Login />;
-  }
-
-  if (error) {
+  if (!authUser || !roleUser) {
     return (
       <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-center text-center">
         <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
@@ -510,32 +508,31 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <EmergencyBanner
-        active={!!emergencyState?.active}
-        activatedBy={emergencyState?.activatedBy}
-        activatedAt={emergencyState?.activatedAt}
-      />
-      <ThemeToggle />
-      <div className="max-w-7xl mx-auto space-y-6">
-        <header className="flex justify-between items-center">
-          <div className="text-left">
-            <h1 className="text-3xl font-bold">Eagle Pass - Teacher Dashboard</h1>
+    <div className="min-h-screen bg-background">
+      {/* Role Switcher for Dev Users */}
+      <RoleSwitcher />
+      
+      <div className="container mx-auto p-4">
+        <header className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             <p className="text-muted-foreground">
-              Welcome, {currentUser?.name} ({currentUser?.role})
+              Welcome, {currentUser?.name || currentUser?.email}
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setAutoRefresh(!autoRefresh)} 
-              variant={autoRefresh ? "default" : "outline"}
-              size="sm"
-            >
-              {autoRefresh ? "Auto-refresh ON" : "Auto-refresh OFF"}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button onClick={signOut} variant="outline" size="sm">
+              Sign Out
             </Button>
-            <Button onClick={signOut} variant="outline" size="sm">Sign Out</Button>
           </div>
         </header>
+
+        <EmergencyBanner
+          active={!!emergencyState?.active}
+          activatedBy={emergencyState?.activatedBy}
+          activatedAt={emergencyState?.activatedAt}
+        />
 
         {/* Tab Navigation */}
         <div className="flex space-x-1 bg-muted p-1 rounded-lg">

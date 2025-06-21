@@ -40,9 +40,10 @@ export interface CSVData {
 export const CSV_SCHEMAS: Record<string, CSVSchema> = {
   users: {
     name: 'Users',
-    requiredFields: ['email', 'name', 'role'],
+    requiredFields: ['id', 'email', 'name', 'role'],
     optionalFields: ['assignedLocationId'],
     fieldTypes: {
+      id: 'string',
       email: 'email',
       name: 'string',
       role: 'string',
@@ -55,9 +56,10 @@ export const CSV_SCHEMAS: Record<string, CSVSchema> = {
   },
   locations: {
     name: 'Locations',
-    requiredFields: ['name', 'locationType'],
+    requiredFields: ['id', 'name', 'locationType'],
     optionalFields: ['responsiblePartyId'],
     fieldTypes: {
+      id: 'string',
       name: 'string',
       locationType: 'string',
       responsiblePartyId: 'string'
@@ -68,9 +70,10 @@ export const CSV_SCHEMAS: Record<string, CSVSchema> = {
   },
   groups: {
     name: 'Groups',
-    requiredFields: ['name', 'groupType'],
+    requiredFields: ['id', 'name', 'groupType'],
     optionalFields: ['assignedStudents', 'description'],
     fieldTypes: {
+      id: 'string',
       name: 'string',
       groupType: 'string',
       assignedStudents: 'string',
@@ -82,9 +85,10 @@ export const CSV_SCHEMAS: Record<string, CSVSchema> = {
   },
   autonomyMatrix: {
     name: 'Autonomy Matrix',
-    requiredFields: ['locationId', 'autonomyType'],
+    requiredFields: ['id', 'locationId', 'autonomyType'],
     optionalFields: ['groupId', 'description'],
     fieldTypes: {
+      id: 'string',
       locationId: 'string',
       autonomyType: 'string',
       groupId: 'string',
@@ -96,9 +100,10 @@ export const CSV_SCHEMAS: Record<string, CSVSchema> = {
   },
   restrictions: {
     name: 'Restrictions',
-    requiredFields: ['studentId', 'restrictionType', 'createdBy'],
+    requiredFields: ['id', 'studentId', 'restrictionType', 'createdBy'],
     optionalFields: ['isActive', 'reason', 'locationId'],
     fieldTypes: {
+      id: 'string',
       studentId: 'string',
       restrictionType: 'string',
       createdBy: 'string',
@@ -327,10 +332,10 @@ class DataIngestionService {
         try {
           const userData = this.convertRowToObject(row, csvData.headers, schema) as Record<string, string>;
           
-          // Create user document
-          const userDoc = doc(collection(db, 'users'));
+          // Create user document with custom ID from spreadsheet
+          const userDoc = doc(db, 'users', userData.id);
           const user: User = {
-            id: userDoc.id,
+            id: userData.id,
             email: userData.email,
             name: userData.name,
             role: userData.role.toLowerCase() as 'student' | 'teacher' | 'admin' | 'dev',
@@ -399,10 +404,10 @@ class DataIngestionService {
         try {
           const locationData = this.convertRowToObject(row, csvData.headers, schema) as Record<string, string>;
           
-          // Create location document
-          const locationDoc = doc(collection(db, 'locations'));
+          // Create location document with custom ID from spreadsheet
+          const locationDoc = doc(db, 'locations', locationData.id);
           const location: Location = {
-            id: locationDoc.id,
+            id: locationData.id,
             name: locationData.name,
             locationType: locationData.locationType.toLowerCase() as 'classroom' | 'bathroom' | 'nurse' | 'office' | 'library' | 'cafeteria',
             responsiblePartyId: locationData.responsiblePartyId
@@ -470,10 +475,10 @@ class DataIngestionService {
         try {
           const groupData = this.convertRowToObject(row, csvData.headers, schema) as Record<string, string>;
           
-          // Create group document
-          const groupDoc = doc(collection(db, 'groups'));
+          // Create group document with custom ID from spreadsheet
+          const groupDoc = doc(db, 'groups', groupData.id);
           const group: Group = {
-            id: groupDoc.id,
+            id: groupData.id,
             name: groupData.name,
             groupType: groupData.groupType.toLowerCase() as 'Positive' | 'Negative',
             assignedStudents: groupData.assignedStudents ? groupData.assignedStudents.split(',').map((s: string) => s.trim()) : [],
@@ -544,10 +549,10 @@ class DataIngestionService {
         try {
           const matrixData = this.convertRowToObject(row, csvData.headers, schema) as Record<string, string>;
           
-          // Create autonomy matrix document
-          const matrixDoc = doc(collection(db, 'autonomyMatrix'));
+          // Create autonomy matrix document with custom ID from spreadsheet
+          const matrixDoc = doc(db, 'autonomyMatrix', matrixData.id);
           const matrix: AutonomyMatrix = {
-            id: matrixDoc.id,
+            id: matrixData.id,
             locationId: matrixData.locationId,
             autonomyType: matrixData.autonomyType.toLowerCase() as 'Allow' | 'Disallow' | 'Require Approval',
             groupId: matrixData.groupId,
@@ -618,10 +623,10 @@ class DataIngestionService {
         try {
           const restrictionData = this.convertRowToObject(row, csvData.headers, schema) as Record<string, string | boolean>;
           
-          // Create restriction document
-          const restrictionDoc = doc(collection(db, 'restrictions'));
+          // Create restriction document with custom ID from spreadsheet
+          const restrictionDoc = doc(db, 'restrictions', restrictionData.id as string);
           const restriction: Restriction = {
-            id: restrictionDoc.id,
+            id: restrictionData.id as string,
             studentId: restrictionData.studentId as string,
             restrictionType: (restrictionData.restrictionType as string).toLowerCase() as 'Global' | 'Class-Level',
             isActive: restrictionData.isActive !== undefined ? Boolean(restrictionData.isActive) : true,
