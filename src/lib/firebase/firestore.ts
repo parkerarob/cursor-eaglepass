@@ -11,6 +11,7 @@ import {
   Timestamp,
   addDoc,
   deleteDoc,
+  onSnapshot,
 } from "firebase/firestore";
 import { firebaseApp } from "./config";
 import { User, Location, Pass } from "@/types";
@@ -312,5 +313,36 @@ export const getEventLogsByDateRange = async (startDate: Date, endDate: Date): P
   return querySnapshot.docs.map(doc => {
     const eventLogData = convertTimestamps(doc.data()) as Omit<EventLog, 'id'>;
     return { id: doc.id, ...eventLogData };
+  });
+};
+
+// Emergency Freeze State
+
+export const getEmergencyState = async (): Promise<{ active: boolean; activatedBy?: string; activatedAt?: Date } | null> => {
+  const docRef = doc(db, 'system', 'emergency');
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) return null;
+  const data = convertTimestamps(snap.data());
+  return data as { active: boolean; activatedBy?: string; activatedAt?: Date };
+};
+
+export const setEmergencyState = async (active: boolean, activatedBy: string): Promise<void> => {
+  const docRef = doc(db, 'system', 'emergency');
+  await setDoc(docRef, {
+    active,
+    activatedBy,
+    activatedAt: new Date(),
+  });
+};
+
+export const subscribeToEmergencyState = (callback: (state: { active: boolean; activatedBy?: string; activatedAt?: Date } | null) => void) => {
+  const docRef = doc(db, 'system', 'emergency');
+  return onSnapshot(docRef, (snap) => {
+    if (!snap.exists()) {
+      callback(null);
+    } else {
+      const data = convertTimestamps(snap.data());
+      callback(data as { active: boolean; activatedBy?: string; activatedAt?: Date });
+    }
   });
 }; 

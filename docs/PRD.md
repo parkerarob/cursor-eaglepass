@@ -50,6 +50,7 @@ Schools require a digital hall pass system to track student movement for safety 
 * Student-specific lockouts (global and class-level).
 * Lightweight Policy Engine mock will be built early to unblock eligibility and governor testing.
 * **[UPDATE 2024-06] Policy Engine, group/restriction/autonomy data models, and enforcement logic are now implemented and fully tested. Pass creation is now policy-governed.**
+* **[UPDATE 2024-06] Event logging system is now implemented. All pass actions, policy decisions, and errors are logged to Firestore. Event log querying is available for admin reporting and audit.**
 
 ### Deferred Features (Post-MVP Roadmap)
 
@@ -308,5 +309,6 @@ All deployments, tests, and build operations must target an explicitly specified
 ### 6. Implementation Readiness Status
 
 > **[UPDATE 2024-06] Policy Engine, group/restriction/autonomy data models, and enforcement logic are now implemented and tested. Pass creation is now policy-governed and all policy engine tests are passing.**
+> **[UPDATE 2024-06] Event logging system is now implemented and integrated into all pass actions and policy checks. Event log querying is available for admin reporting and audit.**
 
 > This system is now considered fully defined for one-shot MVP build initiation.

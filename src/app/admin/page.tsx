@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { signOut } from '@/lib/firebase/auth';
-import { getUserByEmail, getStudentById, getLocationById } from '@/lib/firebase/firestore';
+import { getUserByEmail, getStudentById, getLocationById, getEmergencyState, setEmergencyState } from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
+import { EmergencyBanner } from '@/components/EmergencyBanner';
 
 interface PassWithDetails extends Pass {
   student?: User;
@@ -26,6 +27,8 @@ export default function AdminPage() {
   const [passes, setPasses] = useState<PassWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [emergencyState, setEmergencyStateLocal] = useState<{ active: boolean; activatedBy?: string; activatedAt?: Date } | null>(null);
+  const [isTogglingEmergency, setIsTogglingEmergency] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -40,6 +43,9 @@ export default function AdminPage() {
         if (userProfile?.role === 'teacher' || userProfile?.role === 'admin' || userProfile?.role === 'dev') {
           setCurrentUser(userProfile);
           await fetchPassData();
+          // Fetch emergency state
+          const state = await getEmergencyState();
+          setEmergencyStateLocal(state);
         } else {
           setError(`Access denied. Your role (${userProfile?.role || 'unknown'}) does not have admin privileges.`);
         }
@@ -119,6 +125,16 @@ export default function AdminPage() {
     );
   };
 
+  const handleToggleEmergency = async () => {
+    if (!currentUser) return;
+    setIsTogglingEmergency(true);
+    const newState = !(emergencyState?.active);
+    await setEmergencyState(newState, currentUser.name || currentUser.email);
+    const updated = await getEmergencyState();
+    setEmergencyStateLocal(updated);
+    setIsTogglingEmergency(false);
+  };
+
   if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
@@ -143,6 +159,11 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background p-4">
+      <EmergencyBanner
+        active={!!emergencyState?.active}
+        activatedBy={emergencyState?.activatedBy}
+        activatedAt={emergencyState?.activatedAt}
+      />
       <ThemeToggle />
       <div className="max-w-6xl mx-auto space-y-6">
         <header className="flex justify-between items-center">
@@ -257,6 +278,37 @@ export default function AdminPage() {
                     </Card>
                   ))
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Emergency Freeze Controls */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Emergency Freeze Controls</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-2 items-start">
+                <div>
+                  <span className="font-semibold">Current State:</span>{' '}
+                  {emergencyState?.active ? (
+                    <span className="text-red-600 font-bold">ACTIVE</span>
+                  ) : (
+                    <span className="text-green-600 font-bold">INACTIVE</span>
+                  )}
+                  {emergencyState?.activatedBy && (
+                    <span className="ml-2 text-sm text-muted-foreground">(by {emergencyState.activatedBy})</span>
+                  )}
+                </div>
+                <Button
+                  onClick={handleToggleEmergency}
+                  variant={emergencyState?.active ? 'destructive' : 'default'}
+                  disabled={isTogglingEmergency}
+                >
+                  {isTogglingEmergency
+                    ? (emergencyState?.active ? 'Deactivating...' : 'Activating...')
+                    : (emergencyState?.active ? 'Deactivate Emergency Freeze' : 'Activate Emergency Freeze')}
+                </Button>
               </div>
             </CardContent>
           </Card>
