@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useAuth } from './AuthProvider';
-import { getUserByEmail, getUserById } from '@/lib/firebase/firestore';
+import { getUserByEmail, getUserById, createUser } from '@/lib/firebase/firestore';
 import { User, UserRole } from '@/types';
 
 interface RoleContextType {
@@ -50,7 +50,20 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     const loadUserData = async () => {
       setIsLoading(true);
       try {
-        const userProfile = await getUserByEmail(authUser.email!);
+        let userProfile = await getUserByEmail(authUser.email!);
+        
+        if (!userProfile) {
+          console.warn(`No user profile found for ${authUser.email}. Creating a new one.`);
+          const newUser: User = {
+            id: authUser.uid, // Use the UID from Firebase Auth as the document ID
+            email: authUser.email!,
+            name: authUser.displayName || 'New User',
+            role: 'teacher', // Default role for new users
+          };
+          await createUser(newUser);
+          userProfile = newUser;
+        }
+
         if (userProfile) {
           setOriginalUser(userProfile);
           setCurrentUser(userProfile);
