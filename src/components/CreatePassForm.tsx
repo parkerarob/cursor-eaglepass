@@ -57,42 +57,51 @@ export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocatio
         <CardTitle className="text-center">{heading || `Where are you going?`}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            {availableDestinations.map((location) => (
-              <button
-                key={location.id}
-                type="button"
-                onClick={() => setSelectedDestination(location.id)}
-                className={`
-                  p-4 rounded-lg border-2 transition-all duration-200 text-left
-                  ${selectedDestination === location.id
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-primary/50 hover:bg-accent/50'
-                  }
-                `}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{getLocationIcon(location.locationType)}</span>
-                  <div>
-                    <p className="font-medium">{location.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">
-                      {location.locationType}
-                    </p>
+        {availableDestinations.length > 0 ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              {availableDestinations.map((location) => (
+                <button
+                  key={location.id}
+                  type="button"
+                  onClick={() => setSelectedDestination(location.id)}
+                  className={`
+                    p-4 rounded-lg border-2 transition-all duration-200 text-left
+                    ${selectedDestination === location.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/50 hover:bg-accent/50'
+                    }
+                  `}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{getLocationIcon(location.locationType)}</span>
+                    <div>
+                      <p className="font-medium">{location.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {location.locationType}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={!selectedDestination || isLoading}
-          >
-            {isLoading ? 'Creating Pass...' : 'Create Pass'}
-          </Button>
-        </form>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={!selectedDestination || isLoading}
+            >
+              {isLoading ? 'Creating Pass...' : 'Create Pass'}
+            </Button>
+          </form>
+        ) : (
+          <div className="text-center text-muted-foreground p-4">
+            <p>No available destinations found.</p>
+            <p className="text-xs mt-2">
+              (This may be due to current restrictions or missing location data in Firestore.)
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

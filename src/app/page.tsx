@@ -14,6 +14,7 @@ import { PassService } from '@/lib/passService';
 import { getLocationById, getActivePassByStudentId, getEmergencyState } from '@/lib/firebase/firestore';
 import { User, Location, Pass, PassFormData } from '@/types';
 import { ActionState } from '@/lib/stateMachine';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function Home() {
   const router = useRouter();
@@ -346,6 +347,7 @@ export default function Home() {
             <div className="text-right">
               <div className="text-sm font-medium text-gray-900">{currentStudent?.name}</div>
               <div className="text-xs text-gray-500">{currentStudent?.email}</div>
+              <ThemeToggle />
             </div>
           </div>
           
