@@ -6,9 +6,6 @@ export interface ActionState {
   isSimpleTrip: boolean;
   returnLocationName: string;
   canArrive: boolean;
-  canReturnToClass: boolean;
-  isInLocation: boolean;
-  destinationName?: string;
 }
 
 export interface StateTransitionResult {
@@ -46,23 +43,19 @@ export class PassStateMachine {
    */
   async determineActionState(): Promise<ActionState> {
     const currentLeg = this.getCurrentLeg();
-    
-    // Default state for when student is IN a location or has no pass
-    if (!currentLeg || currentLeg.state === 'IN') {
+    if (!currentLeg || currentLeg.state !== 'OUT') {
       return {
         isRestroomTrip: false,
         isSimpleTrip: false,
         returnLocationName: 'class',
         canArrive: false,
-        canReturnToClass: false,
-        isInLocation: true,
       };
     }
-    
-    // State for when student is OUT (traveling)
+
     const destination = await getLocationById(currentLeg.destinationLocationId);
     const isRestroom = destination?.locationType === 'bathroom';
     
+    // For restroom trips, determine return location based on origin of current leg
     let returnLocName = 'class';
     if (isRestroom) {
       const returnLocation = await getLocationById(currentLeg.originLocationId);
@@ -72,18 +65,12 @@ export class PassStateMachine {
     const canArrive =
       destination?.locationType !== 'bathroom' &&
       currentLeg.destinationLocationId !== this.student.assignedLocationId;
-    
-    const canReturnToClass =
-      currentLeg.destinationLocationId === this.student.assignedLocationId;
 
     return {
       isRestroomTrip: isRestroom,
-      isSimpleTrip: false,
+      isSimpleTrip: false, // Remove simple trip concept - all bathroom trips work the same way
       returnLocationName: returnLocName,
       canArrive: canArrive,
-      canReturnToClass: canReturnToClass,
-      isInLocation: false,
-      destinationName: destination?.name,
     };
   }
 
@@ -260,14 +247,14 @@ export class PassStateMachine {
         }
         break;
       case 'return_to_class':
-        if (currentLeg.state !== 'OUT') {
-          return { valid: false, error: 'Cannot return to class: not currently out' };
+        if (currentLeg.state !== 'IN') {
+          return { valid: false, error: 'Cannot return to class: not currently in' };
         }
         break;
       case 'close_pass':
-        // This is a more generic close, can be triggered by staff.
-        // For students, this is handled by returnToClass.
-        // No specific state validation here, can be closed from IN or OUT by staff.
+        if (currentLeg.state !== 'OUT') {
+          return { valid: false, error: 'Cannot close pass: not currently out' };
+        }
         break;
       case 'restroom_return':
         if (currentLeg.state !== 'OUT') {
