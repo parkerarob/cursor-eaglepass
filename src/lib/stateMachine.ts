@@ -1,5 +1,6 @@
 import { Pass, Leg, User, PassFormData } from '@/types';
 import { getLocationById } from '@/lib/firebase/firestore';
+import crypto from 'crypto';
 
 export interface ActionState {
   isRestroomTrip: boolean;
@@ -100,6 +101,7 @@ export class PassStateMachine {
       lastUpdatedAt: new Date(),
       legs: [
         {
+          id: crypto.randomUUID(),
           legNumber: 1,
           originLocationId: student.assignedLocationId!,
           destinationLocationId: formData.destinationLocationId,
@@ -115,6 +117,7 @@ export class PassStateMachine {
    */
   addLeg(originLocationId: string, destinationLocationId: string, state: 'IN' | 'OUT'): Pass {
     const newLeg: Leg = {
+      id: crypto.randomUUID(),
       legNumber: this.getNextLegNumber(),
       originLocationId,
       destinationLocationId,
@@ -142,6 +145,7 @@ export class PassStateMachine {
     const destinationId = destinationLocationId || this.student.assignedLocationId!;
 
     const newLeg: Leg = {
+      id: crypto.randomUUID(),
       legNumber: this.getNextLegNumber(),
       originLocationId: currentLeg.destinationLocationId,
       destinationLocationId: destinationId,

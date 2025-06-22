@@ -19,6 +19,8 @@ export interface Location {
   name: string;
   locationType: 'classroom' | 'bathroom' | 'nurse' | 'office' | 'library' | 'cafeteria';
   responsiblePartyId?: string; // Teacher/admin responsible for this location
+  teacherId?: string;
+  teacherName?: string;
 }
 
 export type PassStatus = 'OPEN' | 'CLOSED';
@@ -30,6 +32,7 @@ export interface Leg {
   destinationLocationId: string;
   state: MovementState; // IN or OUT
   timestamp: Date;
+  id: string;
 }
 
 export interface Pass {

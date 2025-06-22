@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Location, PassFormData } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getAvailableDestinations, getClassroomDestinations } from '@/lib/firebase/firestore';
+import { getAvailableDestinations, getClassroomDestinationsWithTeachers } from '@/lib/firebase/firestore';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface CreatePassFormProps {
   onCreatePass: (formData: PassFormData) => void;
@@ -20,7 +21,7 @@ export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocatio
     const fetchDests = async () => {
       let [destinations, classrooms] = await Promise.all([
         getAvailableDestinations(),
-        getClassroomDestinations()
+        getClassroomDestinationsWithTeachers()
       ]);
       
       if (excludeLocationId) {
@@ -59,6 +60,28 @@ export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocatio
       default:
         return '📍';
     }
+  };
+
+  const renderClassroomDropdown = () => {
+    if (classroomDestinations.length === 0) return null;
+
+    return (
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-muted-foreground">Visit Another Classroom</h3>
+        <Select onValueChange={(value) => setSelectedDestination(value)} value={selectedDestination}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a classroom..." />
+          </SelectTrigger>
+          <SelectContent>
+            {classroomDestinations.map((location) => (
+              <SelectItem key={location.id} value={location.id}>
+                {location.teacherName} | {location.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
   };
 
   const renderDestinationButtons = (destinations: Location[], sectionTitle: string) => {
@@ -106,7 +129,7 @@ export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocatio
         {(availableDestinations.length > 0 || classroomDestinations.length > 0) ? (
           <form onSubmit={handleSubmit} className="space-y-6">
             {renderDestinationButtons(availableDestinations, "Visit Another Location")}
-            {renderDestinationButtons(classroomDestinations, "Visit Another Classroom")}
+            {renderClassroomDropdown()}
 
             <Button
               type="submit"

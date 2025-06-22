@@ -112,6 +112,25 @@ export const getClassroomDestinations = async (): Promise<Location[]> => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Location));
 };
 
+export const getClassroomDestinationsWithTeachers = async (): Promise<Location[]> => {
+  const locationsRef = collection(db, "locations");
+  const q = query(locationsRef, where("locationType", "==", "classroom"));
+  const querySnapshot = await getDocs(q);
+  
+  const locations = await Promise.all(
+    querySnapshot.docs.map(async (doc) => {
+      const location = { id: doc.id, ...doc.data() } as Location;
+      if (location.teacherId) {
+        const teacher = await getUserById(location.teacherId);
+        return { ...location, teacherName: teacher?.name || 'Unknown' };
+      }
+      return { ...location, teacherName: 'Unassigned' };
+    })
+  );
+
+  return locations;
+};
+
 export const getStudentsByAssignedLocation = async (locationId: string): Promise<User[]> => {
   const usersRef = collection(db, "users");
   const q = query(

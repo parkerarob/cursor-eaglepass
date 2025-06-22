@@ -115,6 +115,7 @@ export const mockPasses: Pass[] = [
     lastUpdatedAt: new Date(Date.now() - 5 * 60 * 1000),
     legs: [
       {
+        id: 'leg-1-1',
         legNumber: 1,
         originLocationId: 'location-1',
         destinationLocationId: 'location-3',
@@ -131,6 +132,7 @@ export const mockPasses: Pass[] = [
     lastUpdatedAt: new Date(Date.now() - 2 * 60 * 1000),
     legs: [
       {
+        id: 'leg-2-1',
         legNumber: 1,
         originLocationId: 'location-2',
         destinationLocationId: 'location-4',
@@ -138,9 +140,10 @@ export const mockPasses: Pass[] = [
         timestamp: new Date(Date.now() - 10 * 60 * 1000),
       },
       {
+        id: 'leg-2-2',
         legNumber: 2,
-        originLocationId: 'location-2',
-        destinationLocationId: 'location-4',
+        originLocationId: 'location-4',
+        destinationLocationId: 'location-2',
         state: 'IN',
         timestamp: new Date(Date.now() - 2 * 60 * 1000),
       },
@@ -150,10 +153,36 @@ export const mockPasses: Pass[] = [
     id: 'pass-3',
     studentId: 'student-4',
     status: 'CLOSED',
+    createdAt: new Date(Date.now() - 25 * 60 * 1000),
+    lastUpdatedAt: new Date(Date.now() - 22 * 60 * 1000),
+    legs: [
+      {
+        id: 'leg-3-1',
+        legNumber: 1,
+        originLocationId: 'location-1',
+        destinationLocationId: 'location-5',
+        state: 'OUT',
+        timestamp: new Date(Date.now() - 25 * 60 * 1000),
+      },
+      {
+        id: 'leg-3-2',
+        legNumber: 2,
+        originLocationId: 'location-5',
+        destinationLocationId: 'location-1',
+        state: 'IN',
+        timestamp: new Date(Date.now() - 22 * 60 * 1000),
+      },
+    ],
+  },
+  {
+    id: 'pass-4',
+    studentId: 'student-4',
+    status: 'CLOSED',
     createdAt: new Date(Date.now() - 30 * 60 * 1000),
     lastUpdatedAt: new Date(Date.now() - 15 * 60 * 1000),
     legs: [
       {
+        id: 'leg-4-1',
         legNumber: 1,
         originLocationId: 'location-1',
         destinationLocationId: 'location-5',
@@ -161,9 +190,10 @@ export const mockPasses: Pass[] = [
         timestamp: new Date(Date.now() - 30 * 60 * 1000),
       },
       {
+        id: 'leg-4-2',
         legNumber: 2,
-        originLocationId: 'location-1',
-        destinationLocationId: 'location-5',
+        originLocationId: 'location-5',
+        destinationLocationId: 'location-1',
         state: 'IN',
         timestamp: new Date(Date.now() - 15 * 60 * 1000),
       },
@@ -218,7 +248,7 @@ export const mockEventLogs: EventLog[] = [
     passId: 'pass-3',
     studentId: 'student-2',
     actorId: 'student-2',
-    timestamp: new Date(Date.now() - 30 * 60 * 1000),
+    timestamp: new Date(Date.now() - 25 * 60 * 1000),
     eventType: 'PASS_CREATED',
   },
   {
@@ -226,7 +256,7 @@ export const mockEventLogs: EventLog[] = [
     passId: 'pass-3',
     studentId: 'student-2',
     actorId: 'student-2',
-    timestamp: new Date(Date.now() - 30 * 60 * 1000),
+    timestamp: new Date(Date.now() - 25 * 60 * 1000),
     eventType: 'DEPARTED',
   },
   {
@@ -234,7 +264,7 @@ export const mockEventLogs: EventLog[] = [
     passId: 'pass-3',
     studentId: 'student-2',
     actorId: 'student-2',
-    timestamp: new Date(Date.now() - 15 * 60 * 1000),
+    timestamp: new Date(Date.now() - 22 * 60 * 1000),
     eventType: 'RETURNED',
   },
   {
@@ -242,7 +272,7 @@ export const mockEventLogs: EventLog[] = [
     passId: 'pass-3',
     studentId: 'student-2',
     actorId: 'student-2',
-    timestamp: new Date(Date.now() - 15 * 60 * 1000),
+    timestamp: new Date(Date.now() - 22 * 60 * 1000),
     eventType: 'PASS_CLOSED',
   },
 ];
