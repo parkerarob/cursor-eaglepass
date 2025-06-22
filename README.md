@@ -197,6 +197,18 @@ Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 This project follows a structured development approach with clear phases and milestones. See `TASK_PROGRESS.md` for detailed progress tracking and `docs/PRD.md` for product requirements.
 
+## Documentation
+
+Comprehensive documentation is available in the `/docs` directory:
+
+- **[Documentation Index](./docs/README.md)** - Complete guide to all available documentation
+- **[AI Context Guide](./docs/AI_CONTEXT_GUIDE.md)** - Essential context for AI assistants and developers
+- **[API Documentation](./docs/API_DOCUMENTATION.md)** - Detailed API reference
+- **[Code Conventions](./docs/CODE_CONVENTIONS.md)** - Coding standards and best practices
+- **[Troubleshooting Guide](./docs/TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions
+
+For developers working on the codebase, start with the [Documentation Index](./docs/README.md).
+
 ## License
 
 This project is designed for educational use and school safety. Please ensure compliance with local privacy and data protection regulations.

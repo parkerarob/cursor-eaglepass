@@ -47,6 +47,53 @@ service cloud.firestore {
       allow write: if isAdmin() || isDev();
     }
 
+    // FERPA Audit Logs collection - Admin/System only
+    match /ferpaAuditLogs/{auditId} {
+      allow read: if isAdmin() || isDev();
+      allow create: if isSystem() || isAdmin() || isDev();
+      allow update, delete: if false; // Audit logs are immutable
+    }
+
+    // Emergency Disclosures collection - Admin only
+    match /emergencyDisclosures/{disclosureId} {
+      allow read: if isAdmin() || isDev();
+      allow write: if isAdmin() || isDev();
+    }
+
+    // Post Emergency Notifications collection - Admin only
+    match /postEmergencyNotifications/{notificationId} {
+      allow read: if isAdmin() || isDev();
+      allow write: if isAdmin() || isDev();
+    }
+
+    // Parent Access Requests collection - Parents can read their own, admins can manage
+    match /parentAccessRequests/{requestId} {
+      allow read: if isSelf(resource.data.parentId) || isAdmin() || isDev();
+      allow create: if isSelf(request.resource.data.parentId);
+      allow update: if isAdmin() || isDev();
+      allow delete: if false; // Keep audit trail
+    }
+
+    // Directory Info Opt-Outs collection - Parents can manage their own
+    match /directoryInfoOptOuts/{optOutId} {
+      allow read: if isSelf(resource.data.parentId) || isAdmin() || isDev();
+      allow write: if isSelf(resource.data.parentId) || isAdmin() || isDev();
+    }
+
+    // Parent-Student Relationships collection - Parents can read their own
+    match /parentStudentRelationships/{relationshipId} {
+      allow read: if isSelf(resource.data.parentId) || isAdmin() || isDev();
+      allow write: if isAdmin() || isDev();
+    }
+
+    // Record Correction Requests collection - Parents can manage their own
+    match /recordCorrectionRequests/{correctionId} {
+      allow read: if isSelf(resource.data.parentId) || isAdmin() || isDev();
+      allow create: if isSelf(request.resource.data.parentId);
+      allow update: if isAdmin() || isDev();
+      allow delete: if false; // Keep audit trail
+    }
+
     // Helper functions
     function isSelf(uid) {
       return request.auth != null && request.auth.uid == uid;
