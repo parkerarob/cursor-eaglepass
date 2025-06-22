@@ -12,27 +12,28 @@ These reports focus on providing immediate, actionable insights with the data we
 - **Goal**: Show teachers which of their students use passes most often, and provide a school-wide view for administrators.
 - **New Requirement**: Add a time filter (Day, Week, Month, All Time) to allow for more granular analysis.
 - **Tasks**:
-    - [ ] **Backend**: Update the `getPassCountsByStudent(locationId?: string, timeframe?: 'day' | 'week' | 'month' | 'all')` function to filter passes based on the selected time period.
-    - [ ] **Frontend (Shared)**:
-        - [ ] Add a time-filter UI (e.g., button group) to both the admin and teacher dashboards.
-        - [ ] Manage the state for the selected timeframe.
-    - [ ] **Frontend (Teacher)**:
-        - [ ] Add a "My Frequent Flyers" card to the teacher dashboard (`/teacher`).
-        - [ ] Display the top 5 students based on the selected timeframe.
-    - [ ] **Frontend (Admin)**:
-        - [ ] Add a "School-Wide Frequent Flyers" card to the admin reports page (`/admin/reports`).
-        - [ ] Display the top 10 students based on the selected timeframe.
+    - [x] **Backend**: Update the `getPassCountsByStudent(locationId?: string, timeframe?: 'day' | 'week' | 'month' | 'all')` function to filter passes based on the selected time period.
+    - [x] **Frontend (Shared)**:
+        - [x] Add a time-filter UI (e.g., button group) to both the admin and teacher dashboards.
+        - [x] Manage the state for the selected timeframe.
+    - [x] **Frontend (Teacher)**:
+        - [x] Add a "My Frequent Flyers" card to the teacher dashboard (`/teacher`).
+        - [x] Display the top 5 students based on the selected timeframe.
+    - [x] **Frontend (Admin)**:
+        - [x] Add a "School-Wide Frequent Flyers" card to the admin reports page (`/admin/reports`).
+        - [x] Display the top 10 students based on the selected timeframe.
 
 #### 2. Stall Sitter Report (Admin/School-Wide)
 - **Goal**: Identify students who spend the most time in the bathroom.
+- **New Requirement**: Add a time filter (Day, Week, Month, All Time).
 - **Tasks**:
-    - [ ] **Backend**:
-        - [ ] Ensure `durationMinutes` is accurately calculated and stored for all pass legs.
-        - [ ] Create a function `getLongestBathroomPasses()` that queries for passes to bathroom locations and sorts by duration.
+    - [ ] **Backend**: Create a function `getLongestPassesByLocationType(locationType: string, timeframe: 'day' | 'week' | 'month' | 'all')` that finds the longest passes to a specific location type.
     - [ ] **Frontend**:
-        - [ ] Add a "Stall Sitters" card to the admin reports page (`/admin/reports`).
+        - [ ] Create a reusable `StallSitterCard` component.
+        - [ ] Add the card to the admin reports page (`/admin/reports`).
         - [ ] Display a list of the top 5 longest bathroom visits, showing student name, duration, and date.
         - [ ] Link to the student's detailed report page.
+        - [ ] Include a time filter UI.
 
 #### 3. Common Destinations Report (Teacher-Specific)
 - **Goal**: Show teachers the most common destinations for their students.

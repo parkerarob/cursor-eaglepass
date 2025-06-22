@@ -264,6 +264,63 @@ export const getPassCountsByStudent = async (
     .sort((a, b) => b.passCount - a.passCount);
 };
 
+export const getLongestPassesByLocationType = async (
+  locationType: 'bathroom', // Add other types as needed
+  timeframe: 'day' | 'week' | 'month' | 'all' = 'all'
+): Promise<{ pass: Pass, student: User, duration: number }[]> => {
+  // 1. Get all locations of the specified type
+  const locationsRef = collection(db, "locations");
+  const locationsQuery = query(locationsRef, where("locationType", "==", locationType));
+  const locationsSnapshot = await getDocs(locationsQuery);
+  const locationIds = new Set(locationsSnapshot.docs.map(doc => doc.id));
+
+  if (locationIds.size === 0) return [];
+
+  // 2. Build the passes query with an optional date filter
+  let passesQuery = query(collection(db, "passes"), where("status", "==", "CLOSED"));
+
+  if (timeframe !== 'all') {
+    const now = new Date();
+    let startDate: Date;
+    switch (timeframe) {
+      case 'day':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        break;
+      case 'week':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        break;
+    }
+    passesQuery = query(passesQuery, where("createdAt", ">=", startDate));
+  }
+
+  const passesSnapshot = await getDocs(passesQuery);
+  const allPasses = passesSnapshot.docs.map(doc => convertTimestamps(doc.data()) as Pass);
+  
+  // 3. Filter for passes that went to one of the target locations
+  const relevantPasses = allPasses.filter(pass => 
+    pass.legs.some(leg => locationIds.has(leg.destinationLocationId))
+  );
+
+  // 4. Calculate duration and fetch student info
+  const passesWithDetails = await Promise.all(
+    relevantPasses.map(async (pass) => {
+      const student = await getUserById(pass.studentId);
+      const duration = pass.closedAt && pass.createdAt
+        ? (pass.closedAt.getTime() - pass.createdAt.getTime()) / (1000 * 60) // in minutes
+        : 0;
+      return { pass, student: student!, duration };
+    })
+  );
+
+  // 5. Sort by duration descending
+  return passesWithDetails
+    .filter(item => item.student) // Ensure student data exists
+    .sort((a, b) => b.duration - a.duration);
+};
+
 // Policy-related functions
 
 export const getGroups = async (): Promise<Group[]> => {

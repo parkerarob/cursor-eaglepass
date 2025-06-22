@@ -2,24 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { User } from "@/types";
-import { getPassCountsByStudent } from "@/lib/firebase/firestore";
+import { Pass, User } from "@/types";
+import { getLongestPassesByLocationType } from "@/lib/firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 type Timeframe = 'day' | 'week' | 'month' | 'all';
-type FrequentFlyerData = { student: User; passCount: number };
+type StallSitterData = { pass: Pass; student: User; duration: number };
 
-export function FrequentFlyersCard({
-  title,
+export function StallSitterCard({
   limit = 5,
-  locationId,
-}: {
-  title: string;
-  limit?: number;
-  locationId?: string;
 }) {
-  const [data, setData] = useState<FrequentFlyerData[]>([]);
+  const [data, setData] = useState<StallSitterData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<Timeframe>('all');
 
@@ -27,17 +21,17 @@ export function FrequentFlyersCard({
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const result = await getPassCountsByStudent(locationId, timeframe);
+        const result = await getLongestPassesByLocationType('bathroom', timeframe);
         setData(result);
       } catch (error) {
-        console.error("Error fetching frequent flyers data:", error);
+        console.error("Error fetching stall sitters data:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [timeframe, locationId]);
+  }, [timeframe]);
 
   const handleTimeframeChange = (newTimeframe: Timeframe) => {
     setTimeframe(newTimeframe);
@@ -48,9 +42,9 @@ export function FrequentFlyersCard({
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
-            <CardTitle>{title}</CardTitle>
+            <CardTitle>Stall Sitters</CardTitle>
             <CardDescription>
-              {locationId ? "Top students from your classes." : "Top students across the school."}
+              Students with the longest bathroom visits.
             </CardDescription>
           </div>
           <div className="flex gap-1">
@@ -73,8 +67,8 @@ export function FrequentFlyersCard({
           <p>Loading...</p>
         ) : data.length > 0 ? (
           <ol className="space-y-4">
-            {data.slice(0, limit).map(({ student, passCount }) => (
-              <li key={student.id} className="flex items-center justify-between">
+            {data.slice(0, limit).map(({ pass, student, duration }) => (
+              <li key={pass.id} className="flex items-center justify-between">
                 <div>
                   <Link
                     href={`/admin/reports/student/${student.name}`}
@@ -83,15 +77,17 @@ export function FrequentFlyersCard({
                     {student.name}
                   </Link>
                   <p className="text-sm text-muted-foreground">
-                    {student.email}
+                    Pass on {new Date(pass.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="font-bold text-lg">{passCount}</div>
+                <div className="font-bold text-lg">
+                  {Math.round(duration)} min
+                </div>
               </li>
             ))}
           </ol>
         ) : (
-          <p>No student pass data found for the selected timeframe.</p>
+          <p>No bathroom passes found for the selected timeframe.</p>
         )}
       </CardContent>
     </Card>

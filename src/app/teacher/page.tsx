@@ -15,7 +15,6 @@ import {
   getAllLocations,
   getStudentsByAssignedLocation,
   getClassroomPolicy,
-  getPassCountsByStudent,
 } from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
 import { ClassroomPolicy } from '@/types/policy';
@@ -43,8 +42,6 @@ interface PassWithDetails extends Pass {
   teacherResponsibility?: 'origin' | 'destination' | 'both';
 }
 
-type Timeframe = 'day' | 'week' | 'month' | 'all';
-
 export default function TeacherPage() {
   const { user: authUser, isLoading: authLoading } = useAuth();
   const { currentUser: roleUser, isLoading: roleLoading } = useRole();
@@ -56,9 +53,6 @@ export default function TeacherPage() {
   const [isClosingPass, setIsClosingPass] = useState<string | null>(null);
   const [policy, setPolicy] = useState<ClassroomPolicy | null>(null);
   const [isLoadingPolicy, setIsLoadingPolicy] = useState(false);
-  const [frequentFlyers, setFrequentFlyers] = useState<{ student: User, passCount: number }[]>([]);
-  const [loadingFlyers, setLoadingFlyers] = useState(true);
-  const [flyersTimeframe, setFlyersTimeframe] = useState<Timeframe>('all');
 
   // Auto-refresh
   const autoRefresh = true;
@@ -219,23 +213,6 @@ export default function TeacherPage() {
       .finally(() => setIsLoadingPolicy(false));
   }, [currentUser?.assignedLocationId]);
 
-  useEffect(() => {
-    if (currentUser?.assignedLocationId) {
-      const fetchFlyers = async () => {
-        setLoadingFlyers(true);
-        try {
-          const flyers = await getPassCountsByStudent(currentUser.assignedLocationId, flyersTimeframe);
-          setFrequentFlyers(flyers.slice(0, 5));
-        } catch (error) {
-          console.error("Failed to fetch frequent flyers:", error);
-        } finally {
-          setLoadingFlyers(false);
-        }
-      };
-      fetchFlyers();
-    }
-  }, [currentUser?.assignedLocationId, flyersTimeframe]);
-
   const handleClosePass = async (pass: PassWithDetails) => {
     if (!currentUser) return;
     
@@ -370,41 +347,32 @@ export default function TeacherPage() {
 
         <GlobalEmergencyBanner />
 
-        {loadingFlyers ? (
+        <div className="grid gap-6 md:grid-cols-2">
+          <FrequentFlyersCard 
+            title="My Frequent Flyers" 
+            limit={5} 
+            locationId={currentUser?.assignedLocationId}
+          />
+          {/* Policy Summary Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Loading Frequent Flyers...</CardTitle>
+              <CardTitle>Current Classroom Policy</CardTitle>
             </CardHeader>
+            <CardContent>
+              {isLoadingPolicy ? (
+                <p>Loading policy...</p>
+              ) : policy ? (
+                <div className="space-y-2">
+                  <PolicySummaryRow label="Students leaving your classroom" value={policy.rules.studentLeave} />
+                  <PolicySummaryRow label="Students arriving to your classroom" value={policy.rules.studentArrive} />
+                  <PolicySummaryRow label="Teacher requests for your students" value={policy.rules.teacherRequest} />
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No classroom policy set for this room.</p>
+              )}
+            </CardContent>
           </Card>
-        ) : (
-          <FrequentFlyersCard 
-            students={frequentFlyers} 
-            title="My Frequent Flyers"
-            description="Top 5 students from your classes with the most passes."
-            timeframe={flyersTimeframe}
-            onTimeframeChange={setFlyersTimeframe}
-          />
-        )}
-
-        {/* Classroom Policy Summary Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Current Classroom Policy</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingPolicy ? (
-              <p>Loading policy...</p>
-            ) : policy ? (
-              <div className="space-y-2">
-                <PolicySummaryRow label="Students leaving your classroom" value={policy.rules.studentLeave} />
-                <PolicySummaryRow label="Students arriving to your classroom" value={policy.rules.studentArrive} />
-                <PolicySummaryRow label="Teacher requests for your students" value={policy.rules.teacherRequest} />
-              </div>
-            ) : (
-              <p className="text-muted-foreground">No classroom policy set for this room.</p>
-            )}
-          </CardContent>
-        </Card>
+        </div>
 
         {/* Students OUT - From My Class */}
         <Card className="mb-6">
