@@ -1,4 +1,4 @@
-# Eagle Pass — PRD v3.0 (Core Product Requirements)
+# Eagle Pass — PRD v3.1 (Core Product Requirements)
 
 ## 1. Problem Statement
 
@@ -10,7 +10,7 @@ Schools require a digital hall pass system to track student movement for safety 
 * Binary movement state: **IN** or **OUT**.
 * Immutable audit logging.
 * Staff responsibility follows student location.
-* Policy controls and eligibility gates enforce school rules without complicating state machine.
+* **Hierarchical policy controls** enforce school rules with teacher autonomy.
 * System only reflects actual student-declared or staff-verified locations.
 * System assists staff; humans remain primary decision-makers in emergencies.
 
@@ -20,10 +20,10 @@ Schools require a digital hall pass system to track student movement for safety 
 
 * **Dev (System Owner):** Full system configuration, data management, impersonation, and emergency controls.
 * **Students:** Declare movement, open/close passes.
+* **Teachers:** Manage classroom policies, student groups, and monitor student movement.
 
 ### Passive Roles (Initially present, expanded functionality post-MVP)
 
-* **Teachers:** Location responsibility, reporting, manual pass closure assist.
 * **Support Staff:** Counselors, nurses, other non-classroom staff.
 * **Admins (School Admin):** School-level leadership, policy oversight, emergency controls, reporting.
 
@@ -48,19 +48,22 @@ Schools require a digital hall pass system to track student movement for safety 
 * Basic teacher/admin reporting interfaces.
 * Group rules enforcement for both Positive and Negative student groups.
 * Student-specific lockouts (global and class-level).
-* Lightweight Policy Engine mock will be built early to unblock eligibility and governor testing.
-* **[UPDATE 2024-06] Policy Engine, group/restriction/autonomy data models, and enforcement logic are now implemented and fully tested. Pass creation is now policy-governed.**
-* **[UPDATE 2024-06] Event logging system is now implemented. All pass actions, policy decisions, and errors are logged to Firestore. Event log querying is available for admin reporting and audit.**
-* **[UPDATE 2024-06] Duration timers and notification engine are now fully implemented and tested. All passes are tracked in real time, notifications escalate at 10min (teacher) and 20min (admin), and all notification events are logged.**
+* **Hierarchical Classroom Policy System**: Teachers can set classroom-specific rules and student overrides.
+* **Teacher Dashboard**: Dedicated interface for classroom management and policy configuration.
+* **Group Management**: Teachers can create and manage student groups.
+* **[UPDATE 2024-12] Hierarchical Policy Engine implemented with Classroom Policy and Student Policy Overrides. Teachers have full autonomy to set classroom rules and student-specific exceptions.**
+* **[UPDATE 2024-12] Teacher Dashboard implemented with classroom policy summary and group management.**
+* **[UPDATE 2024-12] Event logging system is now implemented. All pass actions, policy decisions, and errors are logged to Firestore. Event log querying is available for admin reporting and audit.**
+* **[UPDATE 2024-12] Duration timers and notification engine are now fully implemented and tested. All passes are tracked in real time, notifications escalate at 10min (teacher) and 20min (admin), and all notification events are logged.**
 
 ### Deferred Features (Post-MVP Roadmap)
 
 * Microsoft SSO and email-based authentication with domain restrictions.
 * SIS integrations for automated user and schedule population.
 * Bell schedule with multiple schedule templates (half day, testing, etc.).
-* Fully operational teacher/admin dashboards.
+* Fully operational admin dashboards.
 * Scheduled passes with automatic activation.
-* Approval workflows (autonomy matrix extensions).
+* Approval workflows (policy engine extensions).
 * Expanded multi-leg passes.
 * Emergency role pre-assignments.
 * Parent visibility layers.
@@ -86,7 +89,7 @@ Schools require a digital hall pass system to track student movement for safety 
 
 ### Policy Governors:
 
-* Autonomy Matrix (per location).
+* **Hierarchical Classroom Policies** (per location with student overrides).
 * Admin Global Override.
 * Group Rule Enforcement.
 * Student Restrictions.
@@ -97,7 +100,7 @@ Schools require a digital hall pass system to track student movement for safety 
 
 ---
 
-# Eagle Pass — PRD v3.0 (Data Model Specification)
+# Eagle Pass — PRD v3.1 (Data Model Specification)
 
 ## 6. Data Model
 
@@ -119,11 +122,15 @@ Schools require a digital hall pass system to track student movement for safety 
 
 ### Groups Table
 
-* `groupId`, `name`, `groupType (Positive/Negative)`, `assignedStudents`
+* `groupId`, `name`, `groupType (Positive/Negative)`, `ownerId`, `assignedStudents`, `createdAt`, `lastUpdatedAt`
 
-### Autonomy Matrix Table
+### Classroom Policy Table
 
-* `locationId`, `autonomyType (Allow/Disallow/Require Approval)`
+* `locationId`, `ownerId`, `rules (studentLeave, studentArrive, teacherRequest)`, `lastUpdatedAt`
+
+### Student Policy Override Table
+
+* `overrideId`, `locationId`, `studentId`, `rules (partial ClassroomPolicyRule)`, `lastUpdatedAt`
 
 ### Restrictions Table
 
@@ -137,11 +144,11 @@ Schools require a digital hall pass system to track student movement for safety 
 
 * `sourceFileId`, `importType`, `mappingRules`
 
-**[UPDATE 2024-06] All policy-related data models (groups, restrictions, autonomy matrix) are now implemented in code and Firestore, with full CRUD support.**
+**[UPDATE 2024-12] All policy-related data models (groups, restrictions, classroom policies, student overrides) are now implemented in code and Firestore, with full CRUD support.**
 
 ---
 
-# Eagle Pass — PRD v3.0 (Non-Functional Requirements & Technology Stack)
+# Eagle Pass — PRD v3.1 (Non-Functional Requirements & Technology Stack)
 
 ## 7. Non-Functional Requirements
 
@@ -151,7 +158,7 @@ Schools require a digital hall pass system to track student movement for safety 
 * Immutable logging.
 * Full test coverage for state transitions.
 * Clean role-based permission enforcement.
-* Config-driven policy architecture for easy extensibility.
+* **Config-driven hierarchical policy architecture** for easy extensibility.
 * Firestore Security Rules fully segmented for all roles.
 * Firestore transactional writes ensure idempotency and prevent race conditions.
 * Document schema versioning plan for long-term schema evolution.
@@ -199,7 +206,7 @@ All deployments, tests, and build operations must target an explicitly specified
 
 ---
 
-# Eagle Pass — PRD v3.0 (Implementation Readiness Appendix)
+# Eagle Pass — PRD v3.1 (Implementation Readiness Appendix)
 
 ## 13. Implementation Readiness
 
@@ -226,7 +233,8 @@ All deployments, tests, and build operations must target an explicitly specified
 * passes
 * eventLogs
 * groups
-* autonomyMatrix
+* classroomPolicies
+* studentPolicyOverrides
 * restrictions
 
 #### Role-Based Access Control
@@ -241,13 +249,13 @@ All deployments, tests, and build operations must target an explicitly specified
 ##### Teachers
 
 * Read/write passes for assigned students (teacher assist).
-* Read locations and autonomyMatrix.
+* Read locations and classroom policies.
 * Cannot edit users directly.
 * Read reporting data via controlled API endpoints.
 
 ##### Admins
 
-* Full read/write access to passes, eventLogs, restrictions, autonomyMatrix, and groups.
+* Full read/write access to passes, eventLogs, restrictions, classroom policies, student policy overrides, and groups.
 * Read/write permissions on users (school scope only).
 * Emergency Freeze toggle permission.
 
@@ -309,7 +317,9 @@ All deployments, tests, and build operations must target an explicitly specified
 
 ### 6. Implementation Readiness Status
 
-> **[UPDATE 2024-06] Policy Engine, group/restriction/autonomy data models, and enforcement logic are now implemented and tested. Pass creation is now policy-governed and all policy engine tests are passing.**
-> **[UPDATE 2024-06] Event logging system is now implemented and integrated into all pass actions and policy checks. Event log querying is available for admin reporting and audit.**
+> **[UPDATE 2024-12] Hierarchical Policy Engine implemented with Classroom Policy and Student Policy Overrides. Teachers have full autonomy to set classroom rules and student-specific exceptions.**
+> **[UPDATE 2024-12] Teacher Dashboard implemented with classroom policy summary and group management.**
+> **[UPDATE 2024-12] Event logging system is now implemented. All pass actions, policy decisions, and errors are logged to Firestore. Event log querying is available for admin reporting and audit.**
+> **[UPDATE 2024-12] Duration timers and notification engine are now fully implemented and tested. All passes are tracked in real time, notifications escalate at 10min (teacher) and 20min (admin), and all notification events are logged.**
 
 > This system is now considered fully defined for one-shot MVP build initiation.

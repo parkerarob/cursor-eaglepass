@@ -13,17 +13,31 @@ Eagle Pass is a modern, web-based digital hall pass system designed for schools.
 - **Role-Based Access Control**: Different user roles (student, teacher, admin, dev) with appropriate permissions.
 - **Google SSO**: Secure and easy login with Google accounts.
 
-### Admin & Teacher Features
-- **Admin Dashboard**: A dedicated interface for teachers and administrators to view a live, human-readable log of all pass activity.
+### Teacher Features
+- **Teacher Dashboard**: Dedicated interface for classroom management and student monitoring.
+- **Classroom Policy Management**: Teachers can set and view classroom rules for student movement.
+- **Student-Specific Overrides**: Teachers can create exceptions for individual students.
+- **Group Management**: Teachers can create and manage student groups (Positive/Negative).
+- **Classroom Policy Summary**: Real-time view of current classroom policy settings.
 - **Teacher Assist**: Teachers can manually close student passes and assist with pass management.
+
+### Admin Features
+- **Admin Dashboard**: A dedicated interface for administrators to view a live, human-readable log of all pass activity.
 - **Advanced Reporting**: Comprehensive reporting system with analytics, student activity tracking, and location usage statistics.
 - **CSV Export**: Export pass data and event logs for external analysis.
-- **System Health Monitoring**: Real-time monitoring dashboard for system health, error tracking, and performance metrics (Phase 10).
+- **System Health Monitoring**: Real-time monitoring dashboard for system health, error tracking, and performance metrics.
 
 ### Safety & Emergency Features
 - **Emergency Freeze Mode**: Global emergency banner and system freeze functionality for crisis situations.
 - **Duration Timers & Escalation Notifications**: All active passes are tracked in real time. Automatic notifications escalate to teachers at 10 minutes and to admins at 20 minutes.
 - **Real-time Monitoring**: Students see a live duration timer and escalation status on their dashboard.
+
+### Policy System
+- **Hierarchical Classroom Policies**: Teachers have full autonomy to set classroom-specific rules.
+- **Student Policy Overrides**: Teachers can create exceptions for specific students.
+- **Policy Hierarchy**: Student overrides → Classroom policy → Global defaults.
+- **Real-time Policy Evaluation**: Policies are evaluated in real-time during pass creation.
+- **Three Policy Types**: Student leaving, student arriving, teacher requests.
 
 ### User Experience
 - **Dark/Light Mode**: A modern UI with theme toggling.
@@ -39,7 +53,7 @@ Eagle Pass is a modern, web-based digital hall pass system designed for schools.
 
 #### Bulk CSV Upload (Production Readiness)
 
-- Upload CSV files for users, locations, groups, autonomy matrix, and restrictions via the /dev-tools page
+- Upload CSV files for users, locations, groups, classroom policies, and restrictions via the /dev-tools page
 - Schema validation before ingesting data
 - Efficient Firestore batch writes for large data sets
 - Audit logging and error reporting shown in the UI and stored in Firestore
@@ -59,7 +73,7 @@ See `src/lib/dataIngestionService.ts` for implementation details and supported s
 
 ## Project Status
 
-**🎉 Eagle Pass is now in MVP completion phase!**
+**🎉 Eagle Pass v1.3.0 is now complete with hierarchical classroom policy system!**
 
 ### Completed Phases
 - ✅ **Phase 1**: Foundation & "Hello World" - Project setup and deployment
@@ -70,10 +84,11 @@ See `src/lib/dataIngestionService.ts` for implementation details and supported s
 - ✅ **Phase 7**: Policy Engine & Security - Policy enforcement and event logging
 - ✅ **Phase 8**: Emergency Features - Emergency freeze mode and duration tracking
 - ✅ **Phase 9**: Enhanced Admin Features - Teacher dashboard and advanced reporting
-- ✅ **Phase 10**: Production Readiness - Monitoring, observability, and data management (in progress)
+- ✅ **Phase 10**: Production Readiness - Monitoring, observability, and data management
+- ✅ **Phase 11**: Hierarchical Policy System - Classroom policies, student overrides, and teacher autonomy
 
 ### Current Phase
-- 🔄 **Phase 10**: Production Readiness - Monitoring and data management
+- ✅ **Phase 11**: Hierarchical Policy System - Complete with teacher dashboard and group management
 
 ## Getting Started
 
@@ -115,7 +130,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Project Structure
 Here is a high-level overview of the important files and directories:
 
-- `/src/app/`: Main application routes (student view, admin dashboard, dev tools).
+- `/src/app/`: Main application routes (student view, teacher dashboard, admin dashboard, dev tools).
 - `/src/components/`: Shared React components including UI components and specialized components.
 - `/src/lib/`: Core application logic.
   - `/firebase/`: Firebase configuration and service functions.
@@ -123,7 +138,7 @@ Here is a high-level overview of the important files and directories:
   - `/passService.ts`: Service layer for pass management.
   - `/notificationService.ts`: Duration tracking and escalation logic.
   - `/eventLogger.ts`: Event logging and audit trail functionality.
-  - `/policyEngine.ts`: Policy enforcement and rule management.
+  - `/policyEngine.ts`: Hierarchical policy enforcement and rule management.
 - `/src/types/`: TypeScript type definitions.
 - `/src/lib/__tests__/`: Jest tests for the application logic.
 
@@ -135,10 +150,24 @@ The core state machine manages pass lifecycles with binary states:
 - **Movement State**: IN or OUT
 - **Multi-leg Support**: Complex movement patterns (e.g., classroom → library → bathroom → library → classroom)
 
+### Hierarchical Policy System
+- **Classroom Policies**: Teachers set default rules for their classroom
+- **Student Overrides**: Teachers create exceptions for specific students
+- **Policy Hierarchy**: Student overrides → Classroom policy → Global defaults
+- **Three Policy Types**: Student leaving, student arriving, teacher requests
+- **Real-time Evaluation**: Policies evaluated during pass creation
+
 ### Emergency Features
 - **Emergency Freeze**: Global system freeze with real-time banner
 - **Duration Tracking**: Real-time pass duration with escalation at 10min (teacher) and 20min (admin)
 - **Notification System**: Automated escalation with failure logging
+
+### Teacher Dashboard
+- **Classroom Management**: View and manage students assigned to teacher's classroom
+- **Policy Configuration**: Set and manage classroom policies and student overrides
+- **Group Management**: Create and manage student groups
+- **Pass Monitoring**: Real-time view of student passes with teacher responsibility
+- **Policy Summary**: Quick view of current classroom policy settings
 
 ### Reporting System
 - **Historical Analysis**: Date-range filtered reports
@@ -147,7 +176,7 @@ The core state machine manages pass lifecycles with binary states:
 - **Event Logs**: Comprehensive audit trail for all system activities
 - **Data Export**: CSV export for external analysis
 
-### Monitoring & Observability (Phase 10)
+### Monitoring & Observability
 - **System Health Dashboard**: Admins can view real-time system health, event queue size, and active performance traces.
 - **Error Tracking**: Automatic logging of unhandled errors and promise rejections.
 - **Performance Monitoring**: API call durations and performance traces tracked via Firebase Performance Monitoring (client-only).

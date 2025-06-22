@@ -435,4 +435,147 @@ Ready for **Phase 10: Production Readiness**. This phase will implement the miss
 2. **Phase 9**: Enhanced Admin Features (Teacher and reporting capabilities) ✅ COMPLETED
 3. **Phase 10**: Production Readiness (Monitoring and data management)
 
-This roadmap will bring Eagle Pass to full MVP status with all required features implemented and tested. 
+This roadmap will bring Eagle Pass to full MVP status with all required features implemented and tested.
+
+---
+
+## Phase 11: Hierarchical Classroom Policy System (NEW)
+
+### ✅ Task 11.1: Policy System Refactor - COMPLETED
+
+**What we accomplished:**
+1. ✅ Replaced the old AutonomyMatrix system with a new hierarchical policy architecture
+2. ✅ Implemented ClassroomPolicy and StudentPolicyOverride data models
+3. ✅ Created a complete CRUD interface for classroom policies and student overrides
+4. ✅ Updated the policy engine to use the new hierarchical system
+5. ✅ Added teacher autonomy with full control over classroom-specific rules
+6. ✅ Implemented policy hierarchy: Student overrides → Classroom policy → Global defaults
+
+**Files Created/Modified:**
+- `src/types/policy.ts` - New policy data models and types
+- `src/lib/firebase/firestore.ts` - New policy-related Firestore functions
+- `src/lib/policyEngine.ts` - Refactored to use hierarchical policies
+- `src/app/teacher/settings/page.tsx` - Complete policy management UI
+- `src/app/teacher/page.tsx` - Added classroom policy summary to dashboard
+
+**Core Features Implemented:**
+- ✅ **Classroom Policies**: Teachers can set default rules for their classroom
+- ✅ **Student Policy Overrides**: Teachers can create exceptions for specific students
+- ✅ **Three Policy Types**: Student leaving, student arriving, teacher requests
+- ✅ **Policy Hierarchy**: Student overrides → Classroom policy → Global defaults
+- ✅ **Teacher Autonomy**: Full control over classroom-specific rules
+- ✅ **Real-time Policy Evaluation**: Policies are evaluated in real-time during pass creation
+- ✅ **Policy UI**: Complete CRUD interface for managing policies and overrides
+
+**Technical Achievements:**
+- ✅ **Architecture Upgrade**: Replaced list-based AutonomyMatrix with hierarchical system
+- ✅ **Teacher Empowerment**: Teachers now have full autonomy over their classroom rules
+- ✅ **Flexibility**: Student-specific overrides allow for individual exceptions
+- ✅ **Performance**: Efficient policy evaluation with proper fallback hierarchy
+- ✅ **User Experience**: Intuitive UI for policy management
+
+### ✅ Task 11.2: Teacher Dashboard Implementation - COMPLETED
+
+**What we accomplished:**
+1. ✅ Created a dedicated teacher dashboard at `/teacher` route
+2. ✅ Implemented classroom-specific pass monitoring
+3. ✅ Added classroom policy summary to the dashboard
+4. ✅ Integrated teacher responsibility logic for student monitoring
+5. ✅ Added real-time updates and filtering capabilities
+
+**Files Created/Modified:**
+- `src/app/teacher/page.tsx` - Complete teacher dashboard implementation
+- `src/app/teacher/settings/page.tsx` - Policy management interface
+- `src/app/teacher/groups/page.tsx` - Group management interface
+
+**Core Features Implemented:**
+- ✅ **Dedicated Teacher Interface**: Complete teacher-specific dashboard
+- ✅ **Classroom Policy Summary**: Teachers see current policy settings on their dashboard
+- ✅ **Classroom-Specific View**: Teachers see only passes where they are responsible
+- ✅ **Student Assignment Logic**: Teachers are responsible for students assigned to their classroom
+- ✅ **Responsibility Tracking**: Shows "My Student", "Coming to My Class", or "My Student + Destination" badges
+- ✅ **Priority Display**: OUT students first, then non-origin IN students
+- ✅ **Live view of teacher-responsible passes**: Real-time updates every 30 seconds
+- ✅ **Duration tracking and escalation status**: Shows pass duration and escalation status
+- ✅ **Manual pass closure**: "Close Pass" button for each active pass
+- ✅ **Advanced filtering**: Filter by student name and status (OUT/IN)
+- ✅ **Emergency banner**: Global emergency notifications
+- ✅ **Real-time updates**: All data updates automatically when passes are closed or modified
+
+### ✅ Task 11.3: Group Management System - COMPLETED
+
+**What we accomplished:**
+1. ✅ Implemented teacher-owned student groups
+2. ✅ Created group management interface with multi-select student assignment
+3. ✅ Added group types (Positive/Negative) for different rule enforcement
+4. ✅ Integrated groups with the policy engine
+5. ✅ Added proper ownership and persistence to Firestore
+
+**Files Created/Modified:**
+- `src/app/teacher/groups/page.tsx` - Complete group management interface
+- `src/lib/firebase/firestore.ts` - Group-related Firestore functions
+- `src/types/policy.ts` - Updated Group interface with ownership
+
+**Core Features Implemented:**
+- ✅ **Teacher-Owned Groups**: Teachers can create and manage student groups
+- ✅ **Group Types**: Positive and Negative groups for different rule enforcement
+- ✅ **Student Assignment**: Multi-select interface for adding students to groups
+- ✅ **Group Persistence**: Groups are saved to Firestore with proper ownership
+- ✅ **Group Integration**: Groups work with the policy engine for rule enforcement
+- ✅ **CRUD Operations**: Complete create, read, update, delete functionality for groups
+
+**Technical Achievements:**
+- ✅ **Ownership Model**: Groups are owned by teachers with proper access controls
+- ✅ **User Experience**: Intuitive multi-select interface for student assignment
+- ✅ **Data Integrity**: Proper validation and error handling for group operations
+- ✅ **Integration**: Seamless integration with existing policy and pass systems
+
+### ✅ Task 11.4: Documentation Update - COMPLETED
+
+**What we accomplished:**
+1. ✅ Updated PRD.md to reflect new hierarchical policy system
+2. ✅ Updated CURRENT_STATE_ANALYSIS.md with new features and architecture
+3. ✅ Updated README.md with new features and project status
+4. ✅ Updated TASK_PROGRESS.md with new completed tasks
+5. ✅ Removed references to deprecated AutonomyMatrix system
+
+**Files Updated:**
+- `docs/PRD.md` - Updated to v3.1 with new policy system
+- `docs/CURRENT_STATE_ANALYSIS.md` - Updated with Phase 11 completion
+- `README.md` - Updated features and project status
+- `TASK_PROGRESS.md` - Added Phase 11 tasks
+
+**Documentation Achievements:**
+- ✅ **Architecture Documentation**: Clear explanation of hierarchical policy system
+- ✅ **Feature Documentation**: Comprehensive coverage of new teacher features
+- ✅ **Data Model Updates**: Updated to reflect new policy and group structures
+- ✅ **Project Status**: Accurate reflection of current system capabilities
+- ✅ **User Guides**: Clear documentation of new teacher workflows
+
+**Phase 11 is now complete!**
+
+---
+
+## Current Status
+
+**System Status**: ✅ **MVP Complete** - Ready for system enhancements
+**Current Phase**: Phase 11 Complete - Hierarchical Policy System Implemented
+**Next Priority**: System Enhancement and Advanced Features
+
+### Recent Achievements (v1.3.0)
+- ✅ **Hierarchical Classroom Policy System**: Complete teacher autonomy over classroom rules
+- ✅ **Teacher Dashboard**: Dedicated interface for classroom management and policy configuration
+- ✅ **Group Management**: Teacher-owned student groups with full CRUD capabilities
+- ✅ **Policy Summary**: Real-time classroom policy display on teacher dashboard
+- ✅ **Documentation**: Comprehensive updates to reflect new system architecture
+
+### Next Potential Enhancements
+1. **Student Check-in Feature**: Allow students to check-in to classrooms they're visiting
+2. **Global Policy Layer**: Add school-wide policy defaults that override classroom policies
+3. **Scheduled Passes**: Allow teachers to create passes for future times
+4. **Pass Approval Workflows**: Implement approval processes for restricted passes
+5. **Advanced Reporting**: More detailed analytics and reporting for teachers
+6. **Parent Portal**: Allow parents to view their child's pass activity
+7. **Mobile App**: Native mobile application for easier access
+
+--- 
