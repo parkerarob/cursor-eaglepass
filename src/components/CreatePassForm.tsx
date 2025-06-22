@@ -95,14 +95,12 @@ export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocatio
             <button
               key={location.id}
               type="button"
-              onClick={() => setSelectedDestination(location.id)}
+              onClick={() => onCreatePass({ destinationLocationId: location.id })}
               className={`
                 p-4 rounded-lg border-2 transition-all duration-200 text-left
-                ${selectedDestination === location.id
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:border-primary/50 hover:bg-accent/50'
-                }
+                border-border hover:border-primary/50 hover:bg-accent/50
               `}
+              disabled={isLoading}
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{getLocationIcon(location.locationType)}</span>
@@ -130,14 +128,15 @@ export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocatio
           <form onSubmit={handleSubmit} className="space-y-6">
             {renderDestinationButtons(availableDestinations, "Visit Another Location")}
             {renderClassroomDropdown()}
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={!selectedDestination || isLoading}
-            >
-              {isLoading ? 'Creating Pass...' : 'Create Pass'}
-            </Button>
+            {classroomDestinations.length > 0 && (
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!selectedDestination || isLoading}
+              >
+                {isLoading ? 'Creating Pass...' : 'Create Pass'}
+              </Button>
+            )}
           </form>
         ) : (
           <div className="text-center text-muted-foreground p-4">
