@@ -217,10 +217,10 @@ export default function TeacherPage() {
   }, [currentUser?.assignedLocationId]);
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser?.assignedLocationId) {
       const fetchFlyers = async () => {
         try {
-          const flyers = await getPassCountsByStudent(currentUser.id);
+          const flyers = await getPassCountsByStudent(currentUser.assignedLocationId);
           setFrequentFlyers(flyers.slice(0, 5));
         } catch (error) {
           console.error("Failed to fetch frequent flyers:", error);
@@ -230,7 +230,7 @@ export default function TeacherPage() {
       };
       fetchFlyers();
     }
-  }, [currentUser]);
+  }, [currentUser?.assignedLocationId]);
 
   const handleClosePass = async (pass: PassWithDetails) => {
     if (!currentUser) return;

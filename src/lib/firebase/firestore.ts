@@ -208,11 +208,11 @@ export const getPassesByStudentName = async (studentName: string): Promise<Pass[
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // Sort by newest first
 };
 
-export const getPassCountsByStudent = async (teacherId?: string): Promise<{ student: User, passCount: number }[]> => {
+export const getPassCountsByStudent = async (locationId?: string): Promise<{ student: User, passCount: number }[]> => {
   // 1. Get the list of students
   let students: User[];
-  if (teacherId) {
-    students = await getStudentsByAssignedLocation(teacherId);
+  if (locationId) {
+    students = await getStudentsByAssignedLocation(locationId);
   } else {
     students = await getAllStudents();
   }
