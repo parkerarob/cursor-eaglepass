@@ -4,6 +4,8 @@ import { runTransaction, query, where, collection, getDocs, doc } from 'firebase
 import { PassStateMachine, ActionState } from '@/lib/stateMachine';
 import { logEvent } from './eventLogger';
 import { formatUserName } from './utils';
+import { ValidationService } from './validation';
+import { AuditMonitor } from './auditMonitor';
 
 export interface PassServiceResult {
   success: boolean;
@@ -17,6 +19,17 @@ export class PassService {
    */
   static async createPass(formData: PassFormData, student: User): Promise<PassServiceResult> {
     try {
+      // SECURITY: Validate all inputs before processing
+      try {
+        ValidationService.validatePassFormData(formData);
+        ValidationService.validateUser(student);
+      } catch (validationError) {
+        return { 
+          success: false, 
+          error: `Input validation failed: ${validationError instanceof Error ? validationError.message : 'Invalid input'}` 
+        };
+      }
+
       // SECURITY: Use atomic transaction to prevent race conditions
       return await runTransaction(db, async (transaction) => {
         // Check emergency state within transaction
@@ -67,6 +80,10 @@ export class PassService {
           // Create a new pass object with the correct document ID
           const passWithCorrectId = { ...newPass, id: passRef.id };
           transaction.set(passRef, newPass); // Store without the ID field
+          
+          // SECURITY: Monitor for suspicious pass creation patterns
+          await AuditMonitor.checkPassCreationActivity(student.id, passWithCorrectId);
+          
           return { success: true, updatedPass: passWithCorrectId };
         }
       });

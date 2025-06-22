@@ -2,6 +2,14 @@
 
 export type UserRole = 'student' | 'teacher' | 'admin' | 'dev';
 
+export interface EmergencyContact {
+  name: string;
+  relationship: string;
+  email?: string;
+  phone?: string;  
+  isPrimary?: boolean;
+}
+
 export interface User {
   id: string;
   name?: string; // Full name, will be deprecated
@@ -13,6 +21,8 @@ export interface User {
   // For students: their assigned classroom/location
   // For teachers: their assigned classroom/location
   assignedLocationId?: string;
+  // Emergency contacts for notification system
+  emergencyContacts?: EmergencyContact[];
   // For future: restrictions, groups, etc.
 }
 
