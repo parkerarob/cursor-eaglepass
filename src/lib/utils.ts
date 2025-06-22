@@ -198,21 +198,34 @@ export function testSplitFullName(): void {
   const testCases = [
     'John Doe',
     'Mary Jane Watson',
-    'Robert Downey Jr.',
-    'John F. Kennedy',
+    'Robert J. Parker III',
+    'Smith Jr.',
     'Madonna',
-    'Dr. Martin Luther King Jr.',
-    'A B C D',
-    '',
+    'Jean-Claude Van Damme',
+    'O\'Connor',
     '   ',
-    'John',
-    'John Doe Smith',
-    'John Doe Smith Jr.'
+    ''
   ];
 
   console.log('Testing splitFullName function:');
   testCases.forEach(name => {
     const result = splitFullName(name);
-    console.log(`"${name}" -> ${result.firstName} | ${result.lastName} (${result.confidence})`);
+    console.log(`"${name}" -> "${result.firstName}" | "${result.lastName}" (${result.confidence})`);
+  });
+}
+
+/**
+ * Generate a UUID with fallback for environments that don't support crypto.randomUUID()
+ */
+export function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  
+  // Fallback implementation using Math.random()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
   });
 }
