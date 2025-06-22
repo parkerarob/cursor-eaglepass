@@ -503,14 +503,21 @@ export default function TeacherPage() {
                           {formatTime(pass.createdAt)}
                         </td>
                         <td className="p-2">
-                          <Button
-                            onClick={() => handleClosePass(pass)}
-                            disabled={isClosingPass === pass.id}
-                            variant="outline"
-                            size="sm"
-                          >
-                            {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
-                          </Button>
+                          <div className="flex gap-2">
+                            <Link href={`/teacher/pass/${pass.id}`}>
+                              <Button variant="outline" size="sm">
+                                View Details
+                              </Button>
+                            </Link>
+                            <Button
+                              onClick={() => handleClosePass(pass)}
+                              disabled={isClosingPass === pass.id}
+                              variant="outline"
+                              size="sm"
+                            >
+                              {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -569,14 +576,21 @@ export default function TeacherPage() {
                           {formatTime(pass.createdAt)}
                         </td>
                         <td className="p-2">
-                           <Button
-                            onClick={() => handleClosePass(pass)}
-                            disabled={isClosingPass === pass.id}
-                            variant="outline"
-                            size="sm"
-                          >
-                            {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
-                          </Button>
+                          <div className="flex gap-2">
+                            <Link href={`/teacher/pass/${pass.id}`}>
+                              <Button variant="outline" size="sm">
+                                View Details
+                              </Button>
+                            </Link>
+                            <Button
+                              onClick={() => handleClosePass(pass)}
+                              disabled={isClosingPass === pass.id}
+                              variant="outline"
+                              size="sm"
+                            >
+                              {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -630,14 +644,21 @@ export default function TeacherPage() {
                             formatTime(pass.legs[pass.legs.length - 1].timestamp) : 'Unknown'}
                         </td>
                         <td className="p-2">
-                          <Button
-                            onClick={() => handleClosePass(pass)}
-                            disabled={isClosingPass === pass.id}
-                            variant="outline"
-                            size="sm"
-                          >
-                            {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
-                          </Button>
+                          <div className="flex gap-2">
+                            <Link href={`/teacher/pass/${pass.id}`}>
+                              <Button variant="outline" size="sm">
+                                View Details
+                              </Button>
+                            </Link>
+                            <Button
+                              onClick={() => handleClosePass(pass)}
+                              disabled={isClosingPass === pass.id}
+                              variant="outline"
+                              size="sm"
+                            >
+                              {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -738,6 +759,7 @@ export default function TeacherPage() {
                                 <th className="text-left p-2">To</th>
                                 <th className="text-left p-2">Duration</th>
                                 <th className="text-left p-2">Status</th>
+                                <th className="text-left p-2">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -774,6 +796,13 @@ export default function TeacherPage() {
                                         <Badge variant="secondary">CLOSED</Badge>
                                       )}
                                     </div>
+                                  </td>
+                                  <td className="p-2">
+                                    <Link href={`/teacher/pass/${pass.id}`}>
+                                      <Button variant="outline" size="sm">
+                                        View Details
+                                      </Button>
+                                    </Link>
                                   </td>
                                 </tr>
                               ))}
