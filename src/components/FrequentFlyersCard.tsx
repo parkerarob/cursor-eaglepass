@@ -6,6 +6,7 @@ import { User } from "@/types";
 import { getPassCountsByStudent } from "@/lib/firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { formatUserName } from '@/lib/utils';
 
 type Timeframe = 'day' | 'week' | 'month' | 'all';
 type FrequentFlyerData = { student: User; passCount: number };
@@ -77,10 +78,10 @@ export function FrequentFlyersCard({
               <li key={student.id} className="flex items-center justify-between">
                 <div>
                   <Link
-                    href={`/admin/reports/student/${student.name}`}
+                    href={`/admin/reports/student/${formatUserName(student)}`}
                     className="font-medium hover:underline"
                   >
-                    {student.name}
+                    {formatUserName(student)}
                   </Link>
                   <p className="text-sm text-muted-foreground">
                     {student.email}

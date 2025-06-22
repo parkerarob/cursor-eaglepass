@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { updateUser } from '@/lib/firebase/firestore';
 import { User } from '@/types';
+import { formatUserName } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
@@ -40,7 +41,8 @@ import { Label } from "@/components/ui/label";
 export default function TeacherSettingsPage() {
   const { currentUser, setCurrentUser } = useRole();
   const router = useRouter();
-  const [name, setName] = useState(currentUser?.name || '');
+  const [firstName, setFirstName] = useState(currentUser?.firstName || '');
+  const [lastName, setLastName] = useState(currentUser?.lastName || '');
   const [roomNumber, setRoomNumber] = useState(currentUser?.assignedLocationId || '');
   const [schoolId, setSchoolId] = useState(currentUser?.schoolId || '');
   const [status, setStatus] = useState('');
@@ -59,7 +61,8 @@ export default function TeacherSettingsPage() {
 
   useEffect(() => {
     if (currentUser) {
-      setName(currentUser.name);
+      setFirstName(currentUser.firstName || '');
+      setLastName(currentUser.lastName || '');
       setRoomNumber(currentUser.assignedLocationId || '');
       setSchoolId(currentUser.schoolId || '');
     }
@@ -100,7 +103,8 @@ export default function TeacherSettingsPage() {
 
     try {
       const updatedUser: Partial<User> = { 
-        name,
+        firstName,
+        lastName,
         assignedLocationId: roomNumber,
         schoolId,
       };
@@ -217,10 +221,18 @@ export default function TeacherSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium">Name</label>
+            <label className="text-sm font-medium">First Name</label>
             <Input 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Last Name</label>
+            <Input 
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
               className="mt-1"
             />
           </div>
@@ -316,7 +328,7 @@ export default function TeacherSettingsPage() {
                   return (
                     <div key={override.id} className="flex items-center justify-between p-2 rounded-md border">
                       <div>
-                        <p className="font-semibold">{student?.name || 'Unknown Student'}</p>
+                        <p className="font-semibold">{formatUserName(student) || 'Unknown Student'}</p>
                         {ruleEntries.map(([rule, value]) => (
                            <p key={rule} className="text-sm text-muted-foreground">
                              {rule.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}: <span className="font-medium text-primary">{value}</span>
@@ -416,7 +428,7 @@ function OverrideDialog({ isOpen, onClose, onSave, onDelete, existingOverride, s
                 <SelectValue placeholder="Select a student" />
               </SelectTrigger>
               <SelectContent id="student">
-                {students.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                {students.map(s => <SelectItem key={s.id} value={s.id}>{formatUserName(s)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

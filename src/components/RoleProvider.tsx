@@ -4,6 +4,7 @@ import { createContext, useContext, useState, ReactNode, useEffect } from 'react
 import { useAuth } from './AuthProvider';
 import { getUserByEmail, getUserById, createUser } from '@/lib/firebase/firestore';
 import { User, UserRole } from '@/types';
+import { extractNameFromEmail } from '@/lib/utils';
 
 interface RoleContextType {
   currentRole: UserRole | null;
@@ -54,11 +55,21 @@ export function RoleProvider({ children }: { children: ReactNode }) {
         
         if (!userProfile) {
           console.warn(`No user profile found for ${authUser.email}. Creating a new one.`);
+          
+          // Extract name from email
+          const nameResult = extractNameFromEmail(authUser.email!);
+          
           const newUserPayload: Omit<User, 'id'> = {
             email: authUser.email!,
-            name: authUser.displayName || 'New User',
             role: 'teacher', // Default role for new users
             schoolId: '', // Default empty schoolId, can be updated in settings
+            // Use extracted names if available, otherwise fall back to display name or email
+            ...(nameResult.confidence === 'high' ? {
+              firstName: nameResult.firstName,
+              lastName: nameResult.lastName,
+            } : {
+              name: authUser.displayName || authUser.email!.split('@')[0], // Fallback to email prefix
+            }),
           };
           userProfile = await createUser(newUserPayload);
         }

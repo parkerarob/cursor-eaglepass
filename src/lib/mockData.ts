@@ -5,35 +5,40 @@ export const mockUsers: User[] = [
   // Students
   {
     id: 'student-1',
-    name: 'Alex Johnson',
+    firstName: 'Alex',
+    lastName: 'Johnson',
     email: 'alex.johnson@student.nhcs.net',
     role: 'student',
     assignedLocationId: 'location-1', // Classroom 101
   },
   {
     id: 'student-2',
-    name: 'Jordan Smith',
+    firstName: 'Jordan',
+    lastName: 'Smith',
     email: 'jordan.smith@student.nhcs.net',
     role: 'student',
     assignedLocationId: 'location-1', // Classroom 101
   },
   {
     id: 'student-3',
-    name: 'Taylor Davis',
+    firstName: 'Taylor',
+    lastName: 'Davis',
     email: 'taylor.davis@student.nhcs.net',
     role: 'student',
     assignedLocationId: 'location-2', // Classroom 102
   },
   {
     id: 'student-4',
-    name: 'Casey Wilson',
+    firstName: 'Casey',
+    lastName: 'Wilson',
     email: 'casey.wilson@student.nhcs.net',
     role: 'student',
     assignedLocationId: 'location-2', // Classroom 102
   },
   {
     id: 'student-5',
-    name: 'Riley Brown',
+    firstName: 'Riley',
+    lastName: 'Brown',
     email: 'riley.brown@student.nhcs.net',
     role: 'student',
     assignedLocationId: 'location-1', // Classroom 101
@@ -42,14 +47,16 @@ export const mockUsers: User[] = [
   // Teachers
   {
     id: 'teacher-1',
-    name: 'Ms. Rodriguez',
+    firstName: 'Maria',
+    lastName: 'Rodriguez',
     email: 'm.rodriguez@nhcs.net',
     role: 'teacher',
     assignedLocationId: 'location-1', // Classroom 101
   },
   {
     id: 'teacher-2',
-    name: 'Mr. Thompson',
+    firstName: 'James',
+    lastName: 'Thompson',
     email: 'j.thompson@nhcs.net',
     role: 'teacher',
     assignedLocationId: 'location-2', // Classroom 102
@@ -58,7 +65,8 @@ export const mockUsers: User[] = [
   // Admin
   {
     id: 'admin-1',
-    name: 'Principal Williams',
+    firstName: 'Patricia',
+    lastName: 'Williams',
     email: 'p.williams@nhcs.net',
     role: 'admin',
   },

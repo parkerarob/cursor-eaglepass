@@ -34,7 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { User } from '@/types';
 import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatUserName } from '@/lib/utils';
 
 export default function TeacherGroupsPage() {
   const { currentUser } = useRole();
@@ -216,7 +216,7 @@ export default function TeacherGroupsPage() {
                         {allStudents.map((student) => (
                           <CommandItem
                             key={student.id}
-                            value={student.name}
+                            value={formatUserName(student)}
                             onSelect={() => {
                               const selected = currentGroup.assignedStudents || [];
                               const isSelected = selected.includes(student.id);
@@ -227,7 +227,7 @@ export default function TeacherGroupsPage() {
                             }}
                           >
                             <Check className={cn("mr-2 h-4 w-4", (currentGroup.assignedStudents || []).includes(student.id) ? "opacity-100" : "opacity-0")} />
-                            {student.name}
+                            {formatUserName(student)}
                           </CommandItem>
                         ))}
                       </CommandGroup>

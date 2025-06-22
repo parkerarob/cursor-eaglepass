@@ -4,7 +4,9 @@ export type UserRole = 'student' | 'teacher' | 'admin' | 'dev';
 
 export interface User {
   id: string;
-  name: string;
+  name?: string; // Full name, will be deprecated
+  firstName?: string;
+  lastName?: string;
   email: string;
   role: UserRole;
   schoolId?: string;

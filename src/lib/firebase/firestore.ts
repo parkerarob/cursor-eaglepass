@@ -17,6 +17,7 @@ import { firebaseApp } from "./config";
 import { User, Location, Pass } from "@/types";
 import { Group, Restriction, ClassroomPolicy, StudentPolicyOverride } from "@/types/policy";
 import { EventLog } from '@/lib/eventLogger';
+import { getSortableName, splitFullName } from '@/lib/utils';
 
 const db = getFirestore(firebaseApp);
 
@@ -214,14 +215,33 @@ export const getPassesByDateRange = async (startDate: Date, endDate: Date): Prom
 };
 
 export const getPassesByStudentName = async (studentName: string): Promise<Pass[]> => {
-  // First, find the student by name
+  // First, find the student by name (try both firstName+lastName and legacy name field)
   const usersRef = collection(db, "users");
-  const q = query(
-    usersRef, 
-    where("role", "==", "student"),
-    where("name", "==", studentName)
-  );
-  const userSnapshot = await getDocs(q);
+  
+  // Try to find by firstName + lastName first
+  const splitResult = splitFullName(studentName);
+  let userSnapshot;
+  
+  if (splitResult.firstName && splitResult.lastName) {
+    // Try to find by firstName and lastName
+    const q = query(
+      usersRef, 
+      where("role", "==", "student"),
+      where("firstName", "==", splitResult.firstName),
+      where("lastName", "==", splitResult.lastName)
+    );
+    userSnapshot = await getDocs(q);
+  }
+  
+  // If not found by firstName+lastName, try legacy name field
+  if (!userSnapshot || userSnapshot.empty) {
+    const q = query(
+      usersRef, 
+      where("role", "==", "student"),
+      where("name", "==", studentName)
+    );
+    userSnapshot = await getDocs(q);
+  }
   
   if (userSnapshot.empty) {
     return [];
@@ -291,10 +311,17 @@ export const getPassCountsByStudent = async (
     passCount: passCounts.get(student.id) || 0,
   }));
 
-  // 5. Sort by pass count descending and filter out students with 0 passes
+  // 5. Sort by pass count descending, then by last name, first name for ties
   return studentPassCounts
     .filter(item => item.passCount > 0)
-    .sort((a, b) => b.passCount - a.passCount);
+    .sort((a, b) => {
+      // First sort by pass count descending
+      if (b.passCount !== a.passCount) {
+        return b.passCount - a.passCount;
+      }
+      // For ties in pass count, sort by last name, first name
+      return getSortableName(a.student).localeCompare(getSortableName(b.student));
+    });
 };
 
 export const getLongestPassesByLocationType = async (
@@ -362,10 +389,17 @@ export const getLongestPassesByLocationType = async (
     })
   );
 
-  // 5. Sort by duration descending
+  // 5. Sort by duration descending, then by last name, first name for ties
   return passesWithDetails
     .filter(item => item.student) // Ensure student data exists
-    .sort((a, b) => b.duration - a.duration);
+    .sort((a, b) => {
+      // First sort by duration descending
+      if (b.duration !== a.duration) {
+        return b.duration - a.duration;
+      }
+      // For ties in duration, sort by last name, first name
+      return getSortableName(a.student).localeCompare(getSortableName(b.student));
+    });
 };
 
 // Policy-related functions

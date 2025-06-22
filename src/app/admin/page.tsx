@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MonitoringDashboard } from '@/components/MonitoringDashboard';
 import { FrequentFlyersCard } from '@/components/FrequentFlyersCard';
 import { StallSitterCard } from '@/components/StallSitterCard';
+import { formatUserName, formatDuration, getSortableName } from '@/lib/utils';
 
 interface PassWithDetails extends Pass {
   student?: User;
@@ -249,20 +250,6 @@ export default function AdminPage() {
     });
   };
 
-  const formatDuration = (seconds: number) => {
-    if (seconds < 0) return '0s';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.round(seconds % 60);
-    
-    const parts = [];
-    if (h > 0) parts.push(`${h}h`);
-    if (m > 0) parts.push(`${m}m`);
-    if (s > 0 || parts.length === 0) parts.push(`${s}s`);
-    
-    return parts.join(' ');
-  };
-
   const getStatusBadge = (status: string) => {
     return status === 'OPEN' ? (
       <Badge variant="destructive">Active</Badge>
@@ -297,7 +284,7 @@ export default function AdminPage() {
     if (!currentUser) return;
     setIsTogglingEmergency(true);
     const newState = !(emergencyState?.active);
-    await setEmergencyState(newState, currentUser.name || currentUser.email);
+    await setEmergencyState(newState, formatUserName(currentUser));
     const updated = await getEmergencyState();
     setEmergencyStateLocal(updated);
     setIsTogglingEmergency(false);
@@ -307,7 +294,7 @@ export default function AdminPage() {
   const filteredPasses = passes.filter(pass => {
     if (statusFilter !== 'all' && pass.status !== statusFilter) return false;
     
-    if (studentFilter && !pass.student?.name?.toLowerCase().includes(studentFilter.toLowerCase())) {
+    if (studentFilter && !formatUserName(pass.student)?.toLowerCase().includes(studentFilter.toLowerCase())) {
       return false;
     }
     
@@ -431,17 +418,23 @@ export default function AdminPage() {
 
       const studentActivityData = await Promise.all(
         Array.from(studentCounts.entries())
-          .sort(([, a], [, b]) => b.passCount - a.passCount)
-          .slice(0, 10)
           .map(async ([studentId, stats]) => {
             const student = await getUserById(studentId);
             if (!student) return null;
             return { student, ...stats };
           })
       );
-      const studentActivity = studentActivityData.filter(
-        (item): item is { student: User; passCount: number; totalDuration: number } => item !== null
-      );
+      const studentActivity = studentActivityData
+        .filter((item): item is { student: User; passCount: number; totalDuration: number } => item !== null)
+        .sort((a, b) => {
+          // First sort by pass count descending
+          if (b.passCount !== a.passCount) {
+            return b.passCount - a.passCount;
+          }
+          // For ties in pass count, sort by last name, first name
+          return getSortableName(a.student).localeCompare(getSortableName(b.student));
+        })
+        .slice(0, 10);
 
       // Get recent events
       const recentEvents = allEvents
@@ -499,7 +492,7 @@ export default function AdminPage() {
     // Export pass data
     const passData = passes.map(pass => ({
       passId: pass.id,
-      studentName: pass.student?.name || 'Unknown',
+      studentName: formatUserName(pass.student),
       studentEmail: pass.student?.email || 'Unknown',
       originLocation: pass.legs[0]?.originLocationId || 'Unknown',
       destinationLocation: pass.legs[0]?.destinationLocationId || 'Unknown',
@@ -560,7 +553,7 @@ export default function AdminPage() {
           <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             <p className="text-muted-foreground">
-              Welcome, {currentUser?.name || currentUser?.email}
+              Welcome, {formatUserName(currentUser)}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -714,7 +707,7 @@ export default function AdminPage() {
                           <tr key={pass.id} className="border-b hover:bg-muted/50">
                             <td className="p-2">
                               <div>
-                                <div className="font-medium">{pass.student?.name || 'Unknown Student'}</div>
+                                <div className="font-medium">{formatUserName(pass.student)}</div>
                                 <div className="text-sm text-muted-foreground">{pass.student?.email}</div>
                               </div>
                             </td>
@@ -780,7 +773,7 @@ export default function AdminPage() {
                       <span className="text-green-600 font-bold">INACTIVE</span>
                     )}
                     {emergencyState?.activatedBy && (
-                      <span className="ml-2 text-sm text-muted-foreground">(by {emergencyState.activatedBy})</span>
+                      <span className="ml-2 text-sm text-muted-foreground">(by {formatUserName({ id: '', email: emergencyState.activatedBy, role: 'admin' })})</span>
                     )}
                   </div>
                   <Button
@@ -947,7 +940,7 @@ export default function AdminPage() {
                             <tr key={item.student.id} className="border-b">
                               <td className="p-2">
                                 <div>
-                                  <div className="font-medium">{item.student.name}</div>
+                                  <div className="font-medium">{formatUserName(item.student)}</div>
                                   <div className="text-sm text-muted-foreground">{item.student.email}</div>
                                 </div>
                               </td>

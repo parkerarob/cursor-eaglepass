@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 
 interface PassStatusProps {
   pass: Pass | null;
-  studentName: string;
   currentLocation: Location;
 }
 

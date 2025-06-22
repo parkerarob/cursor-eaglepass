@@ -40,12 +40,14 @@ export interface CSVData {
 export const CSV_SCHEMAS: Record<string, CSVSchema> = {
   users: {
     name: 'Users',
-    requiredFields: ['id', 'email', 'name', 'role'],
-    optionalFields: ['assignedLocationId'],
+    requiredFields: ['id', 'email', 'role'],
+    optionalFields: ['name', 'firstName', 'lastName', 'assignedLocationId'],
     fieldTypes: {
       id: 'string',
       email: 'email',
       name: 'string',
+      firstName: 'string',
+      lastName: 'string',
       role: 'string',
       assignedLocationId: 'string'
     },
@@ -337,9 +339,15 @@ class DataIngestionService {
           const user: User = {
             id: userData.id,
             email: userData.email,
-            name: userData.name,
             role: userData.role.toLowerCase() as 'student' | 'teacher' | 'admin' | 'dev',
-            assignedLocationId: userData.assignedLocationId
+            assignedLocationId: userData.assignedLocationId,
+            // Handle both new firstName/lastName format and legacy name format
+            ...(userData.firstName && userData.lastName ? {
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+            } : {
+              name: userData.name,
+            }),
           };
 
           batch.set(userDoc, user);

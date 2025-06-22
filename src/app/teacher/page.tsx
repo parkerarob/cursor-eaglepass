@@ -5,6 +5,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { useRole } from '@/components/RoleProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatUserName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { signOut } from '@/lib/firebase/auth';
@@ -321,7 +322,7 @@ export default function TeacherPage() {
           <div>
             <h1 className="text-3xl font-bold">Teacher Dashboard</h1>
             <p className="text-muted-foreground">
-              Welcome, {currentUser?.name || currentUser?.email}
+              Welcome, {formatUserName(currentUser) || currentUser?.email}
             </p>
             {currentUser?.assignedLocationId && (
               <p className="text-sm text-muted-foreground">
@@ -409,7 +410,7 @@ export default function TeacherPage() {
                       <tr key={pass.id} className="border-b hover:bg-muted/50">
                         <td className="p-2">
                           <div>
-                            <div className="font-medium">{pass.student?.name || 'Unknown Student'}</div>
+                            <div className="font-medium">{formatUserName(pass.student) || 'Unknown Student'}</div>
                             <div className="text-sm text-muted-foreground">{pass.student?.email}</div>
                           </div>
                         </td>
@@ -487,7 +488,7 @@ export default function TeacherPage() {
                       <tr key={pass.id} className="border-b hover:bg-muted/50">
                         <td className="p-2">
                           <div>
-                            <div className="font-medium">{pass.student?.name || 'Unknown Student'}</div>
+                            <div className="font-medium">{formatUserName(pass.student) || 'Unknown Student'}</div>
                             <div className="text-sm text-muted-foreground">{pass.student?.email}</div>
                           </div>
                         </td>
@@ -560,7 +561,7 @@ export default function TeacherPage() {
                       <tr key={pass.id} className="border-b hover:bg-muted/50">
                         <td className="p-2">
                           <div>
-                            <div className="font-medium">{pass.student?.name || 'Unknown Student'}</div>
+                            <div className="font-medium">{formatUserName(pass.student) || 'Unknown Student'}</div>
                             <div className="text-sm text-muted-foreground">{pass.student?.email}</div>
                           </div>
                         </td>

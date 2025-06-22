@@ -19,6 +19,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { Login } from '@/components/Login';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
+import { formatUserName } from '@/lib/utils';
 
 export default function Home() {
   const { user: authUser, isLoading: authLoading } = useAuth();
@@ -342,10 +343,12 @@ export default function Home() {
         <header className="flex justify-between items-center">
           <div className="text-left">
             <h1 className="text-3xl font-bold">Eagle Pass</h1>
-            <p className="text-muted-foreground">
-              Welcome, {currentStudent.name}
-              {isDevMode && <Badge variant="destructive" className="ml-2">DEV MODE</Badge>}
-            </p>
+            {currentStudent && (
+              <p className="text-muted-foreground">
+                Welcome, {formatUserName(currentStudent) || ''}
+                {isDevMode && <Badge variant="destructive" className="ml-2">DEV MODE</Badge>}
+              </p>
+            )}
           </div>
           <Button onClick={signOut} variant="outline" size="sm">Sign Out</Button>
         </header>
@@ -358,7 +361,6 @@ export default function Home() {
 
         <PassStatus
           pass={currentPass}
-          studentName={currentStudent.name}
           currentLocation={currentLocation}
         />
 

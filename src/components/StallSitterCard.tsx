@@ -6,6 +6,7 @@ import { Pass, User } from "@/types";
 import { getLongestPassesByLocationType } from "@/lib/firebase/firestore";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { formatUserName } from '@/lib/utils';
 
 type Timeframe = 'day' | 'week' | 'month' | 'all';
 type StallSitterData = { pass: Pass; student: User; duration: number };
@@ -75,10 +76,10 @@ export function StallSitterCard({
               <li key={pass.id} className="flex items-center justify-between">
                 <div>
                   <Link
-                    href={`/admin/reports/student/${student.name}`}
+                    href={`/admin/reports/student/${formatUserName(student)}`}
                     className="font-medium hover:underline"
                   >
-                    {student.name}
+                    {formatUserName(student)}
                   </Link>
                   <p className="text-sm text-muted-foreground">
                     Pass on {new Date(pass.createdAt).toLocaleDateString()}

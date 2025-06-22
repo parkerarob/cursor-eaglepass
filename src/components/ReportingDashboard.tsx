@@ -88,7 +88,8 @@ export function ReportingDashboard({
       // Search term filter
       if (searchTerm) {
         const student = students.find(s => s.id === pass.studentId);
-        const studentName = student?.name?.toLowerCase() || '';
+        const studentName = (student?.firstName && student?.lastName ? 
+          `${student.firstName} ${student.lastName}` : student?.name || '').toLowerCase();
         const studentEmail = student?.email?.toLowerCase() || '';
         const searchLower = searchTerm.toLowerCase();
         
@@ -149,7 +150,8 @@ export function ReportingDashboard({
         const student = students.find(s => s.id === pass.studentId);
         return {
           'Pass ID': pass.id,
-          'Student Name': student?.name || 'Unknown',
+          'Student Name': (student?.firstName && student?.lastName ? 
+            `${student.firstName} ${student.lastName}` : student?.name || 'Unknown'),
           'Student Email': student?.email || 'Unknown',
           'Status': pass.status,
           'Duration (minutes)': pass.durationMinutes || 0,
