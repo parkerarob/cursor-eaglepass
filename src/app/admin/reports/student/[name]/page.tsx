@@ -5,15 +5,21 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Clock, Calendar, User, MapPin, FileText } from 'lucide-react';
+import { ArrowLeft, Clock, Calendar, User, MapPin, FileText, Navigation } from 'lucide-react';
 import { getPassesByStudentName, getLocationById, getUserById } from '@/lib/firebase/firestore';
-import { Pass, Location, User as UserType } from '@/types';
+import { Pass, Location, User as UserType, Leg } from '@/types';
+
+interface LegWithDetails extends Leg {
+  originLocation?: Location;
+  destinationLocation?: Location;
+}
 
 interface PassWithDetails extends Pass {
   student?: UserType;
   currentDestination?: Location;
   durationMinutes?: number;
   teacherName?: string;
+  legsWithDetails?: LegWithDetails[];
 }
 
 export default function StudentDetailPage() {
@@ -30,37 +36,36 @@ export default function StudentDetailPage() {
       try {
         const studentPasses = await getPassesByStudentName(studentName);
         
-        // Enrich passes with additional details
         const enrichedPasses = await Promise.all(
           studentPasses.map(async (pass) => {
-            // Get student details
             const student = await getUserById(pass.studentId);
             
-            // Get current destination from last leg
             let currentDestination: Location | undefined;
             if (pass.legs.length > 0) {
               const lastLeg = pass.legs[pass.legs.length - 1];
-              if (lastLeg.state === 'IN') {
-                const location = await getLocationById(lastLeg.destinationLocationId);
-                currentDestination = location || undefined;
-              } else {
-                const location = await getLocationById(lastLeg.originLocationId);
-                currentDestination = location || undefined;
-              }
+              const location = await getLocationById(lastLeg.state === 'IN' ? lastLeg.destinationLocationId : lastLeg.originLocationId);
+              currentDestination = location || undefined;
             }
             
-            // Calculate duration
-            const durationMinutes = pass.durationMinutes || 0;
-            
-            // Get teacher name (for now, we'll use a placeholder since teacher info isn't stored in the pass)
-            const teacherName = 'Teacher'; // This would need to be derived from the pass creation context
-            
+            const legsWithDetails = await Promise.all(pass.legs.map(async (leg) => {
+              const [originLocation, destinationLocation] = await Promise.all([
+                  getLocationById(leg.originLocationId),
+                  getLocationById(leg.destinationLocationId)
+              ]);
+              return {
+                  ...leg,
+                  originLocation: originLocation || undefined,
+                  destinationLocation: destinationLocation || undefined,
+              };
+            }));
+
             return {
               ...pass,
               student: student || undefined,
               currentDestination,
-              durationMinutes,
-              teacherName,
+              durationMinutes: pass.durationMinutes || 0,
+              teacherName: 'Teacher', 
+              legsWithDetails,
             };
           })
         );
@@ -77,10 +82,10 @@ export default function StudentDetailPage() {
   }, [studentName]);
 
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
+    return new Date(date).toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -266,16 +271,25 @@ export default function StudentDetailPage() {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Pass Journey</label>
-                    <div className="mt-1 space-y-2">
-                      {selectedPass.legs.map((leg, index) => (
-                        <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                          <div className="flex items-center justify-between">
-                            <span>Leg {leg.legNumber}</span>
-                            <Badge variant="outline">{leg.state}</Badge>
+                    <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Navigation className="h-4 w-4" />
+                      Pass Journey
+                    </label>
+                    <div className="mt-2 space-y-3">
+                      {selectedPass.legsWithDetails?.map((legDetail, index) => (
+                        <div key={index} className="p-3 bg-muted/50 rounded-lg text-sm">
+                          <div className="flex items-center justify-between font-medium">
+                            <span className="flex items-center gap-2">
+                              {legDetail.state === 'OUT' ? 'Departed' : 'Arrived'}
+                            </span>
+                            <Badge variant="outline">{legDetail.state}</Badge>
                           </div>
-                          <div className="text-muted-foreground mt-1">
-                            {formatDate(leg.timestamp)}
+                          <div className="text-muted-foreground mt-2 space-y-1">
+                            <p><span className="font-semibold">From:</span> {legDetail.originLocation?.name || 'Unknown'}</p>
+                            <p><span className="font-semibold">To:</span> {legDetail.destinationLocation?.name || 'Unknown'}</p>
+                          </div>
+                          <div className="text-xs text-muted-foreground/80 mt-2 text-right">
+                            {new Date(legDetail.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
                       ))}

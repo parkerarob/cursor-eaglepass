@@ -75,22 +75,20 @@ export default function ReportsPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push('/teacher')}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Student Reports</h1>
-            <p className="text-muted-foreground">
-              Search for a student to view their complete pass history and details
-            </p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold">Student Reports</h1>
+          <p className="text-muted-foreground">
+            Search for a student to view their complete pass history and details
+          </p>
         </div>
+        <Button
+          variant="outline"
+          onClick={() => router.push('/teacher')}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Button>
       </div>
 
       {/* Search */}
