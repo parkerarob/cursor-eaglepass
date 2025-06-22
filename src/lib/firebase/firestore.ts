@@ -123,6 +123,13 @@ export const getStudentsByAssignedLocation = async (locationId: string): Promise
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
 };
 
+export const getAllStudents = async (): Promise<User[]> => {
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("role", "==", "student"));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+};
+
 export const createPass = async (pass: Pass): Promise<void> => {
     const passRef = doc(db, "passes", pass.id);
     const passData = convertDatesToTimestamps(pass);
@@ -178,6 +185,16 @@ export const getAllPasses = async (): Promise<Pass[]> => {
 export const getGroups = async (): Promise<Group[]> => {
   const groupsRef = collection(db, "groups");
   const querySnapshot = await getDocs(groupsRef);
+  return querySnapshot.docs.map(doc => {
+    const groupData = convertTimestamps(doc.data()) as Omit<Group, 'id'>;
+    return { id: doc.id, ...groupData };
+  });
+};
+
+export const getGroupsByOwner = async (ownerId: string): Promise<Group[]> => {
+  const groupsRef = collection(db, "groups");
+  const q = query(groupsRef, where("ownerId", "==", ownerId));
+  const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => {
     const groupData = convertTimestamps(doc.data()) as Omit<Group, 'id'>;
     return { id: doc.id, ...groupData };

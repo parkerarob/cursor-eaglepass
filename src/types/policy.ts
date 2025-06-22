@@ -6,6 +6,7 @@ export interface Group {
   id: string;
   name: string;
   groupType: GroupType;
+  ownerId: string; // ID of the teacher who owns the group
   assignedStudents: string[]; // Array of student IDs
   description?: string;
   createdAt: Date;

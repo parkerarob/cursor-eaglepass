@@ -306,10 +306,13 @@ export default function TeacherPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/teacher/groups">
+              <Button variant="outline">Manage Groups</Button>
+            </Link>
+            <ThemeToggle />
             <Link href="/teacher/settings">
               <Button variant="outline" size="sm">Settings</Button>
             </Link>
-            <ThemeToggle />
             <Button onClick={signOut} variant="outline" size="sm">
               Sign Out
             </Button>
