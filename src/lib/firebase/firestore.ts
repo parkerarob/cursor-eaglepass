@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { firebaseApp } from "./config";
 import { User, Location, Pass } from "@/types";
-import { Group, Restriction, AutonomyMatrix } from "@/types/policy";
+import { Group, Restriction, ClassroomPolicy, StudentPolicyOverride } from "@/types/policy";
 import { EventLog } from '@/lib/eventLogger';
 
 const db = getFirestore(firebaseApp);
@@ -183,12 +183,9 @@ export const getAllPasses = async (): Promise<Pass[]> => {
 // Policy-related functions
 
 export const getGroups = async (): Promise<Group[]> => {
-  const groupsRef = collection(db, "groups");
-  const querySnapshot = await getDocs(groupsRef);
-  return querySnapshot.docs.map(doc => {
-    const groupData = convertTimestamps(doc.data()) as Omit<Group, 'id'>;
-    return { id: doc.id, ...groupData };
-  });
+  const groupsCollection = collection(db, 'groups');
+  const querySnapshot = await getDocs(groupsCollection);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Group);
 };
 
 export const getGroupsByOwner = async (ownerId: string): Promise<Group[]> => {
@@ -280,41 +277,56 @@ export const deleteRestriction = async (restrictionId: string): Promise<void> =>
   await deleteDoc(restrictionRef);
 };
 
-export const getAutonomyMatrix = async (): Promise<AutonomyMatrix[]> => {
-  const autonomyRef = collection(db, "autonomyMatrix");
-  const querySnapshot = await getDocs(autonomyRef);
-  return querySnapshot.docs.map(doc => {
-    const autonomyData = convertTimestamps(doc.data()) as Omit<AutonomyMatrix, 'id'>;
-    return { id: doc.id, ...autonomyData };
-  });
+// New Classroom Policy Functions
+export const getClassroomPolicy = async (locationId: string): Promise<ClassroomPolicy | null> => {
+  const policyDocRef = doc(db, "classroomPolicies", locationId);
+  const policySnap = await getDoc(policyDocRef);
+  if (policySnap.exists()) {
+    const data = convertTimestamps(policySnap.data());
+    return data as unknown as ClassroomPolicy;
+  }
+  return null;
 };
 
-export const getAutonomyMatrixByLocationId = async (locationId: string): Promise<AutonomyMatrix[]> => {
-  const autonomyRef = collection(db, "autonomyMatrix");
-  const q = query(autonomyRef, where("locationId", "==", locationId));
+export const updateClassroomPolicy = async (locationId: string, updates: Partial<ClassroomPolicy>): Promise<void> => {
+  const policyDocRef = doc(db, "classroomPolicies", locationId);
+  await setDoc(policyDocRef, { ...updates, locationId, lastUpdatedAt: new Date() }, { merge: true });
+};
+
+// New Student Policy Override Functions
+export const getStudentPolicyOverrides = async (locationId: string): Promise<StudentPolicyOverride[]> => {
+  const overridesRef = collection(db, "studentPolicyOverrides");
+  const q = query(overridesRef, where("locationId", "==", locationId));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => {
-    const autonomyData = convertTimestamps(doc.data()) as Omit<AutonomyMatrix, 'id'>;
-    return { id: doc.id, ...autonomyData };
-  });
+  return querySnapshot.docs.map(doc => convertTimestamps(doc.data()) as unknown as StudentPolicyOverride);
 };
 
-export const createAutonomyMatrix = async (autonomy: Omit<AutonomyMatrix, 'id'>): Promise<string> => {
-  const autonomyRef = collection(db, "autonomyMatrix");
-  const autonomyData = convertDatesToTimestamps(autonomy);
-  const docRef = await addDoc(autonomyRef, autonomyData);
+export const getStudentPolicyOverridesForStudent = async (locationId: string, studentId: string): Promise<StudentPolicyOverride | null> => {
+  const overridesCollection = collection(db, 'studentPolicyOverrides');
+  const q = query(overridesCollection, where('locationId', '==', locationId), where('studentId', '==', studentId));
+  const querySnapshot = await getDocs(q);
+
+  if (!querySnapshot.empty) {
+    const doc = querySnapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as StudentPolicyOverride;
+  }
+  return null;
+};
+
+export const createStudentPolicyOverride = async (override: Omit<StudentPolicyOverride, 'id'>): Promise<string> => {
+  const docRef = await addDoc(collection(db, 'studentPolicyOverrides'), override);
   return docRef.id;
 };
 
-export const updateAutonomyMatrix = async (autonomyId: string, updates: Partial<AutonomyMatrix>): Promise<void> => {
-  const autonomyRef = doc(db, "autonomyMatrix", autonomyId);
-  const updateData = convertDatesToTimestamps(updates);
-  await updateDoc(autonomyRef, updateData as Partial<AutonomyMatrix>);
+export const updateStudentPolicyOverride = async (overrideId: string, updates: Partial<StudentPolicyOverride>): Promise<void> => {
+  const overrideRef = doc(db, "studentPolicyOverrides", overrideId);
+  const updateData = convertDatesToTimestamps({ ...updates, lastUpdatedAt: new Date() });
+  await updateDoc(overrideRef, updateData as Partial<StudentPolicyOverride>);
 };
 
-export const deleteAutonomyMatrix = async (autonomyId: string): Promise<void> => {
-  const autonomyRef = doc(db, "autonomyMatrix", autonomyId);
-  await deleteDoc(autonomyRef);
+export const deleteStudentPolicyOverride = async (overrideId: string): Promise<void> => {
+  const overrideRef = doc(db, "studentPolicyOverrides", overrideId);
+  await deleteDoc(overrideRef);
 };
 
 // Event Log functions
@@ -401,4 +413,10 @@ export const subscribeToEmergencyState = (callback: (state: { active: boolean; a
       callback(data as { active: boolean; activatedBy?: string; activatedAt?: Date });
     }
   });
+};
+
+export const getUsers = async (): Promise<User[]> => {
+  const usersCollection = collection(db, 'users');
+  const querySnapshot = await getDocs(usersCollection);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as User);
 }; 

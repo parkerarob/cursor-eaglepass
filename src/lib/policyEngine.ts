@@ -1,12 +1,15 @@
 import { 
   Group, 
   Restriction, 
-  AutonomyMatrix, 
   PolicyEvaluationResult, 
   PolicyContext, 
-  PolicyEngineConfig
+  PolicyEngineConfig,
 } from '@/types/policy';
 import { User } from '@/types';
+import { 
+  getClassroomPolicy, 
+  getStudentPolicyOverridesForStudent 
+} from './firebase/firestore';
 
 export class PolicyEngine {
   private config: PolicyEngineConfig;
@@ -14,7 +17,7 @@ export class PolicyEngine {
   constructor(config: PolicyEngineConfig = {
     enableGroupRules: true,
     enableRestrictions: true,
-    enableAutonomyMatrix: true,
+    enableClassroomPolicies: true,
     emergencyMode: false
   }) {
     this.config = config;
@@ -28,14 +31,12 @@ export class PolicyEngine {
     student: User,
     groups: Group[],
     restrictions: Restriction[],
-    autonomyMatrix: AutonomyMatrix[]
   ): Promise<PolicyEvaluationResult> {
     const result: PolicyEvaluationResult = {
       allowed: true,
       requiresApproval: false,
       restrictions: [],
       applicableGroups: [],
-      applicableAutonomyRules: []
     };
 
     // Emergency mode overrides all policies
@@ -69,20 +70,18 @@ export class PolicyEngine {
       result.applicableGroups = groupResult.applicableGroups;
     }
 
-    // Check autonomy matrix
-    if (this.config.enableAutonomyMatrix) {
-      const autonomyResult = this.evaluateAutonomyMatrix(context, student, autonomyMatrix);
+    // Check classroom policies
+    if (this.config.enableClassroomPolicies) {
+      const autonomyResult = await this.evaluateClassroomPolicies(context);
       if (!autonomyResult.allowed) {
         result.allowed = false;
         result.reason = autonomyResult.reason;
         result.requiresApproval = autonomyResult.requiresApproval;
         result.approvalRequiredBy = autonomyResult.approvalRequiredBy;
-        result.applicableAutonomyRules = autonomyResult.applicableAutonomyRules;
         return result;
       }
       result.requiresApproval = autonomyResult.requiresApproval;
       result.approvalRequiredBy = autonomyResult.approvalRequiredBy;
-      result.applicableAutonomyRules = autonomyResult.applicableAutonomyRules;
     }
 
     return result;
@@ -159,107 +158,59 @@ export class PolicyEngine {
   }
 
   /**
-   * Evaluate autonomy matrix rules
+   * Evaluate classroom and student-specific policies.
+   * This replaces the old Autonomy Matrix evaluation.
    */
-  private evaluateAutonomyMatrix(
+  private async evaluateClassroomPolicies(
     context: PolicyContext,
-    student: User,
-    autonomyMatrix: AutonomyMatrix[]
-  ): { 
+  ): Promise<{ 
     allowed: boolean; 
     reason?: string; 
     requiresApproval: boolean; 
     approvalRequiredBy?: string;
-    applicableAutonomyRules: AutonomyMatrix[];
-  } {
-    const applicableRules = autonomyMatrix.filter(rule => 
-      rule.locationId === context.locationId
-    );
+  }> {
+    const { studentId, origin, destination } = context;
 
-    if (applicableRules.length === 0) {
+    // Fetch policies for both origin and destination
+    const [
+      originPolicy, 
+      originOverrides,
+      destinationPolicy,
+      destinationOverrides
+    ] = await Promise.all([
+      getClassroomPolicy(origin),
+      getStudentPolicyOverridesForStudent(origin, studentId),
+      getClassroomPolicy(destination),
+      getStudentPolicyOverridesForStudent(destination, studentId)
+    ]);
+
+    // Rule 1: Evaluate leaving the origin
+    const leaveRule = originOverrides?.rules.studentLeave || originPolicy?.rules.studentLeave || 'Allow';
+    
+    // Rule 2: Evaluate arriving at the destination
+    const arriveRule = destinationOverrides?.rules.studentArrive || destinationPolicy?.rules.studentArrive || 'Allow';
+
+    // Combine results - the most restrictive rule wins
+    if (leaveRule === 'Disallow' || arriveRule === 'Disallow') {
       return {
-        allowed: true,
+        allowed: false,
         requiresApproval: false,
-        applicableAutonomyRules: []
+        reason: leaveRule === 'Disallow' 
+          ? `Leaving ${origin} is not allowed by classroom policy.`
+          : `Arriving at ${destination} is not allowed by classroom policy.`
       };
     }
 
-    // Check for group-specific rules first
-    const groupSpecificRules = applicableRules.filter(rule => rule.groupId);
-    if (groupSpecificRules.length > 0) {
-      // TODO: Check if student is in the specified group
-      // For now, we'll use the most restrictive rule
-      const mostRestrictiveRule = this.getMostRestrictiveRule(groupSpecificRules);
-      return this.evaluateAutonomyRule(mostRestrictiveRule, applicableRules);
+    if (leaveRule === 'Require Approval' || arriveRule === 'Require Approval') {
+      return {
+        allowed: false,
+        requiresApproval: true,
+        reason: `Approval is required by classroom policy.`,
+        approvalRequiredBy: leaveRule === 'Require Approval' ? originPolicy?.ownerId : destinationPolicy?.ownerId
+      };
     }
 
-    // Use general location rules
-    const generalRules = applicableRules.filter(rule => !rule.groupId);
-    if (generalRules.length > 0) {
-      const mostRestrictiveRule = this.getMostRestrictiveRule(generalRules);
-      return this.evaluateAutonomyRule(mostRestrictiveRule, applicableRules);
-    }
-
-    return {
-      allowed: true,
-      requiresApproval: false,
-      applicableAutonomyRules: applicableRules
-    };
-  }
-
-  /**
-   * Get the most restrictive autonomy rule
-   */
-  private getMostRestrictiveRule(rules: AutonomyMatrix[]): AutonomyMatrix {
-    // Order: Disallow > Require Approval > Allow
-    const disallowRule = rules.find(rule => rule.autonomyType === 'Disallow');
-    if (disallowRule) return disallowRule;
-
-    const requireApprovalRule = rules.find(rule => rule.autonomyType === 'Require Approval');
-    if (requireApprovalRule) return requireApprovalRule;
-
-    return rules[0]; // Default to first rule (should be Allow)
-  }
-
-  /**
-   * Evaluate a single autonomy rule
-   */
-  private evaluateAutonomyRule(
-    rule: AutonomyMatrix,
-    allRules: AutonomyMatrix[]
-  ): { 
-    allowed: boolean; 
-    reason?: string; 
-    requiresApproval: boolean; 
-    approvalRequiredBy?: string;
-    applicableAutonomyRules: AutonomyMatrix[];
-  } {
-    switch (rule.autonomyType) {
-      case 'Disallow':
-        return {
-          allowed: false,
-          reason: `Action not allowed at this location: ${rule.description || 'No reason provided'}`,
-          requiresApproval: false,
-          applicableAutonomyRules: allRules
-        };
-
-      case 'Require Approval':
-        return {
-          allowed: false,
-          reason: `Approval required for this action: ${rule.description || 'No reason provided'}`,
-          requiresApproval: true,
-          approvalRequiredBy: rule.locationId, // TODO: Get responsible party ID
-          applicableAutonomyRules: allRules
-        };
-
-      case 'Allow':
-      default:
-        return {
-          allowed: true,
-          requiresApproval: false,
-          applicableAutonomyRules: allRules
-        };
-    }
+    return { allowed: true, requiresApproval: false };
   }
 
   /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRole } from '@/components/RoleProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,13 +9,15 @@ import { updateUser } from '@/lib/firebase/firestore';
 import { User } from '@/types';
 import Link from 'next/link';
 import {
-  getAutonomyMatrixByLocationId,
-  createAutonomyMatrix,
-  updateAutonomyMatrix,
-  deleteAutonomyMatrix,
-  getGroups,
+  getClassroomPolicy,
+  updateClassroomPolicy,
+  getStudentPolicyOverrides,
+  getUsers,
+  createStudentPolicyOverride,
+  updateStudentPolicyOverride,
+  deleteStudentPolicyOverride,
 } from '@/lib/firebase/firestore';
-import { AutonomyMatrix, Group } from '@/types/policy';
+import { ClassroomPolicy, StudentPolicyOverride, AutonomyType } from '@/types/policy';
 import {
   Dialog,
   DialogContent,
@@ -41,15 +43,16 @@ export default function TeacherSettingsPage() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
-  // State for Autonomy Rules
-  const [autonomyRules, setAutonomyRules] = useState<AutonomyMatrix[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [isLoadingRules, setIsLoadingRules] = useState(true);
+  // State for Classroom Policy
+  const [policy, setPolicy] = useState<ClassroomPolicy | null>(null);
+  const [overrides, setOverrides] = useState<StudentPolicyOverride[]>([]);
+  const [isLoadingPolicy, setIsLoadingPolicy] = useState(true);
+  const [isSavingPolicy, setIsSavingPolicy] = useState(false);
+  const [allStudents, setAllStudents] = useState<User[]>([]);
 
-  // State for the Rule-Editing Dialog
-  const [isRuleDialogOpen, setIsRuleDialogOpen] = useState(false);
-  const [currentRule, setCurrentRule] = useState<Partial<AutonomyMatrix> | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  // State for override dialog
+  const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
+  const [editingOverride, setEditingOverride] = useState<StudentPolicyOverride | null>(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -59,32 +62,33 @@ export default function TeacherSettingsPage() {
     }
   }, [currentUser]);
 
-  const fetchRules = useCallback(async () => {
-    if (!currentUser?.assignedLocationId) return;
-    setIsLoadingRules(true);
-    try {
-      const rules = await getAutonomyMatrixByLocationId(currentUser.assignedLocationId!);
-      setAutonomyRules(rules);
-    } catch (err) {
-      setError('Failed to fetch autonomy rules.');
-      console.error(err);
-    } finally {
-      setIsLoadingRules(false);
-    }
-  }, [currentUser?.assignedLocationId]);
-
+  // Fetch Classroom Policy, Overrides, and Students
   useEffect(() => {
-    const fetchGroups = async () => {
+    if (!currentUser?.assignedLocationId) return;
+
+    const fetchPolicyData = async () => {
+      setIsLoadingPolicy(true);
       try {
-        const groupData = await getGroups();
-        setGroups(groupData);
+        const [classroomPolicy, studentOverrides, students] = await Promise.all([
+          getClassroomPolicy(currentUser.assignedLocationId!),
+          getStudentPolicyOverrides(currentUser.assignedLocationId!),
+          getUsers(),
+        ]);
+        
+        setPolicy(classroomPolicy);
+        setOverrides(studentOverrides);
+        setAllStudents(students.filter(u => u.role === 'student'));
+
       } catch (err) {
-        console.error('Failed to fetch groups:', err);
+        setError('Failed to fetch policy data.');
+        console.error(err);
+      } finally {
+        setIsLoadingPolicy(false);
       }
     };
-    fetchRules();
-    fetchGroups();
-  }, [currentUser?.assignedLocationId, fetchRules]);
+
+    fetchPolicyData();
+  }, [currentUser?.assignedLocationId]);
 
   const handleProfileUpdate = async () => {
     if (!currentUser) return;
@@ -111,43 +115,77 @@ export default function TeacherSettingsPage() {
     }
   };
 
-  const handleSaveRule = async () => {
-    if (!currentUser?.assignedLocationId || !currentRule) return;
+  const handlePolicyChange = async (rule: keyof ClassroomPolicy['rules'], value: AutonomyType) => {
+    if (!currentUser?.assignedLocationId) return;
+    setIsSavingPolicy(true);
+    
+    const newRules = {
+      ...policy?.rules,
+      [rule]: value,
+    };
+
+    // Ensure all rules are defined before saving
+    const fullPolicy: ClassroomPolicy['rules'] = {
+      studentLeave: newRules.studentLeave || 'Allow',
+      studentArrive: newRules.studentArrive || 'Allow',
+      teacherRequest: newRules.teacherRequest || 'Allow',
+    };
 
     try {
-      if (isEditing) {
-        // Update existing rule
-        await updateAutonomyMatrix(currentRule.id!, {
-          ...currentRule,
-          lastUpdatedAt: new Date(),
-        });
-      } else {
-        // Create new rule
-        const newRule: Omit<AutonomyMatrix, 'id'> = {
-          locationId: currentUser.assignedLocationId,
-          autonomyType: currentRule.autonomyType!,
-          groupId: currentRule.groupId,
-          description: currentRule.description,
-          createdAt: new Date(),
-          lastUpdatedAt: new Date(),
-        };
-        await createAutonomyMatrix(newRule);
-      }
-      await fetchRules(); // Re-fetch rules to update the list
-      setIsRuleDialogOpen(false); // Close the dialog
+      await updateClassroomPolicy(currentUser.assignedLocationId, { 
+        ownerId: currentUser.id,
+        rules: fullPolicy
+      });
+      // Optimistically update local state
+      setPolicy(prev => ({
+        ...prev!,
+        id: currentUser.assignedLocationId!,
+        locationId: currentUser.assignedLocationId!,
+        ownerId: currentUser.id,
+        rules: fullPolicy,
+      }));
     } catch (err) {
-      setError('Failed to save rule.');
+      setError('Failed to update policy.');
+      console.error(err);
+    } finally {
+      setIsSavingPolicy(false);
+    }
+  };
+
+  const handleSaveOverride = async (overrideData: Omit<StudentPolicyOverride, 'id' | 'locationId' | 'ownerId'>) => {
+    if (!currentUser?.assignedLocationId) return;
+
+    const dataToSave = {
+      ...overrideData,
+      locationId: currentUser.assignedLocationId,
+      ownerId: currentUser.id,
+    };
+
+    try {
+      if (editingOverride) {
+        // Update existing override
+        await updateStudentPolicyOverride(editingOverride.id, dataToSave);
+        setOverrides(overrides.map(o => o.id === editingOverride.id ? { ...o, ...dataToSave } : o));
+      } else {
+        // Create new override
+        const newId = await createStudentPolicyOverride(dataToSave);
+        setOverrides([...overrides, { ...dataToSave, id: newId }]);
+      }
+      setIsOverrideDialogOpen(false);
+      setEditingOverride(null);
+    } catch (err) {
+      setError('Failed to save override.');
       console.error(err);
     }
   };
 
-  const handleDeleteRule = async (ruleId: string) => {
-    if (!window.confirm('Are you sure you want to delete this rule?')) return;
+  const handleDeleteOverride = async (overrideId: string) => {
     try {
-      await deleteAutonomyMatrix(ruleId);
-      await fetchRules(); // Re-fetch rules
+      await deleteStudentPolicyOverride(overrideId);
+      setOverrides(overrides.filter(o => o.id !== overrideId));
+      setIsOverrideDialogOpen(false);
     } catch (err) {
-      setError('Failed to delete rule.');
+      setError('Failed to delete override.');
       console.error(err);
     }
   };
@@ -208,106 +246,211 @@ export default function TeacherSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Autonomy Rules Card */}
+      {/* Classroom Policy Card */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Classroom Autonomy Rules</CardTitle>
+          <CardTitle>Classroom Policy</CardTitle>
+          <p className="text-sm text-muted-foreground">Set the default pass rules for your classroom.</p>
         </CardHeader>
         <CardContent>
-          {isLoadingRules ? (
-            <p>Loading rules...</p>
+          {isLoadingPolicy ? (
+            <p>Loading policy...</p>
           ) : (
             <div className="space-y-4">
-              {autonomyRules.map((rule) => (
-                <div key={rule.id} className="flex items-center justify-between p-2 border rounded-lg">
-                  <div>
-                    <p className="font-semibold">{rule.autonomyType}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {groups.find(g => g.id === rule.groupId)?.name || 'All Students'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{rule.description || 'No description'}</p>
-                  </div>
-                  <div className="space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => {
-                      setIsEditing(true);
-                      setCurrentRule(rule);
-                      setIsRuleDialogOpen(true);
-                    }}>Edit</Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDeleteRule(rule.id)}>Delete</Button>
-                  </div>
-                </div>
-              ))}
-              <Button onClick={() => {
-                setIsEditing(false);
-                setCurrentRule({});
-                setIsRuleDialogOpen(true);
-              }}>Add New Rule</Button>
+              <PolicyRow 
+                label="Students who want to leave my classroom..."
+                value={policy?.rules?.studentLeave || 'Allow'}
+                onValueChange={(value) => handlePolicyChange('studentLeave', value)}
+              />
+              <PolicyRow 
+                label="Students who want to come to my classroom..."
+                value={policy?.rules?.studentArrive || 'Allow'}
+                onValueChange={(value) => handlePolicyChange('studentArrive', value)}
+              />
+              <PolicyRow 
+                label="Teachers who request a student from my classroom..."
+                value={policy?.rules?.teacherRequest || 'Allow'}
+                onValueChange={(value) => handlePolicyChange('teacherRequest', value)}
+              />
+            </div>
+          )}
+          {isSavingPolicy && <p className="text-sm text-muted-foreground mt-2">Saving...</p>}
+        </CardContent>
+      </Card>
+
+      {/* Student Overrides Card */}
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Student-Specific Overrides</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">Override the default classroom policy for specific students.</p>
+            </div>
+            <Button onClick={() => { setEditingOverride(null); setIsOverrideDialogOpen(true); }}>Add Override</Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingPolicy ? (
+            <p>Loading overrides...</p>
+          ) : (
+            <div className="space-y-2">
+              {overrides.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No overrides created yet.</p>
+              ) : (
+                overrides.map(override => {
+                  const student = allStudents.find(s => s.id === override.studentId);
+                  const ruleEntries = Object.entries(override.rules) as [keyof StudentPolicyOverride['rules'], AutonomyType][];
+                  return (
+                    <div key={override.id} className="flex items-center justify-between p-2 rounded-md border">
+                      <div>
+                        <p className="font-semibold">{student?.name || 'Unknown Student'}</p>
+                        {ruleEntries.map(([rule, value]) => (
+                           <p key={rule} className="text-sm text-muted-foreground">
+                             {rule.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}: <span className="font-medium text-primary">{value}</span>
+                           </p>
+                        ))}
+                      </div>
+                      <div className="space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => { setEditingOverride(override); setIsOverrideDialogOpen(true); }}>Edit</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteOverride(override.id)}>Delete</Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Rule-Editing Dialog */}
-      <Dialog open={isRuleDialogOpen} onOpenChange={setIsRuleDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{isEditing ? 'Edit Rule' : 'Add New Rule'}</DialogTitle>
-            <DialogDescription>
-              Set the autonomy rule for students in your classroom.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="autonomyType">Rule Type</Label>
-              <Select
-                value={currentRule?.autonomyType}
-                onValueChange={(value: 'Allow' | 'Disallow' | 'Require Approval') => setCurrentRule({ ...currentRule, autonomyType: value })}
-              >
-                <SelectTrigger id="autonomyType">
-                  <SelectValue placeholder="Select a rule type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Allow">Allow</SelectItem>
-                  <SelectItem value="Disallow">Disallow</SelectItem>
-                  <SelectItem value="Require Approval">Require Approval</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="groupId">Student Group</Label>
-              <Select
-                value={currentRule?.groupId || 'all'}
-                onValueChange={(value) => setCurrentRule({ ...currentRule, groupId: value === 'all' ? undefined : value })}
-              >
-                <SelectTrigger id="groupId">
-                  <SelectValue placeholder="Select a group (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Students</SelectItem>
-                  {groups.map((group) => (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.name} ({group.groupType})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={currentRule?.description || ''}
-                onChange={(e) => setCurrentRule({ ...currentRule, description: e.target.value })}
-                placeholder="e.g., 'Allowed during lunch'"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRuleDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveRule}>Save Rule</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      
+      {isOverrideDialogOpen && (
+        <OverrideDialog
+          isOpen={isOverrideDialogOpen}
+          onClose={() => setIsOverrideDialogOpen(false)}
+          onSave={handleSaveOverride}
+          onDelete={handleDeleteOverride}
+          existingOverride={editingOverride}
+          students={allStudents}
+          classroomPolicy={policy}
+        />
+      )}
     </div>
   );
-} 
+}
+
+// Helper component for a policy row
+function PolicyRow({ label, value, onValueChange }: { label: string, value: AutonomyType, onValueChange: (value: AutonomyType) => void }) {
+  return (
+    <div className="flex items-center justify-between">
+      <Label className="text-muted-foreground">{label}</Label>
+      <div className="w-[200px]">
+        <Select value={value} onValueChange={onValueChange}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Allow">Allowed</SelectItem>
+            <SelectItem value="Require Approval">Manual Approval</SelectItem>
+            <SelectItem value="Disallow">Not Allowed</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+function OverrideDialog({ isOpen, onClose, onSave, onDelete, existingOverride, students, classroomPolicy }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: Omit<StudentPolicyOverride, 'id'|'locationId'|'ownerId'>) => void;
+  onDelete: (id: string) => void;
+  existingOverride: StudentPolicyOverride | null;
+  students: User[];
+  classroomPolicy: ClassroomPolicy | null;
+}) {
+  const [studentId, setStudentId] = useState(existingOverride?.studentId || '');
+  const [leaveRule, setLeaveRule] = useState<AutonomyType | 'default'>(existingOverride?.rules.studentLeave ? existingOverride.rules.studentLeave : 'default');
+  const [arriveRule, setArriveRule] = useState<AutonomyType | 'default'>(existingOverride?.rules.studentArrive ? existingOverride.rules.studentArrive : 'default');
+
+  const handleSave = () => {
+    const rules: Partial<StudentPolicyOverride['rules']> = {};
+    if (leaveRule !== 'default') rules.studentLeave = leaveRule;
+    if (arriveRule !== 'default') rules.studentArrive = arriveRule;
+    
+    if (studentId && Object.keys(rules).length > 0) {
+      onSave({ 
+        studentId, 
+        rules,
+        lastUpdatedAt: new Date()
+      });
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{existingOverride ? 'Edit' : 'Add'} Student Override</DialogTitle>
+          <DialogDescription>
+            Select a student and specify rules that differ from the classroom default.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="student" className="text-right">Student</Label>
+            <Select onValueChange={setStudentId} defaultValue={studentId} disabled={!!existingOverride}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select a student" />
+              </SelectTrigger>
+              <SelectContent id="student">
+                {students.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <OverrideRuleRow
+            label="Leaving the room"
+            value={leaveRule}
+            onValueChange={setLeaveRule}
+            defaultValue={classroomPolicy?.rules.studentLeave}
+          />
+          <OverrideRuleRow
+            label="Arriving to the room"
+            value={arriveRule}
+            onValueChange={setArriveRule}
+            defaultValue={classroomPolicy?.rules.studentArrive}
+          />
+        </div>
+        <DialogFooter>
+          {existingOverride && (
+            <Button variant="destructive" onClick={() => onDelete(existingOverride.id)}>Delete</Button>
+          )}
+          <Button onClick={handleSave}>Save changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function OverrideRuleRow({ label, value, onValueChange, defaultValue }: {
+  label: string;
+  value: AutonomyType | 'default';
+  onValueChange: (value: AutonomyType | 'default') => void;
+  defaultValue?: AutonomyType;
+}) {
+  return (
+    <div className="grid grid-cols-4 items-center gap-4">
+      <Label className="text-right">{label}</Label>
+      <Select onValueChange={onValueChange} value={value}>
+        <SelectTrigger className="col-span-3">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="default">Default ({defaultValue || 'Allow'})</SelectItem>
+          <SelectItem value="Allow">Allowed</SelectItem>
+          <SelectItem value="Require Approval">Manual Approval</SelectItem>
+          <SelectItem value="Disallow">Not Allowed</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}

@@ -562,7 +562,7 @@ class DataIngestionService {
             groupId: matrixData.groupId,
             description: matrixData.description,
             createdAt: new Date(),
-            lastUpdatedAt: new Date()
+            updatedAt: new Date()
           };
 
           batch.set(matrixDoc, matrix);

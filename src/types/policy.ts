@@ -1,6 +1,28 @@
 export type GroupType = 'Positive' | 'Negative';
 export type RestrictionType = 'Global' | 'Class-Level';
-export type AutonomyType = 'Allow' | 'Disallow' | 'Require Approval';
+export type AutonomyType = 'Allow' | 'Require Approval' | 'Disallow';
+
+export interface ClassroomPolicyRule {
+  studentLeave: AutonomyType;
+  studentArrive: AutonomyType;
+  teacherRequest: AutonomyType;
+}
+
+export interface ClassroomPolicy {
+  id: string; // Firestore document ID, same as the locationId
+  locationId: string;
+  ownerId: string; // Teacher's user ID
+  rules: ClassroomPolicyRule;
+  lastUpdatedAt: Date;
+}
+
+export interface StudentPolicyOverride {
+  id: string; // Firestore document ID
+  locationId: string;
+  studentId: string;
+  rules: Partial<ClassroomPolicyRule>; // Can override one or all rules
+  lastUpdatedAt: Date;
+}
 
 export interface Group {
   id: string;
@@ -25,37 +47,39 @@ export interface Restriction {
   expiresAt?: Date; // Optional expiration date
 }
 
-export interface AutonomyMatrix {
-  id: string;
-  locationId: string;
-  autonomyType: AutonomyType;
-  groupId?: string; // Optional: specific group this applies to
-  description?: string;
-  createdAt: Date;
-  lastUpdatedAt: Date;
-}
-
 export interface PolicyEvaluationResult {
   allowed: boolean;
-  reason?: string;
   requiresApproval: boolean;
-  approvalRequiredBy?: string; // ID of user who needs to approve
+  reason?: string;
   restrictions: Restriction[];
   applicableGroups: Group[];
-  applicableAutonomyRules: AutonomyMatrix[];
+  approvalRequiredBy?: string; // Teacher/Admin ID
 }
 
 export interface PolicyContext {
   studentId: string;
-  locationId: string;
-  action: 'create_pass' | 'close_pass' | 'arrive' | 'return';
-  destinationLocationId?: string;
-  timestamp: Date;
+  locationId: string; // Deprecating in favor of origin/destination
+  origin: string;
+  destination: string;
+  passType: 'Gated' | 'Immediate';
 }
 
 export interface PolicyEngineConfig {
   enableGroupRules: boolean;
   enableRestrictions: boolean;
-  enableAutonomyMatrix: boolean;
+  enableClassroomPolicies: boolean; // Replaces enableAutonomyMatrix
   emergencyMode: boolean;
+}
+
+// This is the old model and is now deprecated.
+// It's being replaced by ClassroomPolicy and StudentPolicyOverride
+// @deprecated Use ClassroomPolicy and StudentPolicyOverride instead
+export interface AutonomyMatrix {
+  id: string;
+  locationId: string;
+  groupId?: string;
+  autonomyType: AutonomyType;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
 } 

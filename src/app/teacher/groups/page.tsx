@@ -9,7 +9,7 @@ import {
   getAllStudents,
   createGroup,
   updateGroup,
-  deleteGroup
+  deleteGroup,
 } from '@/lib/firebase/firestore';
 import { Group } from '@/types/policy';
 import Link from 'next/link';
@@ -64,16 +64,19 @@ export default function TeacherGroupsPage() {
 
   useEffect(() => {
     if (!currentUser) return;
-    const fetchAllStudents = async () => {
+    
+    const fetchData = async () => {
       try {
-        const students = await getAllStudents(); 
+        const students = await getAllStudents();
         setAllStudents(students);
       } catch (err) {
-        console.error("Failed to fetch students:", err);
+        console.error("Failed to fetch initial data:", err);
+        setError("Failed to load required data for the page.");
       }
     };
+
     fetchGroups();
-    fetchAllStudents();
+    fetchData();
   }, [currentUser, fetchGroups]);
 
   const handleSaveGroup = async () => {
