@@ -17,7 +17,11 @@ googleProvider.setCustomParameters({
 
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
 
-export const signOut = () => firebaseSignOut(auth);
+export const signOut = async () => {
+  await firebaseSignOut(auth);
+  // Redirect to homepage after sign out to ensure clean state
+  window.location.href = '/';
+};
 
 export { onAuthStateChanged };
 export type { FirebaseUser }; 
