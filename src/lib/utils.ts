@@ -215,14 +215,44 @@ export function testSplitFullName(): void {
 }
 
 /**
- * Generate a UUID with fallback for environments that don't support crypto.randomUUID()
+ * Generate a cryptographically secure UUID
+ * SECURITY: This is critical for school safety system - IDs must be unpredictable
  */
 export function generateUUID(): string {
+  // Use native crypto.randomUUID if available (Node 19+, modern browsers)
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
   
-  // Fallback implementation using Math.random()
+  // Use crypto.getRandomValues for secure random bytes if available
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    
+    // Set version (4) and variant bits according to RFC 4122
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant 10
+    
+    // Convert to hex string with dashes
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return [
+      hex.slice(0, 8),
+      hex.slice(8, 12), 
+      hex.slice(12, 16),
+      hex.slice(16, 20),
+      hex.slice(20, 32)
+    ].join('-');
+  }
+  
+  // SECURITY WARNING: Fallback to Math.random (NOT SECURE)
+  console.error('SECURITY WARNING: Using insecure UUID generation! This should never happen in production.');
+  console.error('Please ensure the application is running in a secure environment with crypto.randomUUID support.');
+  
+  // Log this security event for monitoring
+  if (typeof window !== 'undefined') {
+    console.error('Client environment does not support crypto.randomUUID');
+  }
+  
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);

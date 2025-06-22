@@ -10,6 +10,7 @@ describe('NotificationService', () => {
     lastUpdatedAt: new Date(),
     legs: [
       {
+        id: 'leg-1',
         legNumber: 1,
         originLocationId: 'classroom-1',
         destinationLocationId: 'bathroom-1',
@@ -138,7 +139,17 @@ describe('NotificationService', () => {
       const pass: Pass = {
         ...mockPass,
         createdAt: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
-        notificationLevel: 'teacher'
+        notificationLevel: 'teacher',
+        legs: [
+          {
+            legNumber: 1,
+            originLocationId: 'classroom-1',
+            destinationLocationId: 'bathroom-1',
+            state: 'OUT', // Student is OUT, so escalation logic applies
+            timestamp: new Date(),
+            id: 'leg-1'
+          }
+        ]
       };
 
       const status = NotificationService.getNotificationStatus(pass);
@@ -152,7 +163,17 @@ describe('NotificationService', () => {
       const pass: Pass = {
         ...mockPass,
         createdAt: new Date(Date.now() - 25 * 60 * 1000), // 25 minutes ago
-        notificationLevel: 'admin'
+        notificationLevel: 'admin',
+        legs: [
+          {
+            id: 'leg-1',
+            legNumber: 1,
+            originLocationId: 'classroom-1',
+            destinationLocationId: 'bathroom-1',
+            state: 'OUT', // Student is OUT, so escalation logic applies
+            timestamp: new Date()
+          }
+        ]
       };
 
       const status = NotificationService.getNotificationStatus(pass);

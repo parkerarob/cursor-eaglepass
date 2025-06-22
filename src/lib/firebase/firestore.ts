@@ -12,6 +12,7 @@ import {
   addDoc,
   deleteDoc,
   onSnapshot,
+  writeBatch,
 } from "firebase/firestore";
 import { firebaseApp } from "./config";
 import { User, Location, Pass } from "@/types";
@@ -641,4 +642,53 @@ export const getUsers = async (): Promise<User[]> => {
   const usersCollection = collection(db, 'users');
   const querySnapshot = await getDocs(usersCollection);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as User);
+};
+
+// SECURITY: Emergency function to close all open passes
+export const emergencyCloseAllPasses = async (initiatorId: string): Promise<{ closedCount: number }> => {
+  const openPassesQuery = query(
+    collection(db, 'passes'),
+    where('status', '==', 'OPEN')
+  );
+  
+  const snapshot = await getDocs(openPassesQuery);
+  const closedCount = snapshot.size;
+  
+  if (closedCount === 0) {
+    return { closedCount: 0 };
+  }
+  
+  // Use batch operations for atomic updates
+  const batches: ReturnType<typeof writeBatch>[] = [];
+  let currentBatch = writeBatch(db);
+  let operationCount = 0;
+  const maxBatchSize = 500; // Firestore batch limit
+  
+  for (const docSnap of snapshot.docs) {
+    currentBatch.update(docSnap.ref, {
+      status: 'CLOSED',
+      closedBy: initiatorId,
+      closedAt: new Date(),
+      closureReason: 'EMERGENCY_CLOSURE'
+    });
+    
+    operationCount++;
+    
+    // Start new batch if we hit the limit
+    if (operationCount >= maxBatchSize) {
+      batches.push(currentBatch);
+      currentBatch = writeBatch(db);
+      operationCount = 0;
+    }
+  }
+  
+  // Add the final batch if it has operations
+  if (operationCount > 0) {
+    batches.push(currentBatch);
+  }
+  
+  // Execute all batches
+  await Promise.all(batches.map(batch => batch.commit()));
+  
+  return { closedCount };
 }; 

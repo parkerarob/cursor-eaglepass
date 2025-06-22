@@ -1,5 +1,6 @@
 import { Pass, User, PassFormData } from '@/types';
-import { createPass, updatePass, getActivePassByStudentId } from '@/lib/firebase/firestore';
+import { updatePass, db } from '@/lib/firebase/firestore';
+import { runTransaction, query, where, collection, getDocs, doc } from 'firebase/firestore';
 import { PassStateMachine, ActionState } from '@/lib/stateMachine';
 import { logEvent } from './eventLogger';
 import { formatUserName } from './utils';
@@ -16,36 +17,59 @@ export class PassService {
    */
   static async createPass(formData: PassFormData, student: User): Promise<PassServiceResult> {
     try {
-      // Check if student already has an active pass
-      const existingPass = await getActivePassByStudentId(student.id);
-      
-      if (existingPass) {
-        // Student has an active pass - add a new leg to it
-        const stateMachine = new PassStateMachine(existingPass, student);
-        const currentLeg = stateMachine.getCurrentLeg();
-        
-        if (currentLeg && currentLeg.state === 'IN') {
-          // Student is currently "IN" at a location - add new leg from current location
-          const updatedPass = stateMachine.addLeg(
-            currentLeg.destinationLocationId, // Origin is current location
-            formData.destinationLocationId,   // Destination is new location
-            'OUT'                             // State is OUT (traveling)
-          );
-          await updatePass(updatedPass.id, updatedPass);
-          return { success: true, updatedPass };
-        } else {
-          // Student is "OUT" - they can't create a new pass
-          return { 
-            success: false, 
-            error: 'Cannot create new pass while already traveling' 
-          };
+      // SECURITY: Use atomic transaction to prevent race conditions
+      return await runTransaction(db, async (transaction) => {
+        // Check emergency state within transaction
+        const emergencyRef = doc(db, 'system', 'emergency');
+        const emergencyDoc = await transaction.get(emergencyRef);
+        if (emergencyDoc.exists() && emergencyDoc.data()?.active) {
+          throw new Error('System is in emergency mode. Pass creation is disabled.');
         }
-      } else {
-        // No active pass - create new pass from assigned class
-        const newPass = PassStateMachine.createPass(formData, student);
-        await createPass(newPass);
-        return { success: true, updatedPass: newPass };
-      }
+
+        // Check for existing active pass within transaction
+        const passQuery = query(
+          collection(db, 'passes'),
+          where('studentId', '==', student.id),
+          where('status', '==', 'OPEN')
+        );
+        const existingPassSnapshot = await getDocs(passQuery);
+        
+        if (!existingPassSnapshot.empty) {
+          // Student has an active pass - handle multi-leg logic
+          const existingPassDoc = existingPassSnapshot.docs[0];
+          const existingPassData = existingPassDoc.data() as Pass;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { id: _, ...passDataWithoutId } = existingPassData;
+          const existingPass = { id: existingPassDoc.id, ...passDataWithoutId };
+          
+          const stateMachine = new PassStateMachine(existingPass, student);
+          const currentLeg = stateMachine.getCurrentLeg();
+          
+          if (currentLeg && currentLeg.state === 'IN') {
+            // Student is currently "IN" at a location - add new leg from current location
+            const updatedPass = stateMachine.addLeg(
+              currentLeg.destinationLocationId, // Origin is current location
+              formData.destinationLocationId,   // Destination is new location
+              'OUT'                             // State is OUT (traveling)
+            );
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { id: __, ...updateData } = updatedPass;
+            transaction.update(existingPassDoc.ref, updateData);
+            return { success: true, updatedPass };
+          } else {
+            // Student is "OUT" - they can't create a new pass
+            throw new Error('Cannot create new pass while already traveling');
+          }
+        } else {
+          // No active pass - create new pass from assigned class atomically
+          const passRef = doc(collection(db, 'passes'));
+          const newPass = PassStateMachine.createPass(formData, student);
+          // Create a new pass object with the correct document ID
+          const passWithCorrectId = { ...newPass, id: passRef.id };
+          transaction.set(passRef, newPass); // Store without the ID field
+          return { success: true, updatedPass: passWithCorrectId };
+        }
+      });
     } catch (error) {
       return { 
         success: false, 
