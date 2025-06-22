@@ -15,6 +15,7 @@ import {
   getAllLocations,
   getStudentsByAssignedLocation,
   getClassroomPolicy,
+  getPassCountsByStudent,
 } from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
 import { ClassroomPolicy } from '@/types/policy';
@@ -23,6 +24,7 @@ import { NotificationService } from '@/lib/notificationService';
 import { PassService } from '@/lib/passService';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { FrequentFlyersCard } from '@/components/FrequentFlyersCard';
 
 interface PassWithDetails extends Pass {
   student?: User;
@@ -52,6 +54,8 @@ export default function TeacherPage() {
   const [isClosingPass, setIsClosingPass] = useState<string | null>(null);
   const [policy, setPolicy] = useState<ClassroomPolicy | null>(null);
   const [isLoadingPolicy, setIsLoadingPolicy] = useState(false);
+  const [frequentFlyers, setFrequentFlyers] = useState<{ student: User, passCount: number }[]>([]);
+  const [loadingFlyers, setLoadingFlyers] = useState(true);
 
   // Auto-refresh
   const autoRefresh = true;
@@ -212,6 +216,22 @@ export default function TeacherPage() {
       .finally(() => setIsLoadingPolicy(false));
   }, [currentUser?.assignedLocationId]);
 
+  useEffect(() => {
+    if (currentUser) {
+      const fetchFlyers = async () => {
+        try {
+          const flyers = await getPassCountsByStudent(currentUser.id);
+          setFrequentFlyers(flyers.slice(0, 5));
+        } catch (error) {
+          console.error("Failed to fetch frequent flyers:", error);
+        } finally {
+          setLoadingFlyers(false);
+        }
+      };
+      fetchFlyers();
+    }
+  }, [currentUser]);
+
   const handleClosePass = async (pass: PassWithDetails) => {
     if (!currentUser) return;
     
@@ -345,6 +365,16 @@ export default function TeacherPage() {
         </header>
 
         <GlobalEmergencyBanner />
+
+        {loadingFlyers ? (
+          <Card><CardHeader><CardTitle>Loading Frequent Flyers...</CardTitle></CardHeader></Card>
+        ) : (
+          <FrequentFlyersCard 
+            students={frequentFlyers} 
+            title="My Frequent Flyers"
+            description="Top 5 students from your classes with the most passes."
+          />
+        )}
 
         {/* Classroom Policy Summary Card */}
         <Card className="mb-6">

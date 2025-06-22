@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, User, Users, Clock, MapPin, ArrowLeft } from 'lucide-react';
-import { getAllStudents, getAllPasses } from '@/lib/firebase/firestore';
+import { getAllStudents, getAllPasses, getPassCountsByStudent } from '@/lib/firebase/firestore';
 import { User as UserType } from '@/types';
 import { Button } from '@/components/ui/button';
+import { FrequentFlyersCard } from '@/components/FrequentFlyersCard';
 
 interface StudentWithPassCount extends UserType {
   passCount: number;
@@ -19,7 +20,23 @@ export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<StudentWithPassCount[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [frequentFlyers, setFrequentFlyers] = useState<{ student: UserType, passCount: number }[]>([]);
+  const [loadingFlyers, setLoadingFlyers] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchFlyers = async () => {
+      try {
+        const flyers = await getPassCountsByStudent();
+        setFrequentFlyers(flyers.slice(0, 10));
+      } catch (error) {
+        console.error("Failed to fetch frequent flyers:", error);
+      } finally {
+        setLoadingFlyers(false);
+      }
+    };
+    fetchFlyers();
+  }, []);
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -178,6 +195,16 @@ export default function ReportsPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {loadingFlyers ? (
+        <Card><CardHeader><CardTitle>Loading Frequent Flyers...</CardTitle></CardHeader></Card>
+      ) : (
+        <FrequentFlyersCard 
+          students={frequentFlyers} 
+          title="School-Wide Frequent Flyers"
+          description="Top 10 students with the most passes across the school."
+        />
       )}
     </div>
   );

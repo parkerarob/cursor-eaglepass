@@ -208,6 +208,36 @@ export const getPassesByStudentName = async (studentName: string): Promise<Pass[
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // Sort by newest first
 };
 
+export const getPassCountsByStudent = async (teacherId?: string): Promise<{ student: User, passCount: number }[]> => {
+  // 1. Get the list of students
+  let students: User[];
+  if (teacherId) {
+    students = await getStudentsByAssignedLocation(teacherId);
+  } else {
+    students = await getAllStudents();
+  }
+
+  if (students.length === 0) return [];
+
+  // 2. Get all passes
+  const allPasses = await getAllPasses();
+
+  // 3. Create a map of studentId -> passCount
+  const passCounts = new Map<string, number>();
+  for (const pass of allPasses) {
+    passCounts.set(pass.studentId, (passCounts.get(pass.studentId) || 0) + 1);
+  }
+
+  // 4. Map students to their pass counts
+  const studentPassCounts = students.map(student => ({
+    student,
+    passCount: passCounts.get(student.id) || 0,
+  }));
+
+  // 5. Sort by pass count descending
+  return studentPassCounts.sort((a, b) => b.passCount - a.passCount);
+};
+
 // Policy-related functions
 
 export const getGroups = async (): Promise<Group[]> => {
