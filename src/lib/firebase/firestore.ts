@@ -180,6 +180,34 @@ export const getAllPasses = async (): Promise<Pass[]> => {
   });
 };
 
+export const getPassesByStudentName = async (studentName: string): Promise<Pass[]> => {
+  // First, find the student by name
+  const usersRef = collection(db, "users");
+  const q = query(
+    usersRef, 
+    where("role", "==", "student"),
+    where("name", "==", studentName)
+  );
+  const userSnapshot = await getDocs(q);
+  
+  if (userSnapshot.empty) {
+    return [];
+  }
+  
+  const student = userSnapshot.docs[0];
+  const studentId = student.id;
+  
+  // Then get all passes for this student
+  const passesRef = collection(db, "passes");
+  const passesQuery = query(passesRef, where("studentId", "==", studentId));
+  const passesSnapshot = await getDocs(passesQuery);
+  
+  return passesSnapshot.docs.map(doc => {
+    const passData = convertTimestamps(doc.data());
+    return { id: doc.id, ...(passData as Omit<Pass, 'id'>) };
+  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // Sort by newest first
+};
+
 // Policy-related functions
 
 export const getGroups = async (): Promise<Group[]> => {
