@@ -15,8 +15,8 @@ import {
   getEmergencyState, 
   setEmergencyState, 
   getAllLocations,
-  getAllPasses,
-  getEventLogsByDateRange
+  getEventLogsByDateRange,
+  getPassesByDateRange
 } from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
 import { EmergencyBanner } from '@/components/EmergencyBanner';
@@ -366,15 +366,11 @@ export default function AdminPage() {
       const { startDate, endDate } = getDateRange();
       
       // Fetch all passes and events for the date range
-      const allPasses = await getAllPasses();
-      const allEvents = await getEventLogsByDateRange(startDate, endDate);
+      const [filteredPasses, allEvents] = await Promise.all([
+        getPassesByDateRange(startDate, endDate),
+        getEventLogsByDateRange(startDate, endDate)
+      ]);
       
-      // Filter passes by date range
-      const filteredPasses = allPasses.filter(pass => {
-        const passDate = new Date(pass.createdAt);
-        return passDate >= startDate && passDate <= endDate;
-      });
-
       // Calculate statistics
       const totalPasses = filteredPasses.length;
       const activePasses = filteredPasses.filter(p => p.status === 'OPEN').length;
@@ -401,14 +397,18 @@ export default function AdminPage() {
         });
       });
 
-      const mostPopularLocations = await Promise.all(
+      const mostPopularLocationsData = await Promise.all(
         Array.from(locationCounts.entries())
-          .sort(([,a], [,b]) => b - a)
+          .sort(([, a], [, b]) => b - a)
           .slice(0, 5)
           .map(async ([locationId, count]) => {
             const location = await getLocationById(locationId);
-            return { location: location!, count };
+            if (!location) return null;
+            return { location, count };
           })
+      );
+      const mostPopularLocations = mostPopularLocationsData.filter(
+        (item): item is { location: Location; count: number } => item !== null
       );
 
       // Calculate student activity
@@ -424,14 +424,18 @@ export default function AdminPage() {
         });
       });
 
-      const studentActivity = await Promise.all(
+      const studentActivityData = await Promise.all(
         Array.from(studentCounts.entries())
-          .sort(([,a], [,b]) => b.passCount - a.passCount)
+          .sort(([, a], [, b]) => b.passCount - a.passCount)
           .slice(0, 10)
           .map(async ([studentId, stats]) => {
             const student = await getUserById(studentId);
-            return { student: student!, ...stats };
+            if (!student) return null;
+            return { student, ...stats };
           })
+      );
+      const studentActivity = studentActivityData.filter(
+        (item): item is { student: User; passCount: number; totalDuration: number } => item !== null
       );
 
       // Get recent events

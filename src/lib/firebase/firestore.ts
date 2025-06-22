@@ -180,6 +180,20 @@ export const getAllPasses = async (): Promise<Pass[]> => {
   });
 };
 
+export const getPassesByDateRange = async (startDate: Date, endDate: Date): Promise<Pass[]> => {
+  const passesRef = collection(db, 'passes');
+  const q = query(
+    passesRef,
+    where('createdAt', '>=', startDate),
+    where('createdAt', '<=', endDate)
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const passData = convertTimestamps(doc.data());
+    return { id: doc.id, ...(passData as Omit<Pass, 'id'>) };
+  });
+};
+
 export const getPassesByStudentName = async (studentName: string): Promise<Pass[]> => {
   // First, find the student by name
   const usersRef = collection(db, "users");
