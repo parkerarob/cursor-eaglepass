@@ -15,7 +15,6 @@ import {
   getAllLocations,
   getStudentsByAssignedLocation,
   getClassroomPolicy,
-  getAllStudents,
 } from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
 import { ClassroomPolicy } from '@/types/policy';
@@ -23,7 +22,6 @@ import { GlobalEmergencyBanner } from '@/components/GlobalEmergencyBanner';
 import { NotificationService } from '@/lib/notificationService';
 import { PassService } from '@/lib/passService';
 import Link from 'next/link';
-import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 
 interface PassWithDetails extends Pass {
@@ -54,14 +52,7 @@ export default function TeacherPage() {
   const [isClosingPass, setIsClosingPass] = useState<string | null>(null);
   const [policy, setPolicy] = useState<ClassroomPolicy | null>(null);
   const [isLoadingPolicy, setIsLoadingPolicy] = useState(false);
-  const [allStudents, setAllStudents] = useState<User[]>([]);
 
-  // State for Student Pass History
-  const [selectedStudent, setSelectedStudent] = useState<User | null>(null);
-  const [studentPassHistory, setStudentPassHistory] = useState<PassWithDetails[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  
   // Auto-refresh
   const autoRefresh = true;
 
@@ -221,89 +212,8 @@ export default function TeacherPage() {
       .finally(() => setIsLoadingPolicy(false));
   }, [currentUser?.assignedLocationId]);
 
-  // Fetch all students for search
-  useEffect(() => {
-    const fetchAllStudents = async () => {
-      try {
-        const students = await getAllStudents();
-        setAllStudents(students);
-      } catch (err) {
-        console.error('Failed to fetch students:', err);
-      }
-    };
-    fetchAllStudents();
-  }, []);
-
-  const handleStudentSearch = async (student: User) => {
-    setSelectedStudent(student);
-    setIsLoadingHistory(true);
-    
-    try {
-      // Fetch all passes for this student
-      const allPasses = await getAllPasses();
-      const studentPasses = allPasses.filter(pass => pass.studentId === student.id);
-      
-      // Enrich passes with details (similar to fetchPassData logic)
-      const enrichedPasses: PassWithDetails[] = await Promise.all(
-        studentPasses.map(async (pass) => {
-          const student = await getUserById(pass.studentId);
-          const legsWithDetails = await Promise.all(
-            pass.legs.map(async (leg) => ({
-              leg,
-              originLocation: await getLocationById(leg.originLocationId),
-              destinationLocation: await getLocationById(leg.destinationLocationId),
-            }))
-          );
-          
-          // Get current location based on last leg
-          let currentLocation: Location | undefined;
-          if (pass.legs.length > 0) {
-            const lastLeg = pass.legs[pass.legs.length - 1];
-            if (lastLeg.state === 'IN') {
-              const location = await getLocationById(lastLeg.destinationLocationId);
-              currentLocation = location || undefined;
-            } else {
-              const location = await getLocationById(lastLeg.originLocationId);
-              currentLocation = location || undefined;
-            }
-          }
-
-          // Calculate duration and escalation status
-          const durationMinutes = NotificationService.calculateDuration(pass);
-          const escalationStatus = NotificationService.getNotificationStatus(pass);
-
-          return {
-            ...pass,
-            student: student || undefined,
-            legsWithDetails: legsWithDetails.map(legDetail => ({
-              leg: legDetail.leg,
-              originLocation: legDetail.originLocation || undefined,
-              destinationLocation: legDetail.destinationLocation || undefined,
-            })),
-            currentLocation,
-            durationMinutes,
-            escalationStatus,
-          };
-        })
-      );
-      
-      setStudentPassHistory(enrichedPasses);
-    } catch (err) {
-      setError('Failed to load student pass history.');
-      console.error(err);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
-  // Filter students based on search term
-  const filteredStudents = allStudents.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const handleClosePass = async (pass: PassWithDetails) => {
-    if (!pass.student || !currentUser) return;
+    if (!currentUser) return;
     
     setIsClosingPass(pass.id);
     try {
@@ -678,155 +588,6 @@ export default function TeacherPage() {
                 </table>
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Student Pass History */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Student Pass History</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Search for any student to view their complete pass history
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Student Search */}
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Search students by name or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="flex-1"
-                />
-              </div>
-
-              {/* Search Results */}
-              {searchTerm && (
-                <div className="border rounded-md p-2 max-h-40 overflow-y-auto">
-                  {filteredStudents.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No students found</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {filteredStudents.slice(0, 10).map((student) => (
-                        <button
-                          key={student.id}
-                          onClick={() => handleStudentSearch(student)}
-                          className="w-full text-left p-2 hover:bg-muted rounded-md text-sm"
-                        >
-                          <div className="font-medium">{student.name}</div>
-                          <div className="text-muted-foreground">{student.email}</div>
-                        </button>
-                      ))}
-                      {filteredStudents.length > 10 && (
-                        <p className="text-xs text-muted-foreground p-2">
-                          Showing first 10 results. Refine your search for more specific results.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Selected Student History */}
-              {selectedStudent && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{selectedStudent.name}</h3>
-                      <p className="text-sm text-muted-foreground">{selectedStudent.email}</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedStudent(null);
-                        setStudentPassHistory([]);
-                        setSearchTerm('');
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  </div>
-
-                  {isLoadingHistory ? (
-                    <p>Loading pass history...</p>
-                  ) : (
-                    <div>
-                      <div className="mb-2">
-                        <span className="text-sm text-muted-foreground">
-                          {studentPassHistory.length} passes found
-                        </span>
-                      </div>
-                      
-                      {studentPassHistory.length === 0 ? (
-                        <p className="text-muted-foreground">No pass history found for this student.</p>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="border-b">
-                                <th className="text-left p-2">Date</th>
-                                <th className="text-left p-2">From</th>
-                                <th className="text-left p-2">To</th>
-                                <th className="text-left p-2">Duration</th>
-                                <th className="text-left p-2">Status</th>
-                                <th className="text-left p-2">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {studentPassHistory
-                                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                .map((pass) => (
-                                <tr key={pass.id} className="border-b hover:bg-muted/50">
-                                  <td className="p-2 text-sm">
-                                    <div>{formatDate(pass.createdAt)}</div>
-                                    <div className="text-muted-foreground">{formatTime(pass.createdAt)}</div>
-                                  </td>
-                                  <td className="p-2">
-                                    {pass.legsWithDetails && pass.legsWithDetails.length > 0 ?
-                                      pass.legsWithDetails[0].originLocation?.name : 'Unknown'
-                                    }
-                                  </td>
-                                  <td className="p-2">
-                                    {pass.legsWithDetails && pass.legsWithDetails.length > 0 ?
-                                      pass.legsWithDetails[pass.legsWithDetails.length - 1].destinationLocation?.name : 'Unknown'
-                                    }
-                                  </td>
-                                  <td className="p-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-mono">{formatDuration(pass.durationMinutes || 0)}</span>
-                                      {getEscalationBadge(pass)}
-                                    </div>
-                                  </td>
-                                  <td className="p-2">
-                                    <div className="flex items-center gap-2">
-                                      {getStateBadge(pass.status === 'OPEN' ? 
-                                        (pass.legs[pass.legs.length - 1]?.state || 'OUT') : 'CLOSED'
-                                      )}
-                                      {pass.status === 'CLOSED' && (
-                                        <Badge variant="secondary">CLOSED</Badge>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="p-2">
-                                    <Link href={`/teacher/pass/${pass.id}`}>
-                                      <Button variant="outline" size="sm">
-                                        View Details
-                                      </Button>
-                                    </Link>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </CardContent>
         </Card>
       </div>
