@@ -5,6 +5,8 @@ import { StallSitterCard } from "@/components/StallSitterCard";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { StudentSearch } from "@/components/StudentSearch";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const AdminReportsPage = () => {
   return (
@@ -19,6 +21,17 @@ const AdminReportsPage = () => {
         </Link>
       </div>
       <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Student Pass History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              Select a student to view their complete pass history.
+            </p>
+            <StudentSearch />
+          </CardContent>
+        </Card>
         <FrequentFlyersCard title="School-Wide Frequent Flyers" limit={10} />
         <StallSitterCard limit={10} />
       </div>
