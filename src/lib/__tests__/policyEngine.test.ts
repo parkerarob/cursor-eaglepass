@@ -110,8 +110,8 @@ describe('PolicyEngine', () => {
         mockAutonomyMatrix
       );
 
-      expect(result.allowed).toBe(true);
-      expect(result.reason).toBe('Emergency mode active - all actions allowed');
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toBe('Emergency mode active - all pass creation is disabled.');
     });
   });
 

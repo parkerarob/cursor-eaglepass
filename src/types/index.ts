@@ -24,7 +24,7 @@ export interface Location {
   teacherName?: string;
 }
 
-export type PassStatus = 'OPEN' | 'CLOSED';
+export type PassStatus = 'OPEN' | 'CLOSED' | 'PENDING_APPROVAL';
 export type MovementState = 'IN' | 'OUT';
 
 export interface Leg {
@@ -49,6 +49,11 @@ export interface Pass {
   durationMinutes?: number; // Current duration in minutes
   lastNotificationAt?: Date; // Last time a notification was sent
   notificationLevel?: 'none' | 'student' | 'teacher' | 'admin'; // Current notification level
+  claimedBy?: {
+    userId: string;
+    userName: string;
+    timestamp: Date;
+  };
 }
 
 export interface EventLog {

@@ -75,6 +75,7 @@ export default function AdminPage() {
   const [emergencyState, setEmergencyStateLocal] = useState<{ active: boolean; activatedBy?: string; activatedAt?: Date } | null>(null);
   const [isTogglingEmergency, setIsTogglingEmergency] = useState(false);
   const [isClosingPass, setIsClosingPass] = useState<string | null>(null);
+  const [isClaimingPass, setIsClaimingPass] = useState<string | null>(null);
   
   // Filters
   const [studentFilter, setStudentFilter] = useState('');
@@ -231,6 +232,24 @@ export default function AdminPage() {
       setError((e as Error).message);
     } finally {
       setIsClosingPass(null);
+    }
+  };
+
+  const handleClaimPass = async (pass: PassWithDetails) => {
+    if (!currentUser) return;
+    
+    setIsClaimingPass(pass.id);
+    try {
+      const result = await PassService.claimPass(pass, currentUser);
+      if (result.success) {
+        await fetchPassData();
+      } else {
+        setError(result.error || 'Failed to claim pass');
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setIsClaimingPass(null);
     }
   };
 
@@ -709,6 +728,11 @@ export default function AdminPage() {
                               <div>
                                 <div className="font-medium">{formatUserName(pass.student)}</div>
                                 <div className="text-sm text-muted-foreground">{pass.student?.email}</div>
+                                {pass.claimedBy && (
+                                  <Badge variant="secondary" className="mt-1">
+                                    Claimed by {pass.claimedBy.userName}
+                                  </Badge>
+                                )}
                               </div>
                             </td>
                             <td className="p-2">
@@ -740,14 +764,28 @@ export default function AdminPage() {
                               {formatTime(pass.createdAt)}
                             </td>
                             <td className="p-2">
-                              <Button
-                                onClick={() => handleClosePass(pass)}
-                                disabled={isClosingPass === pass.id}
-                                variant="outline"
-                                size="sm"
-                              >
-                                {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
-                              </Button>
+                              <div className="flex flex-col gap-2 items-start">
+                                <Button
+                                  onClick={() => handleClosePass(pass)}
+                                  disabled={isClosingPass === pass.id}
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
+                                </Button>
+                                {emergencyState?.active && pass.status === 'OPEN' && pass.legs[pass.legs.length - 1]?.state === 'OUT' && !pass.claimedBy && (
+                                  <Button
+                                    onClick={() => handleClaimPass(pass)}
+                                    disabled={isClaimingPass === pass.id}
+                                    variant="destructive"
+                                    size="sm"
+                                    className="w-full"
+                                  >
+                                    {isClaimingPass === pass.id ? 'Claiming...' : 'Claim Student'}
+                                  </Button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}

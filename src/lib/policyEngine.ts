@@ -41,8 +41,8 @@ export class PolicyEngine {
 
     // Emergency mode overrides all policies
     if (this.config.emergencyMode) {
-      result.allowed = true;
-      result.reason = 'Emergency mode active - all actions allowed';
+      result.allowed = false;
+      result.reason = 'Emergency mode active - all pass creation is disabled.';
       return result;
     }
 

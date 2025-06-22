@@ -17,7 +17,8 @@ export type EventType =
   | 'ERROR'
   | 'INFO'
   | 'NOTIFICATION_SENT'
-  | 'NOTIFICATION_FAILED';
+  | 'NOTIFICATION_FAILED'
+  | 'STUDENT_CLAIMED';
 
 export interface EventLog {
   id?: string;

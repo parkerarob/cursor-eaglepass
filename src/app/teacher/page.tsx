@@ -16,6 +16,7 @@ import {
   getAllLocations,
   getStudentsByAssignedLocation,
   getClassroomPolicy,
+  getEmergencyState,
 } from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
 import { ClassroomPolicy } from '@/types/policy';
@@ -53,8 +54,10 @@ export default function TeacherPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClosingPass, setIsClosingPass] = useState<string | null>(null);
+  const [isClaimingPass, setIsClaimingPass] = useState<string | null>(null);
   const [policy, setPolicy] = useState<ClassroomPolicy | null>(null);
   const [isLoadingPolicy, setIsLoadingPolicy] = useState(false);
+  const [emergencyState, setEmergencyState] = useState<{ active: boolean; } | null>(null);
 
   // Auto-refresh
   const autoRefresh = true;
@@ -182,6 +185,8 @@ export default function TeacherPage() {
         if (roleUser?.role === 'teacher') {
           setCurrentUser(roleUser);
           await fetchLocations(); // fetchPassData is now called in a separate useEffect
+          const state = await getEmergencyState();
+          setEmergencyState(state);
         } else {
           setError(`Access denied. Your role (${roleUser?.role || 'unknown'}) does not have teacher privileges.`);
         }
@@ -230,6 +235,24 @@ export default function TeacherPage() {
       setError((e as Error).message);
     } finally {
       setIsClosingPass(null);
+    }
+  };
+
+  const handleClaimPass = async (pass: PassWithDetails) => {
+    if (!currentUser) return;
+
+    setIsClaimingPass(pass.id);
+    try {
+      const result = await PassService.claimPass(pass, currentUser);
+      if (result.success) {
+        await fetchPassData();
+      } else {
+        setError(result.error || 'Failed to claim pass');
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setIsClaimingPass(null);
     }
   };
 
@@ -436,9 +459,9 @@ export default function TeacherPage() {
                           {formatTime(pass.createdAt)}
                         </td>
                         <td className="p-2">
-                          <div className="flex gap-2">
+                          <div className="flex flex-col items-start gap-2">
                             <Link href={`/teacher/pass/${pass.id}`}>
-                              <Button variant="outline" size="sm">
+                              <Button variant="outline" size="sm" className="w-full">
                                 View Details
                               </Button>
                             </Link>
@@ -447,9 +470,21 @@ export default function TeacherPage() {
                               disabled={isClosingPass === pass.id}
                               variant="outline"
                               size="sm"
+                              className="w-full"
                             >
                               {isClosingPass === pass.id ? 'Closing...' : 'Close Pass'}
                             </Button>
+                            {emergencyState?.active && pass.status === 'OPEN' && (
+                              <Button
+                                onClick={() => handleClaimPass(pass)}
+                                disabled={isClaimingPass === pass.id}
+                                variant="destructive"
+                                size="sm"
+                                className="w-full"
+                              >
+                                {isClaimingPass === pass.id ? 'Claiming...' : 'Claim Student'}
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>

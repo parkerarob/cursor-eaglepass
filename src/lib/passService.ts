@@ -1,6 +1,8 @@
 import { Pass, User, PassFormData } from '@/types';
 import { createPass, updatePass, getActivePassByStudentId } from '@/lib/firebase/firestore';
 import { PassStateMachine, ActionState } from '@/lib/stateMachine';
+import { logEvent } from './eventLogger';
+import { formatUserName } from './utils';
 
 export interface PassServiceResult {
   success: boolean;
@@ -147,6 +149,50 @@ export class PassService {
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Failed to handle restroom return' 
+      };
+    }
+  }
+
+  /**
+   * Handle "Claim" action during an emergency
+   */
+  static async claimPass(pass: Pass, claimer: User): Promise<PassServiceResult> {
+    try {
+      if (pass.status !== 'OPEN') {
+        return { success: false, error: 'Only open passes can be claimed.' };
+      }
+      if (pass.claimedBy) {
+        return { success: false, error: `Pass already claimed by ${pass.claimedBy.userName}.` };
+      }
+
+      const updatedPassData = {
+        ...pass,
+        lastUpdatedAt: new Date(),
+        claimedBy: {
+          userId: claimer.id,
+          userName: formatUserName(claimer),
+          timestamp: new Date(),
+        },
+      };
+
+      await updatePass(updatedPassData.id, updatedPassData);
+
+      logEvent({
+        eventType: 'STUDENT_CLAIMED',
+        passId: pass.id,
+        studentId: pass.studentId,
+        actorId: claimer.id,
+        timestamp: new Date(),
+        details: JSON.stringify({
+          claimedBy: formatUserName(claimer),
+        })
+      });
+
+      return { success: true, updatedPass: updatedPassData };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to claim pass'
       };
     }
   }
