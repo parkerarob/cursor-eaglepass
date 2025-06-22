@@ -1,4 +1,4 @@
-import { Pass, User, EventLog } from '@/types';
+import { Pass, User } from '@/types';
 import { logEvent } from './eventLogger';
 import { getEventLogsByStudentId, getEventLogsByDateRange } from './firebase/firestore';
 
@@ -155,7 +155,16 @@ export class AuditMonitor {
   /**
    * Check for rapid pass creation patterns
    */
-  private static async checkRapidPassCreation(studentId: string, recentEvents: EventLog[]): Promise<void> {
+  private static async checkRapidPassCreation(studentId: string, recentEvents: Array<{
+    id?: string;
+    passId?: string;
+    studentId?: string;
+    actorId: string;
+    timestamp: Date;
+    eventType: string;
+    details?: string;
+    notificationLevel?: string;
+  }>): Promise<void> {
     if (recentEvents.length < 2) return;
 
     // Sort events by timestamp
@@ -200,7 +209,16 @@ export class AuditMonitor {
   /**
    * Check for unusual activity patterns
    */
-  private static async checkUnusualPatterns(studentId: string, recentEvents: EventLog[]): Promise<void> {
+  private static async checkUnusualPatterns(studentId: string, recentEvents: Array<{
+    id?: string;
+    passId?: string;
+    studentId?: string;
+    actorId: string;
+    timestamp: Date;
+    eventType: string;
+    details?: string;
+    notificationLevel?: string;
+  }>): Promise<void> {
     try {
       // Check for passes created outside normal hours
       const afterHoursEvents = recentEvents.filter(event => {

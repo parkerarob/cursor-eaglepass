@@ -27,6 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MonitoringDashboard } from '@/components/MonitoringDashboard';
 import { FrequentFlyersCard } from '@/components/FrequentFlyersCard';
 import { StallSitterCard } from '@/components/StallSitterCard';
+import { SecurityDashboard } from '@/components/SecurityDashboard';
+import { NotificationConfigPanel } from '@/components/NotificationConfigPanel';
 import { formatUserName, formatDuration, getSortableName } from '@/lib/utils';
 
 interface PassWithDetails extends Pass {
@@ -87,7 +89,7 @@ export default function AdminPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Reporting state
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'reports' | 'monitoring'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'reports' | 'monitoring' | 'security' | 'notifications'>('dashboard');
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'custom'>('week');
@@ -612,6 +614,20 @@ export default function AdminPage() {
           >
             Monitoring
           </Button>
+          <Button
+            variant={activeTab === 'security' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('security')}
+          >
+            Security
+          </Button>
+          <Button
+            variant={activeTab === 'notifications' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('notifications')}
+          >
+            Notifications
+          </Button>
         </div>
 
         {activeTab === 'dashboard' && (
@@ -1027,6 +1043,21 @@ export default function AdminPage() {
         {activeTab === 'monitoring' && (
           <div className="grid gap-6">
             <MonitoringDashboard />
+          </div>
+        )}
+
+        {activeTab === 'security' && (
+          <div className="grid gap-6">
+            <SecurityDashboard currentUser={currentUser} />
+          </div>
+        )}
+
+        {activeTab === 'notifications' && (
+          <div className="grid gap-6">
+            <NotificationConfigPanel onConfigUpdate={() => {
+              // Refresh data when config is updated
+              fetchPassData();
+            }} />
           </div>
         )}
       </div>

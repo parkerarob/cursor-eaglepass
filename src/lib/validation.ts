@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserRole, PassStatus, MovementState } from '@/types';
+import { UserRole } from '@/types';
 
 // Base validation schemas
 export const uuidSchema = z.string().uuid('Invalid UUID format');
@@ -140,11 +140,11 @@ export class ValidationService {
     try {
       // Pre-sanitize string fields
       if (typeof data === 'object' && data !== null) {
-        const sanitized = { ...data } as any;
-        if (sanitized.name) sanitized.name = this.sanitizeString(sanitized.name);
-        if (sanitized.firstName) sanitized.firstName = this.sanitizeString(sanitized.firstName);
-        if (sanitized.lastName) sanitized.lastName = this.sanitizeString(sanitized.lastName);
-        if (sanitized.email) sanitized.email = this.sanitizeString(sanitized.email);
+        const sanitized = { ...data } as Record<string, unknown>;
+        if (typeof sanitized.name === 'string') sanitized.name = this.sanitizeString(sanitized.name);
+        if (typeof sanitized.firstName === 'string') sanitized.firstName = this.sanitizeString(sanitized.firstName);
+        if (typeof sanitized.lastName === 'string') sanitized.lastName = this.sanitizeString(sanitized.lastName);
+        if (typeof sanitized.email === 'string') sanitized.email = this.sanitizeString(sanitized.email);
         data = sanitized;
       }
       
@@ -195,9 +195,9 @@ export class ValidationService {
     try {
       // Pre-sanitize string fields
       if (typeof data === 'object' && data !== null) {
-        const sanitized = { ...data } as any;
-        if (sanitized.name) sanitized.name = this.sanitizeString(sanitized.name);
-        if (sanitized.teacherName) sanitized.teacherName = this.sanitizeString(sanitized.teacherName);
+        const sanitized = { ...data } as Record<string, unknown>;
+        if (typeof sanitized.name === 'string') sanitized.name = this.sanitizeString(sanitized.name);
+        if (typeof sanitized.teacherName === 'string') sanitized.teacherName = this.sanitizeString(sanitized.teacherName);
         data = sanitized;
       }
       
@@ -218,8 +218,8 @@ export class ValidationService {
     try {
       // Pre-sanitize string fields
       if (typeof data === 'object' && data !== null) {
-        const sanitized = { ...data } as any;
-        if (sanitized.details) sanitized.details = this.sanitizeString(sanitized.details);
+        const sanitized = { ...data } as Record<string, unknown>;
+        if (typeof sanitized.details === 'string') sanitized.details = this.sanitizeString(sanitized.details);
         data = sanitized;
       }
       
@@ -240,11 +240,11 @@ export class ValidationService {
     try {
       // Pre-sanitize string fields
       if (typeof data === 'object' && data !== null) {
-        const sanitized = { ...data } as any;
-        if (sanitized.name) sanitized.name = this.sanitizeString(sanitized.name);
-        if (sanitized.relationship) sanitized.relationship = this.sanitizeString(sanitized.relationship);
-        if (sanitized.email) sanitized.email = this.sanitizeString(sanitized.email);
-        if (sanitized.phone) sanitized.phone = this.sanitizeString(sanitized.phone);
+        const sanitized = { ...data } as Record<string, unknown>;
+        if (typeof sanitized.name === 'string') sanitized.name = this.sanitizeString(sanitized.name);
+        if (typeof sanitized.relationship === 'string') sanitized.relationship = this.sanitizeString(sanitized.relationship);
+        if (typeof sanitized.email === 'string') sanitized.email = this.sanitizeString(sanitized.email);
+        if (typeof sanitized.phone === 'string') sanitized.phone = this.sanitizeString(sanitized.phone);
         data = sanitized;
       }
       
@@ -264,7 +264,7 @@ export class ValidationService {
   static validateUUID(id: unknown): string {
     try {
       return uuidSchema.parse(id);
-    } catch (error) {
+    } catch {
       throw new Error('Invalid UUID format');
     }
   }
@@ -278,7 +278,7 @@ export class ValidationService {
         email = this.sanitizeString(email);
       }
       return emailSchema.parse(email);
-    } catch (error) {
+    } catch {
       throw new Error('Invalid email format');
     }
   }
