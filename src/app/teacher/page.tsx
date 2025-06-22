@@ -13,9 +13,11 @@ import {
   getUserById,
   getLocationById,
   getAllLocations,
-  getStudentsByAssignedLocation
+  getStudentsByAssignedLocation,
+  getClassroomPolicy
 } from '@/lib/firebase/firestore';
 import { User, Pass, Location, Leg } from '@/types';
+import { ClassroomPolicy } from '@/types/policy';
 import { GlobalEmergencyBanner } from '@/components/GlobalEmergencyBanner';
 import { NotificationService } from '@/lib/notificationService';
 import { PassService } from '@/lib/passService';
@@ -47,6 +49,8 @@ export default function TeacherPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClosingPass, setIsClosingPass] = useState<string | null>(null);
+  const [policy, setPolicy] = useState<ClassroomPolicy | null>(null);
+  const [isLoadingPolicy, setIsLoadingPolicy] = useState(false);
   
   // Auto-refresh
   const autoRefresh = true;
@@ -196,6 +200,15 @@ export default function TeacherPage() {
     return () => clearInterval(interval);
   }, [autoRefresh, currentUser, fetchPassData]);
 
+  useEffect(() => {
+    if (!currentUser?.assignedLocationId) return;
+    setIsLoadingPolicy(true);
+    getClassroomPolicy(currentUser.assignedLocationId)
+      .then((policy) => setPolicy(policy))
+      .catch(() => setPolicy(null))
+      .finally(() => setIsLoadingPolicy(false));
+  }, [currentUser?.assignedLocationId]);
+
   const handleClosePass = async (pass: PassWithDetails) => {
     if (!pass.student || !currentUser) return;
     
@@ -320,6 +333,26 @@ export default function TeacherPage() {
         </header>
 
         <GlobalEmergencyBanner />
+
+        {/* Classroom Policy Summary Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Current Classroom Policy</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingPolicy ? (
+              <p>Loading policy...</p>
+            ) : policy ? (
+              <div className="space-y-2">
+                <PolicySummaryRow label="Students leaving your classroom" value={policy.rules.studentLeave} />
+                <PolicySummaryRow label="Students arriving to your classroom" value={policy.rules.studentArrive} />
+                <PolicySummaryRow label="Teacher requests for your students" value={policy.rules.teacherRequest} />
+              </div>
+            ) : (
+              <p className="text-muted-foreground">No classroom policy set for this room.</p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Students OUT - From My Class */}
         <Card className="mb-6">
@@ -525,6 +558,19 @@ export default function TeacherPage() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function PolicySummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span>{label}</span>
+      <Badge variant={
+        value === 'Allow' ? 'success' : value === 'Require Approval' ? 'warning' : 'destructive'
+      }>
+        {value}
+      </Badge>
     </div>
   );
 }
