@@ -25,6 +25,8 @@ import { PassService } from '@/lib/passService';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MonitoringDashboard } from '@/components/MonitoringDashboard';
+import { FrequentFlyersCard } from '@/components/FrequentFlyersCard';
+import { StallSitterCard } from '@/components/StallSitterCard';
 
 interface PassWithDetails extends Pass {
   student?: User;
@@ -191,6 +193,21 @@ export default function AdminPage() {
           };
         })
       );
+      
+      enrichedPasses.sort((a, b) => {
+        const lastLegA = a.legsWithDetails?.[a.legsWithDetails.length - 1]?.leg;
+        const lastLegB = b.legsWithDetails?.[b.legsWithDetails.length - 1]?.leg;
+        const stateA = lastLegA?.state;
+        const stateB = lastLegB?.state;
+
+        // Prioritize 'OUT' state
+        if (stateA === 'OUT' && stateB !== 'OUT') return -1;
+        if (stateA !== 'OUT' && stateB === 'OUT') return 1;
+
+        // For passes with the same state, sort by duration descending
+        return (b.durationMinutes || 0) - (a.durationMinutes || 0);
+      });
+
       setPasses(enrichedPasses);
     } catch (e) {
       setError((e as Error).message);
@@ -296,7 +313,21 @@ export default function AdminPage() {
     return true;
   });
 
-  const activePasses = filteredPasses.filter(p => p.status === 'OPEN');
+  const activePasses = filteredPasses
+    .filter(p => p.status === 'OPEN')
+    .sort((a, b) => {
+      const lastLegA = a.legsWithDetails?.[a.legsWithDetails.length - 1]?.leg;
+      const lastLegB = b.legsWithDetails?.[b.legsWithDetails.length - 1]?.leg;
+      const stateA = lastLegA?.state;
+      const stateB = lastLegB?.state;
+
+      // Prioritize 'OUT' state
+      if (stateA === 'OUT' && stateB !== 'OUT') return -1;
+      if (stateA !== 'OUT' && stateB === 'OUT') return 1;
+
+      // For passes with the same state, sort by duration descending
+      return (b.durationMinutes || 0) - (a.durationMinutes || 0);
+    });
 
   // Reporting functions
   const getDateRange = () => {
@@ -760,6 +791,8 @@ export default function AdminPage() {
 
         {activeTab === 'reports' && (
           <div className="grid gap-6">
+            <FrequentFlyersCard title="Frequent Flyers" limit={5} />
+            <StallSitterCard limit={5} />
             {/* Report Controls */}
             <Card>
               <CardHeader>
@@ -953,15 +986,7 @@ export default function AdminPage() {
 
         {activeTab === 'monitoring' && (
           <div className="grid gap-6">
-            {/* Monitoring Dashboard */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Monitoring Dashboard</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MonitoringDashboard />
-              </CardContent>
-            </Card>
+            <MonitoringDashboard />
           </div>
         )}
       </div>
