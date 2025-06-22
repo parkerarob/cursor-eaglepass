@@ -249,13 +249,18 @@ export default function AdminPage() {
     });
   };
 
-  const formatDuration = (minutes: number) => {
-    if (minutes < 60) {
-      return `${minutes}m`;
-    }
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    return `${hours}h ${remainingMinutes}m`;
+  const formatDuration = (seconds: number) => {
+    if (seconds < 0) return '0s';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.round(seconds % 60);
+    
+    const parts = [];
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+    
+    return parts.join(' ');
   };
 
   const getStatusBadge = (status: string) => {
@@ -378,9 +383,9 @@ export default function AdminPage() {
       
       // Calculate average duration
       const completedPassesWithDuration = filteredPasses
-        .filter(p => p.status === 'CLOSED')
+        .filter(p => p.status === 'CLOSED' && p.lastUpdatedAt)
         .map(p => {
-          const duration = (new Date(p.lastUpdatedAt).getTime() - new Date(p.createdAt).getTime()) / (1000 * 60);
+          const duration = (new Date(p.lastUpdatedAt).getTime() - new Date(p.createdAt).getTime()) / 1000;
           return duration;
         });
       
@@ -416,7 +421,7 @@ export default function AdminPage() {
       filteredPasses.forEach(pass => {
         const studentId = pass.studentId;
         const existing = studentCounts.get(studentId) || { passCount: 0, totalDuration: 0 };
-        const duration = pass.status === 'CLOSED' ? (new Date(pass.lastUpdatedAt).getTime() - new Date(pass.createdAt).getTime()) / (1000 * 60) : 0;
+        const duration = pass.status === 'CLOSED' && pass.lastUpdatedAt ? (new Date(pass.lastUpdatedAt).getTime() - new Date(pass.createdAt).getTime()) / 1000 : 0;
         
         studentCounts.set(studentId, {
           passCount: existing.passCount + 1,
@@ -892,7 +897,7 @@ export default function AdminPage() {
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-purple-600">
-                          {reportData.averageDuration.toFixed(1)}m
+                          {formatDuration(reportData.averageDuration)}
                         </div>
                         <div className="text-sm text-muted-foreground">Avg Duration</div>
                       </div>
