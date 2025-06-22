@@ -17,9 +17,8 @@ export interface User {
 export interface Location {
   id: string;
   name: string;
-  locationType: 'classroom' | 'bathroom' | 'nurse' | 'office' | 'library' | 'cafeteria';
-  responsiblePartyId?: string; // Teacher/admin responsible for this location
-  teacherId?: string;
+  locationType: 'classroom' | 'bathroom' | 'library' | 'office' | 'nurse' | 'cafeteria';
+  responsiblePartyId?: string;
   teacherName?: string;
 }
 

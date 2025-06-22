@@ -120,8 +120,8 @@ export const getClassroomDestinationsWithTeachers = async (): Promise<Location[]
   const locations = await Promise.all(
     querySnapshot.docs.map(async (doc) => {
       const location = { id: doc.id, ...doc.data() } as Location;
-      if (location.teacherId) {
-        const teacher = await getUserById(location.teacherId);
+      if (location.responsiblePartyId) {
+        const teacher = await getUserById(location.responsiblePartyId);
         return { ...location, teacherName: teacher?.name || 'Unknown' };
       }
       return { ...location, teacherName: 'Unassigned' };
