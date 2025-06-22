@@ -24,16 +24,22 @@ These reports focus on providing immediate, actionable insights with the data we
         - [x] Display the top 10 students based on the selected timeframe.
 
 #### 2. Stall Sitter Report (Admin/School-Wide)
-- **Goal**: Identify students who spend the most time in the bathroom.
+- **Goal**: Identify students who spend the most time in the bathroom (for both Admins and Teachers).
 - **New Requirement**: Add a time filter (Day, Week, Month, All Time).
 - **Tasks**:
-    - [ ] **Backend**: Create a function `getLongestPassesByLocationType(locationType: string, timeframe: 'day' | 'week' | 'month' | 'all')` that finds the longest passes to a specific location type.
-    - [ ] **Frontend**:
-        - [ ] Create a reusable `StallSitterCard` component.
-        - [ ] Add the card to the admin reports page (`/admin/reports`).
-        - [ ] Display a list of the top 5 longest bathroom visits, showing student name, duration, and date.
-        - [ ] Link to the student's detailed report page.
-        - [ ] Include a time filter UI.
+    - [x] **Backend**: Update the `getLongestPassesByLocationType` function to support filtering by a teacher's `locationId`.
+    - [x] **Frontend (Shared)**:
+        - [x] Create a reusable `StallSitterCard` component.
+        - [x] Add `locationId` prop to `StallSitterCard`.
+        - [x] Include a time filter UI.
+    - [x] **Frontend (Admin)**:
+        - [x] Add the card to the admin reports page (`/admin/reports`).
+        - [x] Display the top 10 longest bathroom visits.
+    - [x] **Frontend (Teacher)**:
+        - [x] Add the card to the teacher dashboard (`/teacher`).
+        - [x] Display the top 5 longest bathroom visits for their students.
+    - [x] **Misc**:
+        - [x] Link to the student's detailed report page from the card.
 
 #### 3. Common Destinations Report (Teacher-Specific)
 - **Goal**: Show teachers the most common destinations for their students.

@@ -12,6 +12,10 @@ type StallSitterData = { pass: Pass; student: User; duration: number };
 
 export function StallSitterCard({
   limit = 5,
+  locationId,
+}: {
+  limit?: number;
+  locationId?: string;
 }) {
   const [data, setData] = useState<StallSitterData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,7 +25,7 @@ export function StallSitterCard({
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const result = await getLongestPassesByLocationType('bathroom', timeframe);
+        const result = await getLongestPassesByLocationType('bathroom', timeframe, locationId);
         setData(result);
       } catch (error) {
         console.error("Error fetching stall sitters data:", error);
@@ -31,7 +35,7 @@ export function StallSitterCard({
     };
 
     fetchData();
-  }, [timeframe]);
+  }, [timeframe, locationId]);
 
   const handleTimeframeChange = (newTimeframe: Timeframe) => {
     setTimeframe(newTimeframe);

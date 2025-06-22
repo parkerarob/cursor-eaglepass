@@ -266,8 +266,17 @@ export const getPassCountsByStudent = async (
 
 export const getLongestPassesByLocationType = async (
   locationType: 'bathroom', // Add other types as needed
-  timeframe: 'day' | 'week' | 'month' | 'all' = 'all'
+  timeframe: 'day' | 'week' | 'month' | 'all' = 'all',
+  locationId?: string // Optional: for teacher-specific view
 ): Promise<{ pass: Pass, student: User, duration: number }[]> => {
+  // 0. If locationId is provided, get students from that location first
+  let studentIds: Set<string> | null = null;
+  if (locationId) {
+    const students = await getStudentsByAssignedLocation(locationId);
+    if (students.length === 0) return [];
+    studentIds = new Set(students.map(s => s.id));
+  }
+  
   // 1. Get all locations of the specified type
   const locationsRef = collection(db, "locations");
   const locationsQuery = query(locationsRef, where("locationType", "==", locationType));
@@ -304,9 +313,14 @@ export const getLongestPassesByLocationType = async (
     pass.legs.some(leg => locationIds.has(leg.destinationLocationId))
   );
 
+  // 3b. If we have studentIds, further filter the passes
+  const finalPasses = studentIds
+    ? relevantPasses.filter(pass => studentIds!.has(pass.studentId))
+    : relevantPasses;
+
   // 4. Calculate duration and fetch student info
   const passesWithDetails = await Promise.all(
-    relevantPasses.map(async (pass) => {
+    finalPasses.map(async (pass) => {
       const student = await getUserById(pass.studentId);
       const duration = pass.closedAt && pass.createdAt
         ? (pass.closedAt.getTime() - pass.createdAt.getTime()) / (1000 * 60) // in minutes

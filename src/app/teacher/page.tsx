@@ -24,6 +24,7 @@ import { PassService } from '@/lib/passService';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FrequentFlyersCard } from '@/components/FrequentFlyersCard';
+import { StallSitterCard } from '@/components/StallSitterCard';
 
 interface PassWithDetails extends Pass {
   student?: User;
@@ -347,12 +348,13 @@ export default function TeacherPage() {
 
         <GlobalEmergencyBanner />
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <FrequentFlyersCard 
             title="My Frequent Flyers" 
             limit={5} 
             locationId={currentUser?.assignedLocationId}
           />
+          <StallSitterCard limit={5} locationId={currentUser?.assignedLocationId} />
           {/* Policy Summary Card */}
           <Card>
             <CardHeader>
