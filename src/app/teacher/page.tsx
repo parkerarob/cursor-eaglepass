@@ -43,6 +43,8 @@ interface PassWithDetails extends Pass {
   teacherResponsibility?: 'origin' | 'destination' | 'both';
 }
 
+type Timeframe = 'day' | 'week' | 'month' | 'all';
+
 export default function TeacherPage() {
   const { user: authUser, isLoading: authLoading } = useAuth();
   const { currentUser: roleUser, isLoading: roleLoading } = useRole();
@@ -56,6 +58,7 @@ export default function TeacherPage() {
   const [isLoadingPolicy, setIsLoadingPolicy] = useState(false);
   const [frequentFlyers, setFrequentFlyers] = useState<{ student: User, passCount: number }[]>([]);
   const [loadingFlyers, setLoadingFlyers] = useState(true);
+  const [flyersTimeframe, setFlyersTimeframe] = useState<Timeframe>('all');
 
   // Auto-refresh
   const autoRefresh = true;
@@ -219,8 +222,9 @@ export default function TeacherPage() {
   useEffect(() => {
     if (currentUser?.assignedLocationId) {
       const fetchFlyers = async () => {
+        setLoadingFlyers(true);
         try {
-          const flyers = await getPassCountsByStudent(currentUser.assignedLocationId);
+          const flyers = await getPassCountsByStudent(currentUser.assignedLocationId, flyersTimeframe);
           setFrequentFlyers(flyers.slice(0, 5));
         } catch (error) {
           console.error("Failed to fetch frequent flyers:", error);
@@ -230,7 +234,7 @@ export default function TeacherPage() {
       };
       fetchFlyers();
     }
-  }, [currentUser?.assignedLocationId]);
+  }, [currentUser?.assignedLocationId, flyersTimeframe]);
 
   const handleClosePass = async (pass: PassWithDetails) => {
     if (!currentUser) return;
@@ -367,12 +371,18 @@ export default function TeacherPage() {
         <GlobalEmergencyBanner />
 
         {loadingFlyers ? (
-          <Card><CardHeader><CardTitle>Loading Frequent Flyers...</CardTitle></CardHeader></Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Loading Frequent Flyers...</CardTitle>
+            </CardHeader>
+          </Card>
         ) : (
           <FrequentFlyersCard 
             students={frequentFlyers} 
             title="My Frequent Flyers"
             description="Top 5 students from your classes with the most passes."
+            timeframe={flyersTimeframe}
+            onTimeframeChange={setFlyersTimeframe}
           />
         )}
 

@@ -208,7 +208,10 @@ export const getPassesByStudentName = async (studentName: string): Promise<Pass[
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // Sort by newest first
 };
 
-export const getPassCountsByStudent = async (locationId?: string): Promise<{ student: User, passCount: number }[]> => {
+export const getPassCountsByStudent = async (
+  locationId?: string, 
+  timeframe: 'day' | 'week' | 'month' | 'all' = 'all'
+): Promise<{ student: User, passCount: number }[]> => {
   // 1. Get the list of students
   let students: User[];
   if (locationId) {
@@ -219,8 +222,29 @@ export const getPassCountsByStudent = async (locationId?: string): Promise<{ stu
 
   if (students.length === 0) return [];
 
-  // 2. Get all passes
-  const allPasses = await getAllPasses();
+  // 2. Build the passes query with an optional date filter
+  let passesQuery = query(collection(db, "passes"));
+
+  if (timeframe !== 'all') {
+    const now = new Date();
+    let startDate: Date;
+
+    switch (timeframe) {
+      case 'day':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        break;
+      case 'week':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        break;
+    }
+    passesQuery = query(passesQuery, where("createdAt", ">=", startDate));
+  }
+  
+  const passesSnapshot = await getDocs(passesQuery);
+  const allPasses = passesSnapshot.docs.map(doc => doc.data() as Pass);
 
   // 3. Create a map of studentId -> passCount
   const passCounts = new Map<string, number>();
@@ -234,8 +258,10 @@ export const getPassCountsByStudent = async (locationId?: string): Promise<{ stu
     passCount: passCounts.get(student.id) || 0,
   }));
 
-  // 5. Sort by pass count descending
-  return studentPassCounts.sort((a, b) => b.passCount - a.passCount);
+  // 5. Sort by pass count descending and filter out students with 0 passes
+  return studentPassCounts
+    .filter(item => item.passCount > 0)
+    .sort((a, b) => b.passCount - a.passCount);
 };
 
 // Policy-related functions

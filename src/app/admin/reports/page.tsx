@@ -16,18 +16,22 @@ interface StudentWithPassCount extends UserType {
   lastPassDate?: Date;
 }
 
+type Timeframe = 'day' | 'week' | 'month' | 'all';
+
 export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<StudentWithPassCount[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [frequentFlyers, setFrequentFlyers] = useState<{ student: UserType, passCount: number }[]>([]);
   const [loadingFlyers, setLoadingFlyers] = useState(true);
+  const [flyersTimeframe, setFlyersTimeframe] = useState<Timeframe>('all');
   const router = useRouter();
 
   useEffect(() => {
     const fetchFlyers = async () => {
+      setLoadingFlyers(true);
       try {
-        const flyers = await getPassCountsByStudent();
+        const flyers = await getPassCountsByStudent(undefined, flyersTimeframe);
         setFrequentFlyers(flyers.slice(0, 10));
       } catch (error) {
         console.error("Failed to fetch frequent flyers:", error);
@@ -36,7 +40,7 @@ export default function ReportsPage() {
       }
     };
     fetchFlyers();
-  }, []);
+  }, [flyersTimeframe]);
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -204,6 +208,8 @@ export default function ReportsPage() {
           students={frequentFlyers} 
           title="School-Wide Frequent Flyers"
           description="Top 10 students with the most passes across the school."
+          timeframe={flyersTimeframe}
+          onTimeframeChange={setFlyersTimeframe}
         />
       )}
     </div>

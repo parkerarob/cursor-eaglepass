@@ -10,16 +10,18 @@ These reports focus on providing immediate, actionable insights with the data we
 
 #### 1. Frequent Flyers Report (Teacher & Admin)
 - **Goal**: Show teachers which of their students use passes most often, and provide a school-wide view for administrators.
+- **New Requirement**: Add a time filter (Day, Week, Month, All Time) to allow for more granular analysis.
 - **Tasks**:
-    - [ ] **Backend**: Create a flexible function `getPassCountsByStudent(teacherId?: string)` that can aggregate pass counts either for a specific teacher's students or for all students school-wide.
+    - [ ] **Backend**: Update the `getPassCountsByStudent(locationId?: string, timeframe?: 'day' | 'week' | 'month' | 'all')` function to filter passes based on the selected time period.
+    - [ ] **Frontend (Shared)**:
+        - [ ] Add a time-filter UI (e.g., button group) to both the admin and teacher dashboards.
+        - [ ] Manage the state for the selected timeframe.
     - [ ] **Frontend (Teacher)**:
         - [ ] Add a "My Frequent Flyers" card to the teacher dashboard (`/teacher`).
-        - [ ] Display a simple list of top 5 students from their class and their pass counts.
-        - [ ] Link each student to their detailed report page.
+        - [ ] Display the top 5 students based on the selected timeframe.
     - [ ] **Frontend (Admin)**:
         - [ ] Add a "School-Wide Frequent Flyers" card to the admin reports page (`/admin/reports`).
-        - [ ] Display a list of the top 10 students across the school and their pass counts.
-        - [ ] Link each student to their detailed report page.
+        - [ ] Display the top 10 students based on the selected timeframe.
 
 #### 2. Stall Sitter Report (Admin/School-Wide)
 - **Goal**: Identify students who spend the most time in the bathroom.

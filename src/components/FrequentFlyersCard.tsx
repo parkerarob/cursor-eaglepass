@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { User as UserIcon, Users } from 'lucide-react';
 import { User } from '@/types';
+import { Button } from '@/components/ui/button';
 
 interface FrequentFlyer {
   student: User;
@@ -14,9 +15,18 @@ interface FrequentFlyersCardProps {
   students: FrequentFlyer[];
   title: string;
   description: string;
+  timeframe: 'day' | 'week' | 'month' | 'all';
+  onTimeframeChange: (timeframe: 'day' | 'week' | 'month' | 'all') => void;
 }
 
-export function FrequentFlyersCard({ students, title, description }: FrequentFlyersCardProps) {
+const timeframes = [
+    { value: 'day', label: 'Day' },
+    { value: 'week', label: 'Week' },
+    { value: 'month', label: 'Month' },
+    { value: 'all', label: 'All Time' },
+] as const;
+
+export function FrequentFlyersCard({ students, title, description, timeframe, onTimeframeChange }: FrequentFlyersCardProps) {
   const router = useRouter();
 
   const handleStudentClick = (student: User) => {
@@ -25,12 +35,27 @@ export function FrequentFlyersCard({ students, title, description }: FrequentFly
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          {title}
-        </CardTitle>
-        <CardDescription>{description}</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between">
+        <div>
+            <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            {title}
+            </CardTitle>
+            <CardDescription>{description}</CardDescription>
+        </div>
+        <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+            {timeframes.map((tf) => (
+                <Button 
+                    key={tf.value}
+                    variant={timeframe === tf.value ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => onTimeframeChange(tf.value)}
+                    className="h-8 px-3"
+                >
+                    {tf.label}
+                </Button>
+            ))}
+        </div>
       </CardHeader>
       <CardContent>
         {students.length === 0 ? (
