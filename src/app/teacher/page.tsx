@@ -24,6 +24,7 @@ import { NotificationService } from '@/lib/notificationService';
 import { PassService } from '@/lib/passService';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
+import { useRouter } from 'next/navigation';
 
 interface PassWithDetails extends Pass {
   student?: User;
@@ -63,6 +64,8 @@ export default function TeacherPage() {
   
   // Auto-refresh
   const autoRefresh = true;
+
+  const router = useRouter();
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -375,6 +378,12 @@ export default function TeacherPage() {
     (pass.teacherResponsibility === 'destination' || pass.teacherResponsibility === 'both')
   );
 
+  // Sign out and redirect
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
+  };
+
   if (isLoading || authLoading || roleLoading) {
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
@@ -388,7 +397,7 @@ export default function TeacherPage() {
       <div className="min-h-screen bg-background p-4 flex flex-col items-center justify-center text-center">
         <h1 className="text-2xl font-bold text-destructive mb-4">Access Denied</h1>
         <p className="text-muted-foreground mb-4">{error}</p>
-        <Button onClick={signOut} variant="outline">Sign Out</Button>
+        <Button onClick={handleSignOut} variant="outline">Sign Out</Button>
       </div>
     );
   }
@@ -412,11 +421,14 @@ export default function TeacherPage() {
             <Link href="/teacher/groups">
               <Button variant="outline">Manage Groups</Button>
             </Link>
+            <Link href="/admin/reports">
+              <Button variant="outline">Reports</Button>
+            </Link>
             <ThemeToggle />
             <Link href="/teacher/settings">
               <Button variant="outline" size="sm">Settings</Button>
             </Link>
-            <Button onClick={signOut} variant="outline" size="sm">
+            <Button onClick={handleSignOut} variant="outline" size="sm">
               Sign Out
             </Button>
           </div>
