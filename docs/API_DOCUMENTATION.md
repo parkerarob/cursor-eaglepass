@@ -429,4 +429,208 @@ The system emits events for external integration:
 - `pass.closed` - Pass completed
 - `notification.sent` - Alert triggered
 - `ferpa.disclosure` - Emergency disclosure
-- `parent.access` - Parent accessed records 
+- `parent.access` - Parent accessed records
+
+## Parent API Endpoints
+
+### Parent Relationship Verification (`/api/parent/verify-relationship`)
+
+#### POST /api/parent/verify-relationship
+Verifies a parent-student relationship for FERPA compliance.
+
+```typescript
+interface VerifyRelationshipRequest {
+  parentId: string;
+  studentId: string;
+  relationshipType: 'parent' | 'guardian' | 'legal_representative';
+  verificationMethod: 'email' | 'phone' | 'document';
+  contactInfo: string;
+}
+```
+
+**Response:**
+```typescript
+interface VerifyRelationshipResponse {
+  success: boolean;
+  relationshipId?: string;
+  status: 'verified' | 'pending' | 'rejected';
+  message: string;
+  expiresAt?: Date;
+}
+```
+
+#### GET /api/parent/verify-relationship/:relationshipId
+Retrieves the status of a relationship verification.
+
+**Response:**
+```typescript
+interface RelationshipStatusResponse {
+  relationshipId: string;
+  parentId: string;
+  studentId: string;
+  status: 'verified' | 'pending' | 'rejected' | 'expired';
+  verifiedAt?: Date;
+  expiresAt?: Date;
+  verificationMethod: string;
+}
+```
+
+### Parent Relationship Management (`/api/parent/relationships`)
+
+#### GET /api/parent/relationships
+Retrieves all relationships for a parent.
+
+**Query Parameters:**
+- `parentId`: Parent's user ID
+- `status`: Filter by status (active, pending, expired)
+
+**Response:**
+```typescript
+interface ParentRelationshipsResponse {
+  relationships: ParentStudentRelationship[];
+  totalCount: number;
+}
+```
+
+#### POST /api/parent/relationships
+Creates a new parent-student relationship (admin only).
+
+```typescript
+interface CreateRelationshipRequest {
+  parentId: string;
+  studentId: string;
+  relationshipType: 'parent' | 'guardian' | 'legal_representative';
+  schoolYear: string;
+  isActive: boolean;
+  verificationStatus: 'verified' | 'pending';
+}
+```
+
+#### PUT /api/parent/relationships/:relationshipId
+Updates an existing relationship (admin only).
+
+```typescript
+interface UpdateRelationshipRequest {
+  isActive?: boolean;
+  verificationStatus?: 'verified' | 'pending' | 'rejected';
+  schoolYear?: string;
+}
+```
+
+#### DELETE /api/parent/relationships/:relationshipId
+Deactivates a relationship (admin only).
+
+### Directory Information Management (`/api/parent/directory-info`)
+
+#### GET /api/parent/directory-info/:studentId
+Retrieves directory information opt-out preferences for a student.
+
+**Response:**
+```typescript
+interface DirectoryInfoResponse {
+  studentId: string;
+  optOuts: {
+    name: boolean;
+    grade: boolean;
+    attendance: boolean;
+    activities: boolean;
+    honors: boolean;
+    photo: boolean;
+  };
+  lastUpdated: Date;
+  schoolYear: string;
+}
+```
+
+#### POST /api/parent/directory-info/:studentId
+Updates directory information opt-out preferences.
+
+```typescript
+interface UpdateDirectoryInfoRequest {
+  optOuts: {
+    name?: boolean;
+    grade?: boolean;
+    attendance?: boolean;
+    activities?: boolean;
+    honors?: boolean;
+    photo?: boolean;
+  };
+  reason?: string;
+}
+```
+
+**Response:**
+```typescript
+interface UpdateDirectoryInfoResponse {
+  success: boolean;
+  message: string;
+  updatedAt: Date;
+  auditLogId: string;
+}
+```
+
+#### GET /api/parent/directory-info/check/:studentId
+Checks if specific directory information can be disclosed.
+
+**Query Parameters:**
+- `category`: Directory information category (name, grade, attendance, activities, honors, photo)
+
+**Response:**
+```typescript
+interface DisclosureCheckResponse {
+  studentId: string;
+  category: string;
+  canDisclose: boolean;
+  reason?: string;
+  lastOptOutUpdate?: Date;
+}
+```
+
+## Parent API Usage Examples
+
+### Verifying a Parent Relationship
+```typescript
+// Parent initiates relationship verification
+const verification = await fetch('/api/parent/verify-relationship', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    parentId: 'parent-123',
+    studentId: 'student-456',
+    relationshipType: 'parent',
+    verificationMethod: 'email',
+    contactInfo: 'parent@email.com'
+  })
+});
+
+const result = await verification.json();
+// { success: true, relationshipId: 'rel-789', status: 'pending' }
+```
+
+### Managing Directory Information Opt-outs
+```typescript
+// Parent updates directory information preferences
+const updateOptOuts = await fetch('/api/parent/directory-info/student-456', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    optOuts: {
+      photo: true,
+      honors: false,
+      activities: true
+    },
+    reason: 'Privacy concerns'
+  })
+});
+
+const result = await updateOptOuts.json();
+// { success: true, message: 'Preferences updated', updatedAt: '2024-12-19T...' }
+```
+
+### Checking Disclosure Permissions
+```typescript
+// Check if student's name can be disclosed
+const disclosureCheck = await fetch('/api/parent/directory-info/check/student-456?category=name');
+const result = await disclosureCheck.json();
+// { studentId: 'student-456', category: 'name', canDisclose: false, reason: 'Parent opted out' }
+``` 
