@@ -1,23 +1,44 @@
 import { ParentAccessService } from '../parentAccessService';
 import { FERPAAuditLogger } from '../ferpaAuditLogger';
-import { monitoringService } from '../monitoringService';
+import { getUserById, getPassesByStudentName } from '@/lib/firebase/firestore';
+import { getDocs, updateDoc } from 'firebase/firestore';
 
 jest.mock('../ferpaAuditLogger');
-jest.mock('../monitoringService');
+jest.mock('@/lib/firebase/config', () => ({
+  firebaseApp: {},
+  firestore: {},
+  auth: {}
+}));
 jest.mock('@/lib/firebase/firestore', () => ({
-  db: {},
   getUserById: jest.fn(),
-  getPassesByStudentName: jest.fn(),
+  getPassesByStudentName: jest.fn()
+}));
+jest.mock('@/lib/monitoringService', () => ({
+  monitoringService: {
+    logInfo: jest.fn(),
+    logWarning: jest.fn(),
+    logError: jest.fn()
+  }
+}));
+jest.mock('firebase/firestore', () => ({
   collection: jest.fn(),
   doc: jest.fn(),
-  setDoc: jest.fn(),
+  addDoc: jest.fn(),
   getDocs: jest.fn(),
+  updateDoc: jest.fn(),
   query: jest.fn(),
   where: jest.fn(),
   orderBy: jest.fn(),
   limit: jest.fn(),
-  updateDoc: jest.fn(),
   Timestamp: { fromDate: jest.fn(() => ({ toDate: () => new Date() })) }
+}));
+jest.mock('firebase/performance', () => ({
+  getPerformance: jest.fn(() => ({
+    trace: jest.fn(() => ({
+      start: jest.fn(),
+      stop: jest.fn()
+    }))
+  }))
 }));
 
 describe('ParentAccessService', () => {
@@ -28,7 +49,7 @@ describe('ParentAccessService', () => {
   describe('submitAccessRequest', () => {
     it('should create and store a parent access request', async () => {
       jest.spyOn(ParentAccessService as any, 'verifyParentStudentRelationship').mockResolvedValue({});
-      require('@/lib/firebase/firestore').getUserById.mockResolvedValue({ id: 's1', name: 'Student' });
+      (getUserById as jest.Mock).mockResolvedValue({ id: 's1', name: 'Student' });
       const storeSpy = jest.spyOn(ParentAccessService as any, 'storeAccessRequest').mockResolvedValue(undefined);
       jest.spyOn(FERPAAuditLogger, 'logRecordAccess').mockResolvedValue(undefined);
       const notifySpy = jest.spyOn(ParentAccessService as any, 'notifyAdministrators').mockResolvedValue(undefined);
@@ -46,7 +67,7 @@ describe('ParentAccessService', () => {
     });
     it('should throw if student not found', async () => {
       jest.spyOn(ParentAccessService as any, 'verifyParentStudentRelationship').mockResolvedValue({});
-      require('@/lib/firebase/firestore').getUserById.mockResolvedValue(null);
+      (getUserById as jest.Mock).mockResolvedValue(null);
       await expect(
         ParentAccessService.submitAccessRequest('p1', 'parent@example.com', 's1', 'inspection', 'purpose')
       ).rejects.toThrow('Student not found');
@@ -57,8 +78,8 @@ describe('ParentAccessService', () => {
     it('should return student records for approved request', async () => {
       jest.spyOn(ParentAccessService as any, 'getAccessRequest').mockResolvedValue({ status: 'approved' });
       jest.spyOn(ParentAccessService as any, 'verifyParentStudentRelationship').mockResolvedValue({});
-      require('@/lib/firebase/firestore').getUserById.mockResolvedValue({ id: 's1', name: 'Student' });
-      require('@/lib/firebase/firestore').getPassesByStudentName.mockResolvedValue([{ id: 'p1' }]);
+      (getUserById as jest.Mock).mockResolvedValue({ id: 's1', name: 'Student' });
+      (getPassesByStudentName as jest.Mock).mockResolvedValue([{ id: 'p1' }]);
       jest.spyOn(ParentAccessService as any, 'getStudentEventLogs').mockResolvedValue([{ id: 'e1' }]);
       jest.spyOn(FERPAAuditLogger, 'logRecordAccess').mockResolvedValue(undefined);
       jest.spyOn(ParentAccessService as any, 'markAccessRequestCompleted').mockResolvedValue(undefined);
@@ -84,7 +105,7 @@ describe('ParentAccessService', () => {
     it('should throw if student not found', async () => {
       jest.spyOn(ParentAccessService as any, 'getAccessRequest').mockResolvedValue({ status: 'approved' });
       jest.spyOn(ParentAccessService as any, 'verifyParentStudentRelationship').mockResolvedValue({});
-      require('@/lib/firebase/firestore').getUserById.mockResolvedValue(null);
+      (getUserById as jest.Mock).mockResolvedValue(null);
       await expect(
         ParentAccessService.getStudentRecordsForParent('p1', 's1', 'ar1')
       ).rejects.toThrow('Student not found');
@@ -95,7 +116,7 @@ describe('ParentAccessService', () => {
     it('should create and store a record correction request', async () => {
       jest.spyOn(ParentAccessService as any, 'verifyParentStudentRelationship').mockResolvedValue({});
       jest.spyOn(ParentAccessService as any, 'getAccessRequest').mockResolvedValue({ status: 'approved', parentId: 'p1', studentId: 's1' });
-      require('@/lib/firebase/firestore').getUserById.mockResolvedValue({ id: 's1', name: 'Student' });
+      (getUserById as jest.Mock).mockResolvedValue({ id: 's1', name: 'Student' });
       const storeSpy = jest.spyOn(ParentAccessService as any, 'storeCorrectionRequest').mockResolvedValue(undefined);
       jest.spyOn(FERPAAuditLogger, 'logRecordCorrection').mockResolvedValue(undefined);
       const notifySpy = jest.spyOn(ParentAccessService as any, 'notifyAdministratorsOfCorrection').mockResolvedValue(undefined);
@@ -121,7 +142,7 @@ describe('ParentAccessService', () => {
     it('should throw if student not found', async () => {
       jest.spyOn(ParentAccessService as any, 'verifyParentStudentRelationship').mockResolvedValue({});
       jest.spyOn(ParentAccessService as any, 'getAccessRequest').mockResolvedValue({ status: 'approved', parentId: 'p1', studentId: 's1' });
-      require('@/lib/firebase/firestore').getUserById.mockResolvedValue(null);
+      (getUserById as jest.Mock).mockResolvedValue(null);
       await expect(
         ParentAccessService.submitRecordCorrectionRequest('p1', 's1', 'rec1', 'pass', 'field', 'old', 'new', 'justification')
       ).rejects.toThrow('Student not found');
@@ -132,10 +153,8 @@ describe('ParentAccessService', () => {
     beforeAll(() => {
       jest.restoreAllMocks();
     });
-    let getDocs: jest.Mock;
     beforeEach(() => {
-      getDocs = require('firebase/firestore').getDocs;
-      getDocs.mockReset();
+      (getDocs as jest.Mock).mockReset();
     });
     it('should return a relationship if found', async () => {
       const mockRelationship = {
@@ -149,17 +168,17 @@ describe('ParentAccessService', () => {
         active: true,
         schoolYear: '2024-2025'
       };
-      getDocs.mockResolvedValue({ docs: [{ data: () => mockRelationship }] });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: [{ data: () => mockRelationship }] });
       const result = await ParentAccessService.verifyParentStudentRelationship('p1', 's1');
       expect(result).toEqual(mockRelationship);
     });
     it('should return null if no relationship found', async () => {
-      getDocs.mockResolvedValue({ docs: [] });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: [] });
       const result = await ParentAccessService.verifyParentStudentRelationship('p1', 's1');
       expect(result).toBeNull();
     });
     it('should throw if db error occurs', async () => {
-      getDocs.mockRejectedValue(new Error('db error'));
+      (getDocs as jest.Mock).mockRejectedValue(new Error('db error'));
       await expect(
         ParentAccessService.verifyParentStudentRelationship('p1', 's1')
       ).rejects.toThrow('db error');
@@ -167,10 +186,8 @@ describe('ParentAccessService', () => {
   });
 
   describe('getParentAccessRequests', () => {
-    let getDocs: jest.Mock;
     beforeEach(() => {
-      getDocs = require('firebase/firestore').getDocs;
-      getDocs.mockReset();
+      (getDocs as jest.Mock).mockReset();
     });
     it('should return an array of requests if found', async () => {
       const mockRequest = {
@@ -187,7 +204,7 @@ describe('ParentAccessService', () => {
         schoolYear: '2024-2025',
         completedAt: { toDate: () => new Date('2024-03-01') }
       };
-      getDocs.mockResolvedValue({ docs: [{ data: () => mockRequest }] });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: [{ data: () => mockRequest }] });
       const result = await ParentAccessService.getParentAccessRequests('p1');
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBe(1);
@@ -197,12 +214,12 @@ describe('ParentAccessService', () => {
       expect(result[0].completedAt).toBeInstanceOf(Date);
     });
     it('should return an empty array if no requests found', async () => {
-      getDocs.mockResolvedValue({ docs: [] });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: [] });
       const result = await ParentAccessService.getParentAccessRequests('p1');
       expect(result).toEqual([]);
     });
     it('should throw if db error occurs', async () => {
-      getDocs.mockRejectedValue(new Error('db error'));
+      (getDocs as jest.Mock).mockRejectedValue(new Error('db error'));
       await expect(
         ParentAccessService.getParentAccessRequests('p1')
       ).rejects.toThrow('db error');
@@ -210,10 +227,8 @@ describe('ParentAccessService', () => {
   });
 
   describe('getPendingAccessRequests', () => {
-    let getDocs: jest.Mock;
     beforeEach(() => {
-      getDocs = require('firebase/firestore').getDocs;
-      getDocs.mockReset();
+      (getDocs as jest.Mock).mockReset();
     });
     it('should return an array of pending requests if found', async () => {
       const mockRequest = {
@@ -230,7 +245,7 @@ describe('ParentAccessService', () => {
         schoolYear: '2024-2025',
         completedAt: { toDate: () => new Date('2024-06-01') }
       };
-      getDocs.mockResolvedValue({ docs: [{ data: () => mockRequest }] });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: [{ data: () => mockRequest }] });
       const result = await ParentAccessService.getPendingAccessRequests();
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBe(1);
@@ -240,12 +255,12 @@ describe('ParentAccessService', () => {
       expect(result[0].completedAt).toBeInstanceOf(Date);
     });
     it('should return an empty array if no pending requests found', async () => {
-      getDocs.mockResolvedValue({ docs: [] });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: [] });
       const result = await ParentAccessService.getPendingAccessRequests();
       expect(result).toEqual([]);
     });
     it('should throw if db error occurs', async () => {
-      getDocs.mockRejectedValue(new Error('db error'));
+      (getDocs as jest.Mock).mockRejectedValue(new Error('db error'));
       await expect(
         ParentAccessService.getPendingAccessRequests()
       ).rejects.toThrow('db error');
@@ -253,16 +268,12 @@ describe('ParentAccessService', () => {
   });
 
   describe('approveAccessRequest', () => {
-    let updateDoc: jest.Mock;
-    let getDocs: jest.Mock;
     beforeEach(() => {
-      updateDoc = require('firebase/firestore').updateDoc;
-      getDocs = require('firebase/firestore').getDocs;
-      updateDoc.mockReset();
-      getDocs.mockReset();
+      (updateDoc as jest.Mock).mockReset();
+      (getDocs as jest.Mock).mockReset();
     });
     it('should update request, log access, and notify parent on happy path', async () => {
-      updateDoc.mockResolvedValue(undefined);
+      (updateDoc as jest.Mock).mockResolvedValue(undefined);
       const mockRequest = {
         id: 'req3',
         parentId: 'p3',
@@ -277,7 +288,7 @@ describe('ParentAccessService', () => {
         schoolYear: '2024-2025',
         completedAt: { toDate: () => new Date('2024-09-01') }
       };
-      getDocs.mockResolvedValue({ empty: false, docs: [{ data: () => mockRequest }] });
+      (getDocs as jest.Mock).mockResolvedValue({ empty: false, docs: [{ data: () => mockRequest }] });
       jest.spyOn(FERPAAuditLogger, 'logRecordAccess').mockResolvedValue(undefined);
       const notifySpy = jest.spyOn(ParentAccessService as any, 'notifyParentOfApproval').mockResolvedValue(undefined);
       await ParentAccessService.approveAccessRequest('req3', 'admin1', 'notes');
@@ -286,8 +297,8 @@ describe('ParentAccessService', () => {
       expect(notifySpy).toHaveBeenCalled();
     });
     it('should not log or notify if request not found', async () => {
-      updateDoc.mockResolvedValue(undefined);
-      getDocs.mockResolvedValue({ empty: true, docs: [] });
+      (updateDoc as jest.Mock).mockResolvedValue(undefined);
+      (getDocs as jest.Mock).mockResolvedValue({ empty: true, docs: [] });
       const logSpy = jest.spyOn(FERPAAuditLogger, 'logRecordAccess');
       const notifySpy = jest.spyOn(ParentAccessService as any, 'notifyParentOfApproval');
       await ParentAccessService.approveAccessRequest('req404', 'admin1', 'notes');
@@ -296,7 +307,7 @@ describe('ParentAccessService', () => {
       expect(notifySpy).not.toHaveBeenCalled();
     });
     it('should throw if db error occurs', async () => {
-      updateDoc.mockRejectedValue(new Error('db error'));
+      (updateDoc as jest.Mock).mockRejectedValue(new Error('db error'));
       await expect(
         ParentAccessService.approveAccessRequest('req3', 'admin1', 'notes')
       ).rejects.toThrow('db error');

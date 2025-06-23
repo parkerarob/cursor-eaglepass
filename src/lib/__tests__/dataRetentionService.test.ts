@@ -58,12 +58,8 @@ describe('DataRetentionService', () => {
   });
 
   describe('processRetentionPolicy', () => {
-    let DataRetentionService: typeof import('../dataRetentionService').DataRetentionService;
-    let FERPA_RETENTION_POLICIES: typeof import('../dataRetentionService').FERPA_RETENTION_POLICIES;
     beforeEach(() => {
       jest.resetModules();
-      // Re-import after resetting modules
-      ({ DataRetentionService, FERPA_RETENTION_POLICIES } = require('../dataRetentionService'));
       jest.clearAllMocks();
     });
     const basePolicy: import('../dataRetentionService').DataRetentionPolicy = {

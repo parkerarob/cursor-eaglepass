@@ -1,18 +1,49 @@
 import { FERPAAuditLogger } from '../ferpaAuditLogger';
 import { monitoringService } from '../monitoringService';
+import { getDocs } from 'firebase/firestore';
 
-jest.mock('../monitoringService');
-jest.mock('firebase/firestore', () => ({
-  getFirestore: jest.fn(() => ({})),
+jest.mock('../monitoringService', () => ({
+  monitoringService: {
+    logInfo: jest.fn(),
+    logWarning: jest.fn(),
+    logError: jest.fn()
+  }
+}));
+jest.mock('@/lib/firebase/config', () => ({
+  firebaseApp: {},
+  firestore: {},
+  auth: {}
+}));
+jest.mock('@/lib/firebase/firestore', () => ({
+  db: {},
   collection: jest.fn(),
   doc: jest.fn(),
-  setDoc: jest.fn(),
+  addDoc: jest.fn(),
   getDocs: jest.fn(),
   query: jest.fn(),
   where: jest.fn(),
   orderBy: jest.fn(),
   limit: jest.fn(),
   Timestamp: { fromDate: jest.fn(() => ({ toDate: () => new Date() })) }
+}));
+jest.mock('firebase/firestore', () => ({
+  collection: jest.fn(),
+  doc: jest.fn(),
+  addDoc: jest.fn(),
+  getDocs: jest.fn(),
+  query: jest.fn(),
+  where: jest.fn(),
+  orderBy: jest.fn(),
+  limit: jest.fn(),
+  Timestamp: { fromDate: jest.fn(() => ({ toDate: () => new Date() })) }
+}));
+jest.mock('firebase/performance', () => ({
+  getPerformance: jest.fn(() => ({
+    trace: jest.fn(() => ({
+      start: jest.fn(),
+      stop: jest.fn()
+    }))
+  }))
 }));
 
 describe('FERPAAuditLogger', () => {
@@ -143,8 +174,7 @@ describe('FERPAAuditLogger', () => {
         { data: () => ({ id: '1', eventType: 'record_access', actorId: 'a', actorRole: 'parent', studentId: 's', recordIds: [], purpose: 'p', legalBasis: 'l', timestamp: { toDate: () => new Date() }, schoolYear: '2024-2025' }),
           id: '1' }
       ];
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockResolvedValue({ docs: mockDocs });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: mockDocs });
       const logs = await FERPAAuditLogger.getAuditLogsForStudent('s');
       expect(logs.length).toBe(1);
       expect(logs[0].id).toBe('1');
@@ -157,15 +187,13 @@ describe('FERPAAuditLogger', () => {
         { data: () => ({ id: '1', eventType: 'record_access', actorId: 'a', actorRole: 'parent', studentId: 's', recordIds: [], purpose: 'p', legalBasis: 'l', timestamp: { toDate: () => new Date() }, schoolYear: '2024-2025' }), id: '1' },
         { data: () => ({ id: '2', eventType: 'record_access', actorId: 'b', actorRole: 'teacher', studentId: 's', recordIds: [], purpose: 'p', legalBasis: 'l', timestamp: { toDate: () => new Date() }, schoolYear: '2024-2025' }), id: '2' }
       ];
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockResolvedValue({ docs: mockDocs });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: mockDocs });
       const logs = await FERPAAuditLogger.getAuditLogsByType('record_access');
       expect(logs.length).toBe(2);
       expect(logs[0].eventType).toBe('record_access');
     });
     it('should handle Firestore failure', async () => {
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockRejectedValue(new Error('fail'));
+      (getDocs as jest.Mock).mockRejectedValue(new Error('fail'));
       await expect(FERPAAuditLogger.getAuditLogsByType('record_access')).rejects.toThrow('fail');
     });
   });
@@ -182,8 +210,7 @@ describe('FERPAAuditLogger', () => {
         { data: () => ({ eventType: 'consent_granted', actorRole: 'parent', timestamp: { toDate: () => now } }) },
         { data: () => ({ eventType: 'consent_revoked', actorRole: 'parent', timestamp: { toDate: () => now } }) }
       ];
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockResolvedValue({ docs: mockDocs });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: mockDocs });
       const summary = await FERPAAuditLogger.generateAuditSummary(now, now);
       expect(summary.totalRecordAccesses).toBe(2);
       expect(summary.parentAccesses).toBe(1);
@@ -194,8 +221,7 @@ describe('FERPAAuditLogger', () => {
       expect(summary.consentEvents).toBe(2);
     });
     it('should handle Firestore failure', async () => {
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockRejectedValue(new Error('fail'));
+      (getDocs as jest.Mock).mockRejectedValue(new Error('fail'));
       await expect(FERPAAuditLogger.generateAuditSummary(new Date(), new Date())).rejects.toThrow('fail');
     });
   });
@@ -205,15 +231,13 @@ describe('FERPAAuditLogger', () => {
       const mockDocs = [
         { data: () => ({ id: '1', eventType: 'record_access', actorId: 'a', actorRole: 'parent', studentId: 's', recordIds: [], purpose: 'p', legalBasis: 'l', timestamp: { toDate: () => new Date() }, schoolYear: '2024-2025' }), id: '1' }
       ];
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockResolvedValue({ docs: mockDocs });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: mockDocs });
       const logs = await FERPAAuditLogger.getRecentActivity();
       expect(logs.length).toBe(1);
       expect(logs[0].id).toBe('1');
     });
     it('should handle Firestore failure', async () => {
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockRejectedValue(new Error('fail'));
+      (getDocs as jest.Mock).mockRejectedValue(new Error('fail'));
       await expect(FERPAAuditLogger.getRecentActivity()).rejects.toThrow('fail');
     });
   });
@@ -224,8 +248,7 @@ describe('FERPAAuditLogger', () => {
       const logs = Array.from({ length: 51 }, (_, i) => ({
         data: () => ({ eventType: 'record_access', actorId: 'a', actorRole: 'parent', timestamp: { toDate: () => now } })
       }));
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockResolvedValue({ docs: logs });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: logs });
       const violations = await FERPAAuditLogger.detectPotentialViolations(24);
       expect(violations.some(v => v.violation === 'Excessive record access')).toBe(true);
     });
@@ -234,8 +257,7 @@ describe('FERPAAuditLogger', () => {
       const logs = [
         { data: () => ({ eventType: 'record_disclosure', legalBasis: 'not-a-legal-basis', timestamp: { toDate: () => now } }) }
       ];
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockResolvedValue({ docs: logs });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: logs });
       const violations = await FERPAAuditLogger.detectPotentialViolations(24);
       expect(violations.some(v => v.violation === 'Disclosure without clear legal basis')).toBe(true);
     });
@@ -244,14 +266,12 @@ describe('FERPAAuditLogger', () => {
       const logs = [
         { data: () => ({ eventType: 'record_access', actorId: 'a', actorRole: 'parent', timestamp: { toDate: () => now } }) }
       ];
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockResolvedValue({ docs: logs });
+      (getDocs as jest.Mock).mockResolvedValue({ docs: logs });
       const violations = await FERPAAuditLogger.detectPotentialViolations(24);
       expect(violations.length).toBe(0);
     });
     it('should handle Firestore failure', async () => {
-      const firestore = require('firebase/firestore');
-      firestore.getDocs.mockRejectedValue(new Error('fail'));
+      (getDocs as jest.Mock).mockRejectedValue(new Error('fail'));
       await expect(FERPAAuditLogger.detectPotentialViolations(24)).rejects.toThrow('fail');
     });
   });

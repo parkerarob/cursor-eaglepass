@@ -175,11 +175,14 @@ jest.mock('@/lib/rateLimiter', () => ({
 }));
 
 // Now import the modules after mocks are set up
-import { PassService } from '@/lib/passService';
-import { ValidationService } from '@/lib/validation';
-import { AuditMonitor } from '@/lib/auditMonitor';
+import { PassService } from '../passService';
+import { ValidationService } from '../validation';
+import { AuditMonitor } from '../auditMonitor';
 import { Pass, User, PassFormData } from '@/types';
 import { logEvent } from '@/lib/eventLogger';
+import { RateLimiter } from '../rateLimiter';
+import { PassStateMachine } from '../stateMachine';
+import { monitoringService } from '../monitoringService';
 
 // Setup mock variables
 const mockHttpsCallable = jest.fn();
@@ -205,7 +208,6 @@ describe('Security Tests', () => {
     mockLogEvent.mockReset();
     
     // Reset rate limiters to ensure clean state
-    const { RateLimiter } = require('@/lib/rateLimiter');
     if (RateLimiter && RateLimiter.resetRateLimit) {
       RateLimiter.resetRateLimit('student-1');
     }
@@ -471,9 +473,9 @@ describe('Security Tests', () => {
       mockUpdatePass.mockResolvedValue(undefined);
       
       // Mock the state machine methods to return valid results
-      jest.spyOn(require('../stateMachine').PassStateMachine.prototype, 'validateTransition')
+      jest.spyOn(PassStateMachine.prototype, 'validateTransition')
         .mockReturnValue({ valid: true });
-      jest.spyOn(require('../stateMachine').PassStateMachine.prototype, 'arriveAtDestination')
+      jest.spyOn(PassStateMachine.prototype, 'arriveAtDestination')
         .mockReturnValue(mockPass);
 
       const result = await PassService.arriveAtDestination(mockPass, mockStudent);
@@ -542,6 +544,32 @@ describe('Security Tests', () => {
       expect(result.error).toContain('Input validation failed');
       // Note: The actual implementation includes the original error message
       // This is acceptable for debugging purposes
+    });
+  });
+
+  describe('State Machine Security', () => {
+    it('should validate state transitions', async () => {
+      // Mock the state machine validation
+      jest.spyOn(PassStateMachine.prototype, 'validateTransition')
+        .mockReturnValue({ valid: false, error: 'Invalid transition' });
+      
+      const result = await PassService.createPass(mockFormData, mockStudent);
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid state transition');
+    });
+
+    it('should prevent invalid destination arrivals', async () => {
+      // Mock the state machine arrival validation
+      jest.spyOn(PassStateMachine.prototype, 'arriveAtDestination')
+        .mockImplementation(() => {
+          throw new Error('Invalid destination');
+        });
+      
+      const result = await PassService.createPass(mockFormData, mockStudent);
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('State machine error');
     });
   });
 }); 
