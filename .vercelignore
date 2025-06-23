@@ -1,0 +1,26 @@
+# Exclude Firebase Functions since we're using Vercel
+functions/
+functions/**
+firebase.json
+firestore.rules
+firestore.indexes.json
+
+# Exclude test files and development files
+__mocks__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Exclude documentation and scripts
+docs/
+scripts/
+archive/
+
+# Exclude development files
+.env.local
+.env.development
+
+# Exclude any Firebase Functions related files
+**/firebase-functions/**
+**/functions/** 
