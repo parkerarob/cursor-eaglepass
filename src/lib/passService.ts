@@ -6,6 +6,7 @@ import { logEvent } from './eventLogger';
 import { formatUserName } from './utils';
 import { ValidationService } from './validation';
 import { AuditMonitor } from './auditMonitor';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 export interface PassServiceResult {
   success: boolean;
@@ -27,6 +28,24 @@ export class PassService {
         return { 
           success: false, 
           error: `Input validation failed: ${validationError instanceof Error ? validationError.message : 'Invalid input'}` 
+        };
+      }
+
+      // SECURITY: Call Cloud Function to validate pass creation (enforce no multiple open passes)
+      try {
+        const functions = getFunctions();
+        const validatePassCreation = httpsCallable(functions, 'validatePassCreation');
+        const validationResult: any = await validatePassCreation({ studentId: student.id });
+        if (validationResult.data?.hasOpenPass) {
+          return {
+            success: false,
+            error: 'Student already has an open pass. Cannot create another.'
+          };
+        }
+      } catch (validationError) {
+        return {
+          success: false,
+          error: `Pass creation validation failed: ${validationError instanceof Error ? validationError.message : 'Unknown error'}`
         };
       }
 

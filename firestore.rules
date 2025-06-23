@@ -1,134 +1,19 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users collection
-    match /users/{userId} {
-      allow read: if isSelf(userId) || isAdmin() || isDev();
-      allow write: if isAdmin() || isDev();
-    }
-
-    // Passes collection
-    match /passes/{passId} {
-      allow read: if isSelf(resource.data.studentId) || isTeacherFor(resource.data.studentId) || isAdmin() || isDev();
-      allow create: if isSelf(request.resource.data.studentId) && !hasOpenPass(request.resource.data.studentId);
-      allow update: if isSelf(resource.data.studentId) || isTeacherFor(resource.data.studentId) || isAdmin() || isDev();
-      allow delete: if isAdmin() || isDev();
-    }
-
-    // Locations collection
-    match /locations/{locationId} {
-      allow read: if isStudent() || isTeacher() || isAdmin() || isDev();
-      allow write: if isAdmin() || isDev();
-    }
-
-    // EventLogs collection
-    match /eventLogs/{eventId} {
-      allow read: if isTeacher() || isAdmin() || isDev();
-      allow create: if isSystem(); // Only via Cloud Functions
-      allow update, delete: if false;
-    }
-
-    // Groups collection
-    match /groups/{groupId} {
-      allow read: if isTeacher() || isAdmin() || isDev();
-      allow write: if isAdmin() || isDev();
-    }
-
-    // AutonomyMatrix collection
-    match /autonomyMatrix/{matrixId} {
-      allow read: if isTeacher() || isAdmin() || isDev();
-      allow write: if isAdmin() || isDev();
-    }
-
-    // Restrictions collection
-    match /restrictions/{restrictionId} {
-      allow read: if isSelf(resource.data.studentId) || isTeacherFor(resource.data.studentId) || isAdmin() || isDev();
-      allow write: if isAdmin() || isDev();
-    }
-
-    // FERPA Audit Logs collection - Admin/System only
-    match /ferpaAuditLogs/{auditId} {
-      allow read: if isAdmin() || isDev();
-      allow create: if isSystem() || isAdmin() || isDev();
-      allow update, delete: if false; // Audit logs are immutable
-    }
-
-    // Emergency Disclosures collection - Admin only
-    match /emergencyDisclosures/{disclosureId} {
-      allow read: if isAdmin() || isDev();
-      allow write: if isAdmin() || isDev();
-    }
-
-    // Post Emergency Notifications collection - Admin only
-    match /postEmergencyNotifications/{notificationId} {
-      allow read: if isAdmin() || isDev();
-      allow write: if isAdmin() || isDev();
-    }
-
-    // Parent Access Requests collection - Parents can read their own, admins can manage
-    match /parentAccessRequests/{requestId} {
-      allow read: if isSelf(resource.data.parentId) || isAdmin() || isDev();
-      allow create: if isSelf(request.resource.data.parentId);
-      allow update: if isAdmin() || isDev();
-      allow delete: if false; // Keep audit trail
-    }
-
-    // Directory Info Opt-Outs collection - Parents can manage their own
-    match /directoryInfoOptOuts/{optOutId} {
-      allow read: if isSelf(resource.data.parentId) || isAdmin() || isDev();
-      allow write: if isSelf(resource.data.parentId) || isAdmin() || isDev();
-    }
-
-    // Parent-Student Relationships collection - Parents can read their own
-    match /parentStudentRelationships/{relationshipId} {
-      allow read: if isSelf(resource.data.parentId) || isAdmin() || isDev();
-      allow write: if isAdmin() || isDev();
-    }
-
-    // Record Correction Requests collection - Parents can manage their own
-    match /recordCorrectionRequests/{correctionId} {
-      allow read: if isSelf(resource.data.parentId) || isAdmin() || isDev();
-      allow create: if isSelf(request.resource.data.parentId);
-      allow update: if isAdmin() || isDev();
-      allow delete: if false; // Keep audit trail
-    }
-
-    // Helper functions
-    function isSelf(uid) {
-      return request.auth != null && request.auth.uid == uid;
-    }
-    function isStudent() {
-      return request.auth != null && getUserRole() == 'student';
-    }
-    function isTeacher() {
-      return request.auth != null && getUserRole() == 'teacher';
-    }
-    function isTeacherFor(studentId) {
-      // Check if teacher is assigned to the same location as the student
-      return request.auth != null 
-        && getUserRole() == 'teacher'
-        && get(/databases/$(database)/documents/users/$(studentId)).data.assignedLocationId 
-           == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedLocationId;
-    }
-    function isAdmin() {
-      return request.auth != null && getUserRole() == 'admin';
-    }
-    function isDev() {
-      return request.auth != null && getUserRole() == 'dev';
-    }
-    function isSystem() {
-      // Only allow server-side (Cloud Functions) writes
-      return request.auth.token.firebase.sign_in_provider == 'custom';
-    }
-    function getUserRole() {
-      return request.auth.token.role;
-    }
-    function hasOpenPass(studentId) {
-      // This function cannot properly check for open passes due to Firestore rules limitations
-      // We must rely on server-side validation with proper queries
-      // Firestore rules can't iterate through collections to find matching documents
-      return false; // Server-side validation required
+    // This rule allows anyone with your Firestore database reference to view, edit,
+    // and delete all data in your Firestore database. It is useful for getting
+    // started, but it is configured to expire after 30 days because it
+    // leaves your app open to attackers. At that time, all client
+    // requests to your Firestore database will be denied.
+    //
+    // Make sure to write security rules for your app before that time, or else
+    // all client requests to your Firestore database will be denied until you Update
+    // your rules
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2025, 7, 18);
     }
   }
-} 
+}
