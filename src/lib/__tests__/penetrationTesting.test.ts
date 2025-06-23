@@ -7,7 +7,7 @@
  * - System monitoring and alerting
  */
 
-import { RateLimiter } from '../rateLimiter';
+import { RedisRateLimiter } from '../rateLimiter.redis';
 import { ValidationService } from '../validation';
 import { AuditMonitor } from '../auditMonitor';
 import { User, Pass } from '../../types';
@@ -28,20 +28,20 @@ describe('🔴 PENETRATION TESTING SUITE', () => {
     assignedLocationId: 'classroom-1'
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     // Reset rate limiter state
-    RateLimiter.resetRateLimit(mockStudent.id);
+    await RedisRateLimiter.resetRateLimit(mockStudent.id);
   });
 
   describe('🛡️ RATE LIMITING PENETRATION TESTS', () => {
     
-    test('ATTACK: Rapid pass creation (Bot simulation)', () => {
+    test('ATTACK: Rapid pass creation (Bot simulation)', async () => {
       const results: boolean[] = [];
       
       // Simulate rapid-fire requests (bot attack)
       for (let i = 0; i < 20; i++) {
-        const result = RateLimiter.checkRateLimit(mockStudent.id, 'PASS_CREATION');
+        const result = await RedisRateLimiter.checkRateLimit(mockStudent.id, 'PASS_CREATION');
         results.push(result.allowed);
       }
 
@@ -55,7 +55,7 @@ describe('🔴 PENETRATION TESTING SUITE', () => {
       console.log(`✅ Rate Limiting Test: ${allowedRequests} allowed, ${blockedRequests} blocked`);
     });
 
-    test('ATTACK: Distributed rate limit bypass attempt', () => {
+    test('ATTACK: Distributed rate limit bypass attempt', async () => {
       const userIds = ['user1', 'user2', 'user3', 'user4', 'user5'];
       const results: { [key: string]: number } = {};
 
@@ -63,7 +63,7 @@ describe('🔴 PENETRATION TESTING SUITE', () => {
       for (const userId of userIds) {
         let allowedCount = 0;
         for (let i = 0; i < 10; i++) {
-          const result = RateLimiter.checkRateLimit(userId, 'PASS_CREATION');
+          const result = await RedisRateLimiter.checkRateLimit(userId, 'PASS_CREATION');
           if (result.allowed) {
             allowedCount++;
           }
