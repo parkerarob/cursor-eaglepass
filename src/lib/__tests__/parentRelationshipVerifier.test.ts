@@ -1,4 +1,4 @@
-var mockLogRecordAccess = jest.fn();
+const mockLogRecordAccess = jest.fn();
 import { ParentRelationshipVerifier, ParentStudentRelationship } from '../parentRelationshipVerifier';
 import { FERPAAuditLogger } from '../ferpaAuditLogger';
 import { collection, doc, setDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';

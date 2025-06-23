@@ -1,4 +1,4 @@
-var mockLogConsentEvent = jest.fn();
+const mockLogConsentEvent = jest.fn();
 import { DirectoryInfoService, DirectoryInfoOptOut, DirectoryInfoItem } from '../directoryInfoService';
 import { FERPAAuditLogger } from '../ferpaAuditLogger';
 import { collection, doc, setDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';
