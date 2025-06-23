@@ -76,12 +76,16 @@ export class EmergencyDisclosureManager {
     await this.schedulePostEmergencyNotification(disclosure);
     
     // Alert monitoring system
-    monitoringService.logWarning('Emergency disclosure recorded', {
-      emergencyType,
-      studentCount: studentIds.length,
-      disclosedTo: disclosedTo.join(', '),
-      reason
-    });
+    try {
+      monitoringService.logWarning('Emergency disclosure recorded', {
+        emergencyType,
+        studentCount: studentIds.length,
+        disclosedTo: disclosedTo.join(', '),
+        reason
+      });
+    } catch (err) {
+      console.error('EmergencyDisclosureManager: Error logging to monitoringService:', err);
+    }
     
     console.log(`EmergencyDisclosureManager: Recorded emergency disclosure ${disclosure.id}`);
     
@@ -144,7 +148,11 @@ export class EmergencyDisclosureManager {
               };
               
               // Store notification record
-              await this.storeNotificationRecord(notification);
+              try {
+                await this.storeNotificationRecord(notification);
+              } catch (err) {
+                console.error('EmergencyDisclosureManager: Error storing notification record:', err);
+              }
               notifications.push(notification);
               
               console.log(`EmergencyDisclosureManager: Notification sent to ${primaryContact.email} for student ${studentId}`);
@@ -160,7 +168,11 @@ export class EmergencyDisclosureManager {
                 notificationContent: 'Emergency contact found but no email address'
               };
               
-              await this.storeNotificationRecord(notification);
+              try {
+                await this.storeNotificationRecord(notification);
+              } catch (err) {
+                console.error('EmergencyDisclosureManager: Error storing notification record:', err);
+              }
               notifications.push(notification);
             }
           } else {
@@ -176,7 +188,11 @@ export class EmergencyDisclosureManager {
               notificationContent: 'No emergency contacts on file'
             };
             
-            await this.storeNotificationRecord(notification);
+            try {
+              await this.storeNotificationRecord(notification);
+            } catch (err) {
+              console.error('EmergencyDisclosureManager: Error storing notification record:', err);
+            }
             notifications.push(notification);
           }
           
@@ -193,7 +209,11 @@ export class EmergencyDisclosureManager {
             notificationContent: `Notification failed: ${error instanceof Error ? error.message : 'Unknown error'}`
           };
           
-          await this.storeNotificationRecord(notification);
+          try {
+            await this.storeNotificationRecord(notification);
+          } catch (err) {
+            console.error('EmergencyDisclosureManager: Error storing notification record:', err);
+          }
           notifications.push(notification);
         }
       }
@@ -235,6 +255,7 @@ export class EmergencyDisclosureManager {
       }
       
       const querySnapshot = await getDocs(q);
+      if (!querySnapshot) throw new Error('Firestore getDocs returned undefined');
       
       return querySnapshot.docs.map(doc => {
         const data = doc.data();
@@ -265,6 +286,7 @@ export class EmergencyDisclosureManager {
       );
       
       const querySnapshot = await getDocs(q);
+      if (!querySnapshot) throw new Error('Firestore getDocs returned undefined');
       
       return querySnapshot.docs.map(doc => {
         const data = doc.data();
