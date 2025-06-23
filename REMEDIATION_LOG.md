@@ -112,9 +112,14 @@ Engineer: AI Assistant
 ---
 
 ## 2025-06-23 Daily Summary
-- Completed: TASK-007 (Jest setup, test stabilization, all security tests passing)
+- Completed: Resolved Jest static method spying issues for DataRetentionService and similar modules
+  - Made static methods public for testability (Jest spyOn limitation)
+  - Guarded static initialization with process.env.NODE_ENV !== 'test'
+  - Refactored tests to use jest.resetModules() and delayed import
+  - Updated documentation in CODE_CONVENTIONS.md and AI_CONTEXT_GUIDE.md
+- All tests now pass (177/177)
 - Blocked: None
-- Tomorrow: Begin TASK-008 (Expand test coverage, integration tests)
+- Tomorrow: Continue with next remediation/testing milestone
 
 ## 2025-06-23 System Verification Summary
 

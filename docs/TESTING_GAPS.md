@@ -34,4 +34,10 @@ Last Updated: 2025-06-23
   - approveAccessRequest
 - FERPA, security, and error/edge cases are all tested.
 
+## Recent Milestone (2025-06-23)
+- Static method testability issues with Jest/TypeScript fully resolved for DataRetentionService and similar modules
+- Solution: public static methods, static initialization guard, delayed import in tests
+- Policy and troubleshooting now documented in CODE_CONVENTIONS.md and AI_CONTEXT_GUIDE.md
+- All tests passing (177/177)
+
 [Continue with other modules...] 
