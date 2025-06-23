@@ -162,7 +162,7 @@ export class AuditMonitor {
     actorId: string;
     timestamp: Date;
     eventType: string;
-    details?: string;
+    details?: string | Record<string, unknown>;
     notificationLevel?: string;
   }>): Promise<void> {
     if (recentEvents.length < 2) return;
@@ -216,7 +216,7 @@ export class AuditMonitor {
     actorId: string;
     timestamp: Date;
     eventType: string;
-    details?: string;
+    details?: string | Record<string, unknown>;
     notificationLevel?: string;
   }>): Promise<void> {
     try {

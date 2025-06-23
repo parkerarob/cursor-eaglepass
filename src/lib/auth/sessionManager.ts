@@ -141,7 +141,7 @@ export class SessionManager {
       // Log session creation
       logEvent({
         eventType: 'SESSION_CREATED',
-        userId,
+        actorId: userId,
         details: {
           sessionToken: sessionToken.substring(0, 8) + '...',
           userAgent,
@@ -282,7 +282,7 @@ export class SessionManager {
       // Log session refresh
       logEvent({
         eventType: 'SESSION_REFRESHED',
-        userId: session.userId,
+        actorId: session.userId,
         details: {
           sessionToken: token.substring(0, 8) + '...',
           newExpiresAt: new Date(session.expiresAt)
@@ -327,7 +327,7 @@ export class SessionManager {
         // Log session invalidation
         logEvent({
           eventType: 'SESSION_INVALIDATED',
-          userId: session.userId,
+          actorId: session.userId,
           details: {
             sessionToken: token.substring(0, 8) + '...',
             reason: 'manual_logout'
@@ -376,7 +376,7 @@ export class SessionManager {
       // Log bulk session invalidation
       logEvent({
         eventType: 'ALL_SESSIONS_INVALIDATED',
-        userId,
+        actorId: userId,
         details: {
           invalidatedCount,
           reason: 'security_measure'
@@ -459,7 +459,7 @@ export class SessionManager {
       // Log session limit enforcement
       logEvent({
         eventType: 'SESSION_LIMIT_ENFORCED',
-        userId,
+        actorId: userId,
         details: {
           maxSessions: this.CONFIG.MAX_SESSIONS_PER_USER,
           removedSession: oldestToken.substring(0, 8) + '...'
@@ -483,7 +483,7 @@ export class SessionManager {
       // This is a simplified cleanup - in production, you might want to use
       // Redis SCAN to iterate through all sessions
       const now = Date.now();
-      let cleanedCount = 0;
+      const cleanedCount = 0;
 
       // For now, we rely on Redis TTL to automatically expire sessions
       // This method can be enhanced with more sophisticated cleanup logic

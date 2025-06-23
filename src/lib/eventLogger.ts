@@ -18,7 +18,12 @@ export type EventType =
   | 'INFO'
   | 'NOTIFICATION_SENT'
   | 'NOTIFICATION_FAILED'
-  | 'STUDENT_CLAIMED';
+  | 'STUDENT_CLAIMED'
+  | 'SESSION_CREATED'
+  | 'SESSION_REFRESHED'
+  | 'SESSION_INVALIDATED'
+  | 'ALL_SESSIONS_INVALIDATED'
+  | 'SESSION_LIMIT_ENFORCED';
 
 export interface EventLog {
   id?: string;
@@ -27,7 +32,7 @@ export interface EventLog {
   actorId: string;
   timestamp: Date;
   eventType: EventType;
-  details?: string;
+  details?: string | Record<string, unknown>;
   policyContext?: unknown;
   notificationLevel?: 'student' | 'teacher' | 'admin';
 }

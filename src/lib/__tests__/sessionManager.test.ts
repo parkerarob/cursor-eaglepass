@@ -28,9 +28,7 @@ jest.mock('../monitoringService', () => ({
 
 // Mock event logger
 jest.mock('../eventLogger', () => ({
-  eventLogger: {
-    logEvent: jest.fn()
-  }
+  logEvent: jest.fn()
 }));
 
 describe('SessionManager', () => {
@@ -131,7 +129,15 @@ describe('SessionManager', () => {
       const result = await SessionManager.validateSession('valid-token');
 
       expect(result.valid).toBe(true);
-      expect(result.session).toEqual(mockSession);
+      expect(result.session).toMatchObject({
+        userId: mockSession.userId,
+        email: mockSession.email,
+        role: mockSession.role,
+        schoolId: mockSession.schoolId,
+        createdAt: mockSession.createdAt,
+        expiresAt: mockSession.expiresAt
+      });
+      expect(result.session?.lastActivity).toBeDefined();
     });
 
     it('should reject expired session', async () => {

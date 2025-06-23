@@ -61,7 +61,7 @@ interface ReportData {
     actorId: string;
     timestamp: Date;
     eventType: string;
-    details?: string;
+    details?: string | Record<string, unknown>;
     notificationLevel?: string;
   }>;
 }
@@ -539,7 +539,7 @@ export default function AdminPage() {
       actorId: event.actorId,
       eventType: event.eventType,
       timestamp: new Date(event.timestamp).toISOString(),
-      details: event.details || '',
+      details: event.details && typeof event.details === 'string' ? event.details : JSON.stringify(event.details),
       notificationLevel: event.notificationLevel || 'N/A'
     }));
     
@@ -1024,7 +1024,12 @@ export default function AdminPage() {
                               {event.studentId ? `Student: ${event.studentId}` : 'System Event'}
                             </span>
                             {event.details && (
-                              <span className="text-sm text-muted-foreground">{event.details}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {typeof event.details === 'string' 
+                                  ? event.details 
+                                  : JSON.stringify(event.details)
+                                }
+                              </span>
                             )}
                           </div>
                           <span className="text-sm text-muted-foreground">
