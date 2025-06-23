@@ -222,10 +222,8 @@ export class DataRetentionService {
     }
   }
 
-  /**
-   * Find expired records for a given record type
-   */
-  private static async findExpiredRecords(recordType: string, cutoffDate: Date): Promise<Array<{ id: string; [key: string]: unknown }>> {
+  // public for testability (Jest spyOn limitation)
+  public static async findExpiredRecords(recordType: string, cutoffDate: Date): Promise<Array<{ id: string; [key: string]: unknown }>> {
     try {
       const collectionName = this.getCollectionName(recordType);
       const recordsRef = collection(db, collectionName);
@@ -245,10 +243,8 @@ export class DataRetentionService {
     }
   }
 
-  /**
-   * Check if a record has destruction exceptions
-   */
-  private static async hasDestructionException(record: { [key: string]: unknown }, exceptions: string[]): Promise<boolean> {
+  // public for testability (Jest spyOn limitation)
+  public static async hasDestructionException(record: { [key: string]: unknown }, exceptions: string[]): Promise<boolean> {
     // Check for common exception flags
     if (record.legalHold || record.retentionHold || record.investigationHold) {
       return true;
@@ -287,10 +283,8 @@ export class DataRetentionService {
     return false;
   }
 
-  /**
-   * Securely delete a record
-   */
-  private static async secureDelete(record: { id: string; [key: string]: unknown }, recordType: string): Promise<void> {
+  // public for testability (Jest spyOn limitation)
+  public static async secureDelete(record: { id: string; [key: string]: unknown }, recordType: string): Promise<void> {
     try {
       const collectionName = this.getCollectionName(recordType);
       const docRef = doc(db, collectionName, record.id);
@@ -306,10 +300,8 @@ export class DataRetentionService {
     }
   }
 
-  /**
-   * Anonymize a record by removing personally identifiable information
-   */
-  private static async anonymizeRecord(record: { id: string; [key: string]: unknown }, recordType: string): Promise<void> {
+  // public for testability (Jest spyOn limitation)
+  public static async anonymizeRecord(record: { id: string; [key: string]: unknown }, recordType: string): Promise<void> {
     try {
       const collectionName = this.getCollectionName(recordType);
       const docRef = doc(db, collectionName, record.id);
@@ -398,10 +390,8 @@ export class DataRetentionService {
     }
   }
 
-  /**
-   * Log destruction event for FERPA audit purposes
-   */
-  private static async logDestruction(record: { id: string; [key: string]: unknown }, policy: DataRetentionPolicy): Promise<void> {
+  // public for testability (Jest spyOn limitation)
+  public static async logDestruction(record: { id: string; [key: string]: unknown }, policy: DataRetentionPolicy): Promise<void> {
     try {
       await FERPAAuditLogger.logDataDestruction(
         [record.id],
@@ -493,4 +483,6 @@ export class DataRetentionService {
 }
 
 // Initialize automated cleanup when module is loaded
-DataRetentionService.scheduleAutomatedCleanup();
+if (process.env.NODE_ENV !== 'test') {
+  DataRetentionService.scheduleAutomatedCleanup();
+}

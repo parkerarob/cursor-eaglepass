@@ -272,4 +272,31 @@ Key documents to review:
 - `/docs/PRD.md`: Full product specification
 - `/docs/FERPA_TECHNICAL_IMPLEMENTATION.md`: Compliance details
 - `/docs/CURRENT_STATE_ANALYSIS.md`: System status
-- `/src/lib/stateMachine.ts`: Core business logic 
+- `/src/lib/stateMachine.ts`: Core business logic
+
+## Jest Spying and Static Methods
+
+- If you need to spy on or mock a static method in a class for testing, declare it as `public static`.
+- TypeScript and Jest do not allow spying on `protected` or `private` static methods.
+- If the method is not part of the intended public API, add a comment: `// public for testability (Jest spyOn limitation)`.
+- Do **not** use `as any` or type assertions to bypass this, as it leads to brittle and unclear tests.
+
+**Example:**
+```typescript
+export class DataRetentionService {
+  // public for testability (Jest spyOn limitation)
+  public static async findExpiredRecords(...) { /* ... */ }
+}
+```
+
+#### Static Initialization and Testability
+
+- **Do not run static initialization code (e.g., scheduling jobs, side effects) at module load time** in files that will be tested.
+- This can cause classes to be loaded and methods to be bound before Jest spies are set up, making it impossible to mock or spy on those methods in tests.
+- If you must run static initialization, guard it with:
+  ```typescript
+  if (process.env.NODE_ENV !== 'test') {
+    DataRetentionService.scheduleAutomatedCleanup();
+  }
+  ```
+- Alternatively, move such initialization to explicit startup scripts or entry points, not inside the module itself. 
