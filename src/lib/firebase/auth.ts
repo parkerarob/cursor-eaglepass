@@ -18,9 +18,22 @@ googleProvider.setCustomParameters({
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
 
 export const signOut = async () => {
+  try {
+    // Remove session token from localStorage (if any)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sessionToken');
+    }
+  } catch (error) {
+    console.error('Session token removal failed during logout:', error);
+  }
+
+  // Sign out of Firebase
   await firebaseSignOut(auth);
+  
   // Redirect to homepage after sign out to ensure clean state
-  window.location.href = '/';
+  if (typeof window !== 'undefined') {
+    window.location.href = '/';
+  }
 };
 
 export { onAuthStateChanged };

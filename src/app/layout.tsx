@@ -3,8 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/AuthProvider";
+import { SessionProvider } from "@/components/SessionProvider";
 import { RoleProvider } from "@/components/RoleProvider";
 import { MonitoringProvider } from "@/components/MonitoringProvider";
+import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 import { Analytics } from "@vercel/analytics/next";
 import { GlobalEmergencyBanner } from '@/components/GlobalEmergencyBanner';
 
@@ -37,9 +39,12 @@ export default function RootLayout({
         <ThemeProvider>
           <MonitoringProvider>
             <AuthProvider>
-              <RoleProvider>
-                {children}
-              </RoleProvider>
+              <SessionProvider>
+                <RoleProvider>
+                  {children}
+                  <SessionTimeoutWarning />
+                </RoleProvider>
+              </SessionProvider>
             </AuthProvider>
           </MonitoringProvider>
         </ThemeProvider>
