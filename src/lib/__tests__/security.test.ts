@@ -71,7 +71,17 @@ jest.mock('firebase/firestore', () => ({
 jest.mock('firebase/app', () => ({
   initializeApp: jest.fn(() => ({})),
   getApps: jest.fn(() => []),
-  getApp: jest.fn()
+  getApp: jest.fn(),
+  firebaseApp: {} // Add dummy firebaseApp
+}));
+
+jest.mock('@firebase/performance', () => ({
+  getPerformance: jest.fn(() => ({ })),
+  trace: jest.fn(() => ({
+    start: jest.fn(),
+    stop: jest.fn(),
+    putAttribute: jest.fn()
+  }))
 }));
 
 jest.mock('firebase/auth', () => ({
@@ -134,6 +144,22 @@ jest.mock('@/lib/firebase/config', () => ({
   firebaseApp: {},
   firestore: {},
   auth: {}
+}));
+
+// Mock the rate limiter to always allow
+jest.mock('@/lib/rateLimiter.redis', () => ({
+  RedisRateLimiter: {
+    checkRateLimit: jest.fn(() => Promise.resolve({
+      allowed: true,
+      remaining: 5,
+      resetTime: Date.now() + 60000
+    }))
+  },
+  checkPassCreationRateLimit: jest.fn(() => Promise.resolve({
+    allowed: true,
+    remaining: 5,
+    resetTime: Date.now() + 60000
+  }))
 }));
 
 // Now import the modules after mocks are set up

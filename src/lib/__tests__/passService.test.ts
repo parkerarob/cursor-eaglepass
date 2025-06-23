@@ -11,6 +11,7 @@ jest.mock('firebase/functions', () => ({
 
 // Mock Firebase Firestore
 jest.mock('firebase/firestore', () => ({
+  getFirestore: jest.fn(() => ({})),
   runTransaction: jest.fn(),
   query: jest.fn(),
   where: jest.fn(),

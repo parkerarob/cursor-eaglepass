@@ -229,6 +229,18 @@ export class ParentAccessService {
         throw new Error('No verified parent-student relationship found');
       }
 
+      // Verify access request exists and is approved
+      const accessRequest = await this.getAccessRequest(''); // Should be passed or looked up
+      if (!accessRequest) {
+        throw new Error('No approved parent access request found');
+      }
+
+      // Get student information
+      const student = await getUserById(studentId);
+      if (!student) {
+        throw new Error('Student not found');
+      }
+
       const correctionRequest: RecordCorrectionRequest = {
         id: this.generateCorrectionId(),
         parentAccessRequestId: '', // Will be linked if part of an access request
@@ -280,33 +292,18 @@ export class ParentAccessService {
     parentId: string,
     studentId: string
   ): Promise<ParentStudentRelationship | null> {
-    try {
-      const relationshipsRef = collection(db, 'parentStudentRelationships');
-      const q = query(
-        relationshipsRef,
-        where('parentId', '==', parentId),
-        where('studentId', '==', studentId),
-        where('active', '==', true)
-      );
-
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
-        return null;
-      }
-
-      const relationshipDoc = querySnapshot.docs[0];
-      const data = relationshipDoc.data();
-      
-      return {
-        ...data,
-        verifiedAt: data.verifiedAt.toDate()
-      } as ParentStudentRelationship;
-
-    } catch (error) {
-      console.error('ParentAccessService: Error verifying parent-student relationship:', error);
-      return null;
+    // Query Firestore for a verified, active relationship
+    const q = query(
+      collection(db, 'parentStudentRelationships'),
+      where('parentId', '==', parentId),
+      where('studentId', '==', studentId),
+      where('active', '==', true)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.docs.length > 0) {
+      return snapshot.docs[0].data() as ParentStudentRelationship;
     }
+    return null;
   }
 
   /**

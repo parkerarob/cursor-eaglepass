@@ -21,6 +21,13 @@ export class PassService {
    */
   static async createPass(formData: PassFormData, student: User): Promise<PassServiceResult> {
     try {
+      // NEW: Validate student is not null/undefined
+      if (!student) {
+        return {
+          success: false,
+          error: 'Input validation failed: user is required'
+        };
+      }
       // ENFORCE REDIS-BASED RATE LIMITING
       const rateLimitResult = await checkPassCreationRateLimit(student.id);
       if (!rateLimitResult.allowed) {
