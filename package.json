@@ -16,6 +16,11 @@
     "security:scan": "npm audit --audit-level=moderate",
     "quality:check": "npm run lint && npm run type-check && npm test",
     "quality:full": "npm run quality:check && npm run security:scan",
+    "deploy:staging": "node scripts/deploy-staging.js",
+    "deploy:production": "node scripts/deploy-production.js",
+    "firebase:use:dev": "firebase use eaglepass-dev",
+    "firebase:use:staging": "firebase use eaglepass-test",
+    "firebase:use:prod": "firebase use eaglepass-prod",
     "prepare": "husky install"
   },
   "dependencies": {
