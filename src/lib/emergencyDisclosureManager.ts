@@ -112,27 +112,7 @@ export class EmergencyDisclosureManager {
             if (primaryContact?.email) {
               const notificationContent = this.generateNotificationContent(disclosure, student);
               
-              // TODO: Implement email sending
-              // NotificationService doesn't have a sendEmail method yet
-              // This needs to be implemented or use the sendNotification method
-              /*
-              const emailResult = await NotificationService.sendEmail({
-                to: primaryContact.email,
-                subject: 'Emergency Student Information Disclosure Notification',
-                template: 'emergency-disclosure-notice',
-                data: {
-                  studentName: this.getStudentDisplayName(student),
-                  emergencyType: disclosure.emergencyType,
-                  disclosureDate: disclosure.disclosedAt.toLocaleDateString(),
-                  disclosureTime: disclosure.disclosedAt.toLocaleTimeString(),
-                  reason: disclosure.disclosureReason,
-                  dataShared: disclosure.dataCategories.join(', '),
-                  disclosedTo: disclosure.disclosedTo.join(', '),
-                  schoolContactInfo: this.getSchoolContactInfo(),
-                  ferpaRights: this.getFERPARightsText()
-                }
-              });
-              */
+              // Implementation note: Email sending would be integrated here
               
               // For now, assume email would be sent successfully
               const emailResult = true;

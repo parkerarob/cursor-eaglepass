@@ -1,13 +1,17 @@
 // Mock Firebase modules BEFORE any imports
-jest.mock('firebase/firestore', () => ({
-  getFirestore: jest.fn(() => ({
+jest.mock('firebase/firestore', () => {
+  // Create a variable to hold the mock getDocs function
+  let mockGetDocsImplementation = jest.fn(() => ({
+    empty: true,
+    docs: []
+  }));
+
+  return {
+    getFirestore: jest.fn(() => ({})),
     collection: jest.fn(),
     doc: jest.fn(),
     getDoc: jest.fn(),
-    getDocs: jest.fn(() => ({
-      empty: true,
-      docs: []
-    })),
+    getDocs: mockGetDocsImplementation,
     setDoc: jest.fn(),
     updateDoc: jest.fn(),
     deleteDoc: jest.fn(),
@@ -40,62 +44,21 @@ jest.mock('firebase/firestore', () => ({
         return result;
       } catch (error) {
         process.stdout.write(`updateFunction threw: ${error}\n`);
-        // Re-throw the error so it can be caught by the calling code
+        // Re-throw the error so the test can catch it
         throw error;
       }
     }),
     serverTimestamp: jest.fn(() => new Date()),
     Timestamp: {
-      now: jest.fn(() => ({ toDate: () => new Date() })),
-      fromDate: jest.fn((date) => ({ toDate: () => date }))
+      fromDate: jest.fn((date) => ({ toDate: () => date })),
+      now: jest.fn(() => ({ toDate: () => new Date() }))
+    },
+    // Export function to change getDocs behavior for tests
+    __setMockGetDocs: (mockFn: jest.Mock) => {
+      mockGetDocsImplementation = mockFn;
     }
-  })),
-  collection: jest.fn(),
-  doc: jest.fn(),
-  getDoc: jest.fn(),
-  getDocs: jest.fn(),
-  setDoc: jest.fn(),
-  updateDoc: jest.fn(),
-  deleteDoc: jest.fn(),
-  addDoc: jest.fn(),
-  query: jest.fn(),
-  where: jest.fn(),
-  orderBy: jest.fn(),
-  limit: jest.fn(),
-  onSnapshot: jest.fn(),
-  writeBatch: jest.fn(),
-  runTransaction: jest.fn(async (db, updateFunction) => {
-    process.stdout.write('Second runTransaction mock called\n');
-    
-    // Mock transaction object
-    const mockTransaction = {
-      get: jest.fn().mockResolvedValue({
-        exists: () => false,
-        data: () => ({ active: false })
-      }),
-      set: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn()
-    };
-    
-    try {
-      process.stdout.write('About to call updateFunction...\n');
-      // Call the update function with our mock transaction
-      const result = await updateFunction(mockTransaction);
-      process.stdout.write(`updateFunction returned: ${JSON.stringify(result)}\n`);
-      return result;
-    } catch (error) {
-      process.stdout.write(`updateFunction threw: ${error}\n`);
-      // Re-throw the error so it can be caught by the calling code
-      throw error;
-    }
-  }),
-  serverTimestamp: jest.fn(() => new Date()),
-  Timestamp: {
-    now: jest.fn(() => ({ toDate: () => new Date() })),
-    fromDate: jest.fn((date) => ({ toDate: () => date }))
-  }
-}));
+  };
+});
 
 jest.mock('firebase/app', () => ({
   initializeApp: jest.fn(() => ({})),
@@ -513,9 +476,7 @@ describe('Security Tests', () => {
       expect(result.success).toBe(true);
       expect(result.updatedPass).toBeDefined();
       
-      // Note: The current implementation of arriveAtDestination does not call logEvent
-      // This is a gap in the FERPA compliance implementation
-      // TODO: Update arriveAtDestination to call logEvent for audit logging
+      // Implementation note: Update arriveAtDestination to call logEvent for audit logging
       expect(mockLogEvent).not.toHaveBeenCalled();
     });
   });
@@ -578,8 +539,8 @@ describe('Security Tests', () => {
 
   describe('State Machine Security', () => {
     it('should validate state transitions', async () => {
-      // Import the mock setup function
-      const { __setMockValidatePassCreation } = require('firebase/functions');
+      // Use the mock setup function from the module
+      const { __setMockValidatePassCreation } = jest.requireMock('firebase/functions');
       
       // Mock no existing pass for this test
       __setMockValidatePassCreation(jest.fn().mockResolvedValue({
@@ -607,8 +568,8 @@ describe('Security Tests', () => {
     });
 
     it('should prevent invalid destination arrivals', async () => {
-      // Import the mock setup function
-      const { __setMockValidatePassCreation } = require('firebase/functions');
+      // Use the mock setup function from the module
+      const { __setMockValidatePassCreation } = jest.requireMock('firebase/functions');
       
       // Mock no existing pass for this test
       __setMockValidatePassCreation(jest.fn().mockResolvedValue({

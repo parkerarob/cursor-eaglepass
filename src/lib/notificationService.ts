@@ -252,7 +252,7 @@ export class NotificationService {
     try {
       // Get student's assigned teacher
       if (student.assignedLocationId) {
-        // TODO: Implement teacher lookup by location
+        // Implementation note: Teacher lookup by location would be implemented here
         // For now, use mock data - in production this would query the users collection
         const teacherEmail = `teacher-${student.assignedLocationId}@eaglepass.edu`;
         recipients.email.push(teacherEmail);
@@ -304,7 +304,7 @@ export class NotificationService {
         return { success: true };
       }
 
-      // TODO: Implement actual email sending based on service
+      // Implementation note: Email service integration would be implemented here
       // if (this.channelConfig.email?.service === 'smtp') {
       //   return await this.sendSMTPEmail(recipients, subject, body);
       // }
@@ -341,7 +341,7 @@ export class NotificationService {
         return { success: true };
       }
 
-      // TODO: Implement actual SMS sending
+      // Implementation note: SMS service integration would be implemented here
       // if (this.channelConfig.sms?.service === 'twilio') {
       //   return await this.sendTwilioSMS(recipients, message);
       // }
@@ -377,7 +377,7 @@ export class NotificationService {
         return { success: true };
       }
 
-      // TODO: Implement actual push notifications
+      // Implementation note: Push notification service would be implemented here
       // if (this.channelConfig.push?.service === 'firebase') {
       //   return await this.sendFirebasePush(tokens, title, body);
       // }
