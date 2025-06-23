@@ -1,3 +1,8 @@
+> ⚠️ **WARNING: NOT PRODUCTION READY**
+> 
+> Critical security vulnerabilities present.
+> See /review/START_HERE.md for details.
+>
 # Eagle Pass - Digital Hall Pass System
 
 Eagle Pass is a modern, web-based digital hall pass system designed for schools. It replaces traditional paper passes with an efficient, trackable, and easy-to-use application. Students can request passes from their devices, and staff can monitor student movements in real-time.
