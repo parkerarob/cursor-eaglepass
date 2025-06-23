@@ -1,8 +1,8 @@
 import { DataRetentionService, RetentionMetrics } from './dataRetentionService';
 import { FERPAAuditLogger, FERPAAuditLog, FERPAAuditSummary } from './ferpaAuditLogger';
 import { EmergencyDisclosureManager, EmergencyDisclosure } from './emergencyDisclosureManager';
-// import { ParentRelationshipVerifier } from './parentRelationshipVerifier';
-// import { DirectoryInfoService } from './directoryInfoService';
+import { ParentRelationshipVerifier } from './parentRelationshipVerifier';
+import { DirectoryInfoService } from './directoryInfoService';
 import { monitoringService } from './monitoringService';
 
 export interface FERPAComplianceStatus {
@@ -387,6 +387,141 @@ export class FERPAService {
       
     } catch (error) {
       console.error('FERPAService: Error generating compliance report:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Verify parent-student relationship for FERPA compliance
+   */
+  static async verifyParentRelationship(
+    parentId: string,
+    studentId: string
+  ): Promise<boolean> {
+    try {
+      const relationship = await ParentRelationshipVerifier.verifyRelationship(parentId, studentId);
+      
+      // Log verification attempt
+      await this.logRecordAccess(
+        parentId,
+        'parent',
+        studentId,
+        ['relationship-verification'],
+        'Parent relationship verification check'
+      );
+      
+      return relationship !== null;
+      
+    } catch (error) {
+      console.error('FERPAService: Error verifying parent relationship:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Create parent-student relationship (admin function)
+   */
+  static async createParentRelationship(
+    parentId: string,
+    parentEmail: string,
+    studentId: string,
+    studentName: string,
+    relationshipType: 'parent' | 'guardian' | 'authorized_representative',
+    verifiedBy: string
+  ): Promise<void> {
+    try {
+      await ParentRelationshipVerifier.createRelationship(
+        parentId,
+        parentEmail,
+        studentId,
+        studentName,
+        relationshipType,
+        verifiedBy
+      );
+      
+      // Log relationship creation
+      await this.logRecordAccess(
+        verifiedBy,
+        'admin',
+        studentId,
+        ['parent-relationship-creation'],
+        `Parent relationship created for ${parentEmail}`
+      );
+      
+    } catch (error) {
+      console.error('FERPAService: Error creating parent relationship:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get all relationships for a parent
+   */
+  static async getParentRelationships(parentId: string): Promise<any[]> {
+    try {
+      const relationships = await ParentRelationshipVerifier.getParentRelationships(parentId);
+      
+      // Log access
+      await this.logRecordAccess(
+        parentId,
+        'parent',
+        'multiple-students',
+        ['parent-relationships-list'],
+        'Parent accessed their relationship list'
+      );
+      
+      return relationships;
+      
+    } catch (error) {
+      console.error('FERPAService: Error getting parent relationships:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Check directory information disclosure permission
+   */
+  static async checkDirectoryInfoPermission(
+    studentId: string,
+    infoType: 'name' | 'gradeLevel' | 'datesOfAttendance' | 'activitiesParticipation' | 'degreesHonorsAwards' | 'photo'
+  ): Promise<boolean> {
+    try {
+      return await DirectoryInfoService.checkDisclosureAllowed(studentId, infoType as any);
+      
+    } catch (error) {
+      console.error('FERPAService: Error checking directory info permission:', error);
+      return false; // Err on side of caution
+    }
+  }
+  
+  /**
+   * Submit directory information opt-out
+   */
+  static async submitDirectoryInfoOptOut(
+    parentId: string,
+    studentId: string,
+    studentName: string,
+    optOutItems: string[]
+  ): Promise<void> {
+    try {
+      await DirectoryInfoService.submitOptOut(
+        parentId,
+        studentId,
+        studentName,
+        optOutItems as any[]
+      );
+      
+      // Log opt-out submission
+      await this.logRecordAccess(
+        parentId,
+        'parent',
+        studentId,
+        ['directory-info-opt-out'],
+        `Directory information opt-out submitted: ${optOutItems.join(', ')}`
+      );
+      
+    } catch (error) {
+      console.error('FERPAService: Error submitting directory info opt-out:', error);
       throw error;
     }
   }

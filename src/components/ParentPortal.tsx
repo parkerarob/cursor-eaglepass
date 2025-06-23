@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface StudentRecord {
   id: string;
@@ -24,11 +26,30 @@ interface Pass {
   teacher: string;
 }
 
+interface ParentRelationship {
+  id: string;
+  parentId: string;
+  parentEmail: string;
+  studentId: string;
+  studentName: string;
+  relationshipType: 'parent' | 'guardian' | 'authorized_representative';
+  verifiedAt: Date;
+  active: boolean;
+}
+
 export default function ParentPortal() {
   const [studentRecords, setStudentRecords] = useState<StudentRecord[]>([]);
-  // const [accessRequests] = useState<AccessRequest[]>([]);
+  const [relationships, setRelationships] = useState<ParentRelationship[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFerpaNotice, setShowFerpaNotice] = useState(true);
+  const [directoryOptOuts, setDirectoryOptOuts] = useState<Record<string, boolean>>({
+    name: false,
+    gradeLevel: false,
+    datesOfAttendance: false,
+    activitiesParticipation: false,
+    degreesHonorsAwards: false,
+    photo: false
+  });
 
   useEffect(() => {
     loadData();
@@ -36,32 +57,81 @@ export default function ParentPortal() {
 
   const loadData = async () => {
     try {
-      // Mock data for demonstration
-      const mockRecords: StudentRecord[] = [
-        {
-          id: 'student-1',
-          studentName: 'Emma Johnson',
-          passes: [
-            {
-              id: 'pass-1',
-              studentName: 'Emma Johnson',
-              destination: 'Restroom',
-              issuedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-              returnedAt: new Date(Date.now() - 1.5 * 60 * 60 * 1000),
-              status: 'returned',
-              teacher: 'Ms. Smith'
-            }
-          ],
-          lastAccessed: new Date()
-        }
-      ];
+      // For demo purposes, using a mock parent ID
+      // In production, this would come from authentication
+      const mockParentId = 'parent-1';
       
-      setStudentRecords(mockRecords);
+      // Load parent relationships
+      const relationshipsResponse = await fetch(`/api/parent/relationships?parentId=${mockParentId}`);
+      if (relationshipsResponse.ok) {
+        const data = await relationshipsResponse.json();
+        setRelationships(data.relationships || []);
+      }
+      
+      // Load student records for verified relationships
+      const verifiedStudents = relationships.filter(rel => rel.active);
+      const records: StudentRecord[] = [];
+      
+      for (const relationship of verifiedStudents) {
+        // In production, this would fetch real pass data
+        const mockPasses: Pass[] = [
+          {
+            id: 'pass-1',
+            studentName: relationship.studentName,
+            destination: 'Restroom',
+            issuedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+            returnedAt: new Date(Date.now() - 1.5 * 60 * 60 * 1000),
+            status: 'returned',
+            teacher: 'Ms. Smith'
+          }
+        ];
+        
+        records.push({
+          id: relationship.studentId,
+          studentName: relationship.studentName,
+          passes: mockPasses,
+          lastAccessed: new Date()
+        });
+      }
+      
+      setStudentRecords(records);
       
     } catch (error) {
-      console.error('Error loading student records:', error);
+      console.error('Error loading parent portal data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDirectoryOptOutChange = async (infoType: string, optedOut: boolean) => {
+    try {
+      const mockParentId = 'parent-1';
+      const mockStudentId = 'student-1';
+      const mockStudentName = 'Emma Johnson';
+      
+      const optOutItems = optedOut ? [infoType] : [];
+      
+      const response = await fetch('/api/parent/directory-info', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          parentId: mockParentId,
+          studentId: mockStudentId,
+          studentName: mockStudentName,
+          optOutItems
+        }),
+      });
+      
+      if (response.ok) {
+        setDirectoryOptOuts(prev => ({
+          ...prev,
+          [infoType]: optedOut
+        }));
+      }
+    } catch (error) {
+      console.error('Error updating directory information opt-out:', error);
     }
   };
 
@@ -130,7 +200,7 @@ export default function ParentPortal() {
       <Tabs defaultValue="records" className="space-y-4">
         <TabsList>
           <TabsTrigger value="records">Student Records</TabsTrigger>
-          <TabsTrigger value="requests">Access Requests</TabsTrigger>
+          <TabsTrigger value="relationships">Parent Relationships</TabsTrigger>
           <TabsTrigger value="directory">Directory Information</TabsTrigger>
         </TabsList>
 
@@ -139,6 +209,9 @@ export default function ParentPortal() {
             <Card>
               <CardContent className="p-6 text-center">
                 <p className="text-muted-foreground">No student records available.</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  You need to have a verified parent-student relationship to access records.
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -184,21 +257,42 @@ export default function ParentPortal() {
           )}
         </TabsContent>
 
-        <TabsContent value="requests" className="space-y-4">
+        <TabsContent value="relationships" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Access Requests</CardTitle>
-              <CardDescription>Your requests to access educational records</CardDescription>
+              <CardTitle>Parent-Student Relationships</CardTitle>
+              <CardDescription>Your verified relationships with students</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center p-6">
-                <p className="text-muted-foreground mb-4">
-                  Request access to your child&apos;s educational records.
-                </p>
-                <Button variant="outline" disabled>
-                  Request Record Access
-                </Button>
-              </div>
+              {relationships.length === 0 ? (
+                <div className="text-center p-6">
+                  <p className="text-muted-foreground mb-4">
+                    No verified parent-student relationships found.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Contact school administration to establish a parent-student relationship.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {relationships.map((relationship) => (
+                    <div key={relationship.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <div className="font-medium">{relationship.studentName}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Relationship: {relationship.relationshipType}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Verified: {formatDateTime(relationship.verifiedAt)}
+                        </div>
+                      </div>
+                      <Badge className={relationship.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                        {relationship.active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -206,17 +300,37 @@ export default function ParentPortal() {
         <TabsContent value="directory" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Directory Information</CardTitle>
-              <CardDescription>Manage directory information opt-out preferences</CardDescription>
+              <CardTitle>Directory Information Opt-Out</CardTitle>
+              <CardDescription>Control what directory information can be shared about your child</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center p-6">
-                <p className="text-muted-foreground mb-4">
-                  Control what directory information can be shared about your child.
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Directory information may be disclosed without prior consent unless you opt out. 
+                  Toggle the switches below to opt out of specific types of directory information.
                 </p>
-                <Button variant="outline" disabled>
-                  Manage Directory Information
-                </Button>
+                
+                <div className="space-y-3">
+                  {Object.entries(directoryOptOuts).map(([infoType, optedOut]) => (
+                    <div key={infoType} className="flex items-center justify-between">
+                      <Label htmlFor={infoType} className="flex-1">
+                        {infoType.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                      </Label>
+                      <Switch
+                        id={infoType}
+                        checked={optedOut}
+                        onCheckedChange={(checked) => handleDirectoryOptOutChange(infoType, checked)}
+                      />
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Note:</strong> Opt-out preferences are applied per student and school year. 
+                    You may need to renew these preferences annually.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
