@@ -18,4 +18,20 @@ Last Updated: 2025-06-23
 
 ## References
 - See REMEDIATION_LOG.md for daily progress
-- See review/CODEBASE_REVIEW_2024-12-19.md for full technical audit 
+- See review/CODEBASE_REVIEW_2024-12-19.md for full technical audit
+
+## As of [today's date]
+
+### ParentAccessService (src/lib/parentAccessService.ts)
+- Status: COVERED
+- All major methods have robust, passing tests:
+  - submitAccessRequest
+  - getStudentRecordsForParent
+  - submitRecordCorrectionRequest
+  - verifyParentStudentRelationship
+  - getParentAccessRequests
+  - getPendingAccessRequests
+  - approveAccessRequest
+- FERPA, security, and error/edge cases are all tested.
+
+[Continue with other modules...] 
