@@ -1,3 +1,28 @@
+> ⚠️ DOCUMENTATION WARNING
+>
+> This document may contain information about planned or incomplete features.
+> **Last Verified**: 2025-06-23
+> **Implementation Status**: PARTIAL/IN PROGRESS
+> **Reliability**: Low
+>
+> Always verify claims against actual code and the remediation log before relying on this documentation.
+
+# FERPA TECHNICAL IMPLEMENTATION [DRAFT - NOT IMPLEMENTED]
+
+**WARNING:** This document previously claimed full FERPA compliance. As of June 2025, core services (ParentRelationshipVerifier, DirectoryInfoService) are only partially implemented and have recently been enabled. All claims below must be verified against the codebase and the remediation log.
+
+## Implementation Status
+- ParentRelationshipVerifier: PARTIAL (see src/lib/parentRelationshipVerifier.ts)
+- DirectoryInfoService: PARTIAL (see src/lib/directoryInfoService.ts)
+- Parent portal UI: PARTIAL (see src/components/ParentPortal.tsx)
+- Audit logging: PARTIAL (see src/lib/ferpaAuditLogger.ts)
+- API endpoints: PARTIAL (see src/app/api/parent/)
+
+## Remediation Log Reference
+See REMEDIATION_LOG.md for the latest status and implementation notes.
+
+## [The rest of the document should be reviewed and updated to match actual code.]
+
 # Eagle Pass - FERPA Technical Implementation Plan
 
 ## 🎯 **TECHNICAL FERPA REQUIREMENTS ONLY**

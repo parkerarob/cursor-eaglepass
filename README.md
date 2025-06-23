@@ -3,97 +3,49 @@
 > Critical security vulnerabilities present.
 > See /review/START_HERE.md for details.
 >
-# Eagle Pass - Digital Hall Pass System
+# Eagle Pass - Digital Hall Pass System (IN DEVELOPMENT)
 
-Eagle Pass is a modern, web-based digital hall pass system designed for schools. It replaces traditional paper passes with an efficient, trackable, and easy-to-use application. Students can request passes from their devices, and staff can monitor student movements in real-time.
+Eagle Pass is a digital hall pass system currently in development. While core functionality exists, the system has significant issues that must be resolved before deployment.
 
-![Eagle Pass Screenshot](https://raw.githubusercontent.com/parkerarob/cursor-eaglepass/main/public/eagle-pass-screenshot.png) 
-*Note: Add a real screenshot of the application to the `public` directory.*
+## What Works
+- Basic pass creation and management
+- Simple role-based access
+- Basic UI for students and teachers
 
-## Features
+## What's Broken
+- Firebase security (credentials exposed in client bundle)
+- FERPA compliance (critical services disabled or commented out)
+- Rate limiting (resets on server restart, not persistent)
+- No session management
+- Minimal test coverage
+- See [KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) for a complete list of current problems (if this file is missing, see DEPLOYMENT_BLOCKERS.md and review/CODEBASE_REVIEW_2024-12-19.md)
 
-### Core Functionality
-- **Student Pass Management**: Students can create, manage, and close digital hall passes.
-- **Real-time State Machine**: A robust state machine handles all pass logic, including multi-leg trips (e.g., library to bathroom) and special location rules.
-- **Role-Based Access Control**: Different user roles (student, teacher, admin, dev) with appropriate permissions.
-- **Google SSO**: Secure and easy login with Google accounts.
-
-### Teacher Features
-- **Teacher Dashboard**: Dedicated interface for classroom management and student monitoring.
-- **Classroom Policy Management**: Teachers can set and view classroom rules for student movement.
-- **Student-Specific Overrides**: Teachers can create exceptions for individual students.
-- **Group Management**: Teachers can create and manage student groups (Positive/Negative).
-- **Classroom Policy Summary**: Real-time view of current classroom policy settings.
-- **Teacher Assist**: Teachers can manually close student passes and assist with pass management.
-
-### Admin Features
-- **Admin Dashboard**: A dedicated interface for administrators to view a live, human-readable log of all pass activity.
-- **Advanced Reporting**: Comprehensive reporting system with analytics, student activity tracking, and location usage statistics.
-- **CSV Export**: Export pass data and event logs for external analysis.
-- **System Health Monitoring**: Real-time monitoring dashboard for system health, error tracking, and performance metrics.
-
-### Safety & Emergency Features
-- **Emergency Freeze Mode**: Global emergency banner and system freeze functionality for crisis situations.
-- **Duration Timers & Escalation Notifications**: All active passes are tracked in real time. Automatic notifications escalate to teachers at 10 minutes and to admins at 20 minutes.
-- **Real-time Monitoring**: Students see a live duration timer and escalation status on their dashboard.
-
-### Policy System
-- **Hierarchical Classroom Policies**: Teachers have full autonomy to set classroom-specific rules.
-- **Student Policy Overrides**: Teachers can create exceptions for specific students.
-- **Policy Hierarchy**: Student overrides → Classroom policy → Global defaults.
-- **Real-time Policy Evaluation**: Policies are evaluated in real-time during pass creation.
-- **Three Policy Types**: Student leaving, student arriving, teacher requests.
-
-### User Experience
-- **Dark/Light Mode**: A modern UI with theme toggling.
-- **Responsive Design**: Works seamlessly on desktop and mobile devices.
-- **Real-time Updates**: Live data updates with auto-refresh functionality.
-
-### Security & Compliance
-- **Policy Engine**: Configurable rules and restrictions for pass creation and management.
-- **Event Logging**: Comprehensive audit trail for all system activities.
-- **FERPA Compliance**: Secure data handling and privacy protection.
-
-### Admin & Dev Tools
-
-#### Bulk CSV Upload (Production Readiness)
-
-- Upload CSV files for users, locations, groups, classroom policies, and restrictions via the /dev-tools page
-- Schema validation before ingesting data
-- Efficient Firestore batch writes for large data sets
-- Audit logging and error reporting shown in the UI and stored in Firestore
-- Extensible schema-driven design for future data types
-
-See `src/lib/dataIngestionService.ts` for implementation details and supported schemas.
-
-## Tech Stack
-
-- **Framework**: [Next.js](https://nextjs.org/) (App Router)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Backend & DB**: [Firebase](https://firebase.google.com/) (Firestore, Authentication)
-- **UI**: [Tailwind CSS](https://tailwindcss.com/) & [shadcn/ui](https://ui.shadcn.com/)
-- **State Management**: React Hooks & Context API
-- **Testing**: [Jest](https://jestjs.io/) & [React Testing Library](https://testing-library.com/)
-- **Deployment**: [Vercel](https://vercel.com/)
+## Security & Compliance (Current State)
+- **Policy Engine**: Configurable rules and restrictions for pass creation and management (partial, not fully enforced)
+- **Event Logging**: Some audit trail functionality exists, but not comprehensive
+- **FERPA Compliance**: ⚠️ NOT IMPLEMENTED — Core services are commented out or incomplete. Do not rely on this system for FERPA compliance.
 
 ## Project Status
 
-**🎉 Eagle Pass v1.3.0 is now complete with hierarchical classroom policy system!**
+> ⚠️ This project is NOT production ready. Many features listed below are incomplete, broken, or only partially implemented. Documentation may not reflect the current state. Always verify claims against the codebase and [KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md).
 
-### Completed Phases
-- ✅ **Phase 1**: Foundation & "Hello World" - Project setup and deployment
-- ✅ **Phase 2**: Understanding Data - Data models and mock data
-- ✅ **Phase 3**: Real Data Storage - Firebase integration
-- ✅ **Phase 4**: Authentication & Security - Google SSO and role-based access
-- ✅ **Phase 5**: Core State Machine - Robust pass lifecycle management
-- ✅ **Phase 7**: Policy Engine & Security - Policy enforcement and event logging
-- ✅ **Phase 8**: Emergency Features - Emergency freeze mode and duration tracking
-- ✅ **Phase 9**: Enhanced Admin Features - Teacher dashboard and advanced reporting
-- ✅ **Phase 10**: Production Readiness - Monitoring, observability, and data management
-- ✅ **Phase 11**: Hierarchical Policy System - Classroom policies, student overrides, and teacher autonomy
+### Completed (Partial) Phases
+- Project setup and deployment (basic)
+- Data models and mock data
+- Firebase integration (insecure)
+- Google SSO and role-based access (basic)
+- Pass lifecycle management (core logic only)
+- Policy enforcement and event logging (partial)
+- Emergency freeze mode and duration tracking (basic)
+- Teacher dashboard and reporting (UI only, backend incomplete)
 
-### Current Phase
-- ✅ **Phase 11**: Hierarchical Policy System - Complete with teacher dashboard and group management
+### Incomplete/Broken Phases
+- Security hardening
+- FERPA compliance
+- Persistent rate limiting
+- Session management
+- Comprehensive testing
+- Monitoring and observability
 
 ## Getting Started
 
@@ -103,7 +55,7 @@ See `src/lib/dataIngestionService.ts` for implementation details and supported s
 - A Firebase project
 
 ### 2. Environment Variables
-This project uses Firebase for its backend and authentication. Before you can run the application, you'll need to set up your environment variables.
+This project uses Firebase for its backend and authentication. **WARNING: Credentials are currently exposed in the client bundle.**
 
 1. Create a file named `.env.local` in the root of the project.
 2. Copy the contents of the example below and replace the placeholders with your actual Firebase project credentials.
@@ -133,8 +85,6 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
 ## Project Structure
-Here is a high-level overview of the important files and directories:
-
 - `/src/app/`: Main application routes (student view, teacher dashboard, admin dashboard, dev tools).
 - `/src/components/`: Shared React components including UI components and specialized components.
 - `/src/lib/`: Core application logic.
@@ -147,73 +97,10 @@ Here is a high-level overview of the important files and directories:
 - `/src/types/`: TypeScript type definitions.
 - `/src/lib/__tests__/`: Jest tests for the application logic.
 
-## Key Features in Detail
-
-### State Machine
-The core state machine manages pass lifecycles with binary states:
-- **Pass Status**: OPEN or CLOSED
-- **Movement State**: IN or OUT
-- **Multi-leg Support**: Complex movement patterns (e.g., classroom → library → bathroom → library → classroom)
-
-### Hierarchical Policy System
-- **Classroom Policies**: Teachers set default rules for their classroom
-- **Student Overrides**: Teachers create exceptions for specific students
-- **Policy Hierarchy**: Student overrides → Classroom policy → Global defaults
-- **Three Policy Types**: Student leaving, student arriving, teacher requests
-- **Real-time Evaluation**: Policies evaluated during pass creation
-
-### Emergency Features
-- **Emergency Freeze**: Global system freeze with real-time banner
-- **Duration Tracking**: Real-time pass duration with escalation at 10min (teacher) and 20min (admin)
-- **Notification System**: Automated escalation with failure logging
-
-### Teacher Dashboard
-- **Classroom Management**: View and manage students assigned to teacher's classroom
-- **Policy Configuration**: Set and manage classroom policies and student overrides
-- **Group Management**: Create and manage student groups
-- **Pass Monitoring**: Real-time view of student passes with teacher responsibility
-- **Policy Summary**: Quick view of current classroom policy settings
-
-### Reporting System
-- **Historical Analysis**: Date-range filtered reports
-- **Student Activity**: Individual student movement patterns and statistics
-- **Location Analytics**: Most popular destinations and usage patterns
-- **Event Logs**: Comprehensive audit trail for all system activities
-- **Data Export**: CSV export for external analysis
-
-### Monitoring & Observability
-- **System Health Dashboard**: Admins can view real-time system health, event queue size, and active performance traces.
-- **Error Tracking**: Automatic logging of unhandled errors and promise rejections.
-- **Performance Monitoring**: API call durations and performance traces tracked via Firebase Performance Monitoring (client-only).
-- **User Action Logging**: All critical user actions are logged for audit and debugging.
-- **Security Event Logging**: Security-related events are tracked and surfaced in the admin dashboard.
-
-## Deployment
-
-The easiest way to deploy this Next.js app is to use the [Vercel Platform](https://vercel.com/new).
-
-- **Framework Preset**: `Next.js`
-- **Build & Development Settings**: Should be automatically configured.
-- **Environment Variables**: Make sure to add your Firebase environment variables to the Vercel project settings.
-
-Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## Contributing
-
-This project follows a structured development approach with clear phases and milestones. See `TASK_PROGRESS.md` for detailed progress tracking and `docs/PRD.md` for product requirements.
-
 ## Documentation
+- See [DEPLOYMENT_BLOCKERS.md](./DEPLOYMENT_BLOCKERS.md) for critical blockers.
+- See [review/CODEBASE_REVIEW_2024-12-19.md](./review/CODEBASE_REVIEW_2024-12-19.md) for a full technical audit.
+- See [docs/KNOWN_ISSUES.md](./docs/KNOWN_ISSUES.md) for a list of all known issues (if present).
 
-Comprehensive documentation is available in the `/docs` directory:
-
-- **[Documentation Index](./docs/README.md)** - Complete guide to all available documentation
-- **[AI Context Guide](./docs/AI_CONTEXT_GUIDE.md)** - Essential context for AI assistants and developers
-- **[API Documentation](./docs/API_DOCUMENTATION.md)** - Detailed API reference
-- **[Code Conventions](./docs/CODE_CONVENTIONS.md)** - Coding standards and best practices
-- **[Troubleshooting Guide](./docs/TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions
-
-For developers working on the codebase, start with the [Documentation Index](./docs/README.md).
-
-## License
-
-This project is designed for educational use and school safety. Please ensure compliance with local privacy and data protection regulations.
+## Disclaimer
+> ⚠️ This system is NOT production ready. Do not use in a live school environment. FERPA compliance is NOT implemented. Security vulnerabilities are present. See documentation for details.

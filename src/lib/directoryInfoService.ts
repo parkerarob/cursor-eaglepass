@@ -116,7 +116,7 @@ export class DirectoryInfoService {
 
     } catch (error) {
       console.error('DirectoryInfoService: Error getting opt-out for student:', error);
-      return null;
+      throw error; // Re-throw so checkDisclosureAllowed can catch and return false
     }
   }
 

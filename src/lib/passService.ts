@@ -2,11 +2,12 @@ import { Pass, User, PassFormData } from '@/types';
 import { updatePass, db } from '@/lib/firebase/firestore';
 import { runTransaction, query, where, collection, getDocs, doc } from 'firebase/firestore';
 import { PassStateMachine, ActionState } from '@/lib/stateMachine';
-import { logEvent } from './eventLogger';
+import { logEvent } from '@/lib/eventLogger';
 import { formatUserName } from './utils';
-import { ValidationService } from './validation';
-import { AuditMonitor } from './auditMonitor';
+import { ValidationService } from '@/lib/validation';
+import { AuditMonitor } from '@/lib/auditMonitor';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { checkPassCreationRateLimit } from './rateLimiter.redis';
 
 export interface PassServiceResult {
   success: boolean;
@@ -20,6 +21,15 @@ export class PassService {
    */
   static async createPass(formData: PassFormData, student: User): Promise<PassServiceResult> {
     try {
+      // ENFORCE REDIS-BASED RATE LIMITING
+      const rateLimitResult = await checkPassCreationRateLimit(student.id);
+      if (!rateLimitResult.allowed) {
+        return {
+          success: false,
+          error: rateLimitResult.error || 'Rate limit exceeded. Please try again later.'
+        };
+      }
+
       // SECURITY: Validate all inputs before processing
       try {
         ValidationService.validatePassFormData(formData);

@@ -1,3 +1,11 @@
+> ⚠️ DOCUMENTATION WARNING
+>
+> This documentation may not reflect the current implementation. Last verified: 2025-06-23
+> Implementation status: PARTIAL/IN PROGRESS
+> Reliability: Low
+>
+> Always verify claims against actual code and the remediation log before relying on this documentation.
+
 # Eagle Pass Documentation
 
 > **Note**: This is the documentation index. For the main project overview and setup instructions, see the [main README](../README.md).
@@ -115,6 +123,9 @@ When adding new features:
 | Troubleshooting Guide | ✅ Complete | Current |
 | FERPA Docs | ✅ Complete | Current |
 | Testing Docs | ✅ Complete | Current |
+
+## Known Issues
+See [KNOWN_ISSUES.md](./KNOWN_ISSUES.md) for a list of all current problems and blockers.
 
 ---
 
