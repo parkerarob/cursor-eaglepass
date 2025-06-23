@@ -162,6 +162,18 @@ jest.mock('@/lib/rateLimiter.redis', () => ({
   }))
 }));
 
+// Mock the in-memory rate limiter as well
+jest.mock('@/lib/rateLimiter', () => ({
+  RateLimiter: {
+    checkRateLimit: jest.fn(() => ({
+      allowed: true,
+      remaining: 5,
+      resetTime: Date.now() + 60000
+    })),
+    resetRateLimit: jest.fn()
+  }
+}));
+
 // Now import the modules after mocks are set up
 import { PassService } from '@/lib/passService';
 import { ValidationService } from '@/lib/validation';
@@ -191,6 +203,12 @@ describe('Security Tests', () => {
     jest.clearAllMocks();
     // Reset mock implementation for logEvent
     mockLogEvent.mockReset();
+    
+    // Reset rate limiters to ensure clean state
+    const { RateLimiter } = require('@/lib/rateLimiter');
+    if (RateLimiter && RateLimiter.resetRateLimit) {
+      RateLimiter.resetRateLimit('student-1');
+    }
     
     // Setup spies for ValidationService
     mockValidationService = {

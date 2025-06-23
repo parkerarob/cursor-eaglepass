@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Running pre-push quality gates..."
+
+# Run full test suite with coverage
+echo "🧪 Running full test suite with coverage..."
+npm test -- --coverage --watchAll=false || exit 1
+
+# Check coverage thresholds
+echo "📊 Checking coverage thresholds..."
+COVERAGE=$(npm test -- --coverage --watchAll=false --coverageReporters=text-summary | grep "Statements" | awk '{print $3}' | sed 's/%//')
+echo "Current coverage: $COVERAGE%"
+if [ "$COVERAGE" -lt 80 ]; then
+  echo "❌ Coverage $COVERAGE% is below 80% threshold"
+  echo "Please improve test coverage before pushing."
+  exit 1
+fi
+
+# Build verification
+echo "🔨 Building application..."
+npm run build || exit 1
+
+# Security audit
+echo "🔐 Running security audit..."
+npm audit --audit-level=moderate || exit 1
+
+# Check for production warnings in README
+echo "📖 Checking documentation..."
+if ! grep -q "NOT PRODUCTION READY" README.md; then
+  echo "⚠️  Warning: README.md missing production warning"
+fi
+
+echo "✅ Pre-push checks passed!" 

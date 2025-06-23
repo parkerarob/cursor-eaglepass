@@ -1,5 +1,5 @@
 import { AuditMonitor } from '../auditMonitor';
-import { Pass, User, EventLog } from '../../types';
+import { Pass, User, EventLog, PassStatus, MovementState } from '../../types';
 
 // Mock the Firestore functions
 jest.mock('../firebase/firestore', () => ({
@@ -24,15 +24,18 @@ describe('AuditMonitor', () => {
   let mockStudent: User;
   let mockEventLogs: EventLog[];
   let realDateNow: () => number;
+  let OriginalDate: typeof Date;
 
   beforeAll(() => {
-    // Save the real Date.now
+    // Save the real Date.now and Date constructor
     realDateNow = Date.now;
+    OriginalDate = global.Date;
   });
 
   afterAll(() => {
-    // Restore the real Date.now
+    // Restore the real Date.now and Date constructor
     global.Date.now = realDateNow;
+    global.Date = OriginalDate;
   });
 
   beforeEach(() => {
@@ -41,20 +44,36 @@ describe('AuditMonitor', () => {
     const fixedDate = new Date(2025, 5, 23, 10, 0, 0); // June 23, 2025, 10:00 local time, Monday
     global.Date.now = jest.fn(() => fixedDate.getTime());
     
+    // Mock the Date constructor to return the fixed date when called with new Date()
+    const OriginalDate = global.Date;
+    global.Date = class extends OriginalDate {
+      constructor(...args: unknown[]) {
+        if (args.length === 0) {
+          super(fixedDate.getTime());
+        } else {
+          super(...(args as ConstructorParameters<typeof Date>));
+        }
+      }
+    } as any;
+    
+    // Reset static state in AuditMonitor
+    if (AuditMonitor['alerts'] && typeof AuditMonitor['alerts'].clear === 'function') {
+      AuditMonitor['alerts'].clear();
+    }
     // Setup mock data
     mockPass = {
       id: 'test-pass-id',
       studentId: 'test-student-id',
-      status: 'OPEN',
-      createdAt: new Date(),
-      lastUpdatedAt: new Date(),
+      status: 'OPEN' as PassStatus,
+      createdAt: fixedDate, // Use the fixed date
+      lastUpdatedAt: fixedDate, // Use the fixed date
       legs: [{
         id: 'leg-1',
         legNumber: 1,
         originLocationId: 'classroom-1',
         destinationLocationId: 'bathroom-1',
-        state: 'OUT',
-        timestamp: new Date()
+        state: 'OUT' as MovementState,
+        timestamp: fixedDate // Use the fixed date
       }]
     };
 
@@ -72,7 +91,7 @@ describe('AuditMonitor', () => {
         passId: 'pass-1',
         studentId: 'test-student-id',
         actorId: 'test-student-id',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
+        timestamp: new Date(fixedDate.getTime() - 30 * 60 * 1000), // 30 minutes ago
         eventType: 'PASS_CREATED',
         details: 'Test pass created',
         notificationLevel: 'student'
@@ -82,7 +101,7 @@ describe('AuditMonitor', () => {
         passId: 'pass-2',
         studentId: 'test-student-id',
         actorId: 'test-student-id',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
+        timestamp: new Date(fixedDate.getTime() - 15 * 60 * 1000), // 15 minutes ago
         eventType: 'PASS_CREATED',
         details: 'Test pass created',
         notificationLevel: 'student'
@@ -171,39 +190,105 @@ describe('AuditMonitor', () => {
   });
 
   describe('checkPassDuration', () => {
+    beforeEach(() => {
+      mockLogEvent.mockClear();
+    });
+
     it('should not create alert for normal duration pass', async () => {
+      const fixedDate = new Date(2025, 5, 23, 10, 0, 0); // June 23, 2025, 10:00 AM
       const normalPass = {
-        ...mockPass,
-        createdAt: new Date(Date.now() - 5 * 60 * 1000) // 5 minutes ago
+        id: 'test-pass-id',
+        studentId: 'test-student-id',
+        status: 'OPEN' as PassStatus,
+        createdAt: new Date(fixedDate.getTime() - 5 * 60 * 1000), // 5 minutes ago
+        lastUpdatedAt: fixedDate,
+        legs: [{
+          id: 'leg-1',
+          legNumber: 1,
+          originLocationId: 'classroom-1',
+          destinationLocationId: 'bathroom-1',
+          state: 'OUT' as MovementState,
+          timestamp: fixedDate
+        }]
       };
 
       await AuditMonitor.checkPassDuration(normalPass, mockStudent);
-
-      // Should not create any alerts for normal duration
       expect(mockLogEvent).not.toHaveBeenCalled();
     });
 
     it('should create alert for long duration pass', async () => {
+      const fixedDate = new Date(2025, 5, 23, 10, 0, 0);
       const longPass = {
-        ...mockPass,
-        createdAt: new Date(Date.now() - 25 * 60 * 1000) // 25 minutes ago
+        id: 'test-pass-id',
+        studentId: 'test-student-id',
+        status: 'OPEN' as PassStatus,
+        createdAt: new Date(fixedDate.getTime() - 35 * 60 * 1000), // 35 minutes ago
+        lastUpdatedAt: fixedDate,
+        legs: [{
+          id: 'leg-1',
+          legNumber: 1,
+          originLocationId: 'classroom-1',
+          destinationLocationId: 'bathroom-1',
+          state: 'OUT' as MovementState,
+          timestamp: fixedDate
+        }]
       };
 
       await AuditMonitor.checkPassDuration(longPass, mockStudent);
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'ERROR',
+          details: expect.stringContaining('Pass has been active for 35 minutes')
+        })
+      );
+    });
 
-      // Should handle the duration check without errors
-      expect(mockLogEvent).not.toHaveBeenCalled();
+    it('should create alert for very long duration pass', async () => {
+      const fixedDate = new Date(2025, 5, 23, 10, 0, 0);
+      const veryLongPass = {
+        id: 'test-pass-id',
+        studentId: 'test-student-id',
+        status: 'OPEN' as PassStatus,
+        createdAt: new Date(fixedDate.getTime() - 65 * 60 * 1000), // 65 minutes ago
+        lastUpdatedAt: fixedDate,
+        legs: [{
+          id: 'leg-1',
+          legNumber: 1,
+          originLocationId: 'classroom-1',
+          destinationLocationId: 'bathroom-1',
+          state: 'OUT' as MovementState,
+          timestamp: fixedDate
+        }]
+      };
+
+      await AuditMonitor.checkPassDuration(veryLongPass, mockStudent);
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'ERROR',
+          details: expect.stringContaining('Pass has been active for 65 minutes (threshold: 60)')
+        })
+      );
     });
 
     it('should handle string date in createdAt', async () => {
+      const fixedDate = new Date(2025, 5, 23, 10, 0, 0);
       const stringDatePass = {
-        ...mockPass,
-        createdAt: new Date(Date.now() - 25 * 60 * 1000) // Keep as Date for now
+        id: 'test-pass-id',
+        studentId: 'test-student-id',
+        status: 'OPEN' as PassStatus,
+        createdAt: new Date(fixedDate.getTime() - 5 * 60 * 1000), // 5 minutes ago
+        lastUpdatedAt: fixedDate,
+        legs: [{
+          id: 'leg-1',
+          legNumber: 1,
+          originLocationId: 'classroom-1',
+          destinationLocationId: 'bathroom-1',
+          state: 'OUT' as MovementState,
+          timestamp: fixedDate
+        }]
       };
 
       await AuditMonitor.checkPassDuration(stringDatePass, mockStudent);
-
-      // Should handle string dates without errors
       expect(mockLogEvent).not.toHaveBeenCalled();
     });
   });

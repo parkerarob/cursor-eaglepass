@@ -7,7 +7,6 @@ import { formatUserName } from './utils';
 import { ValidationService } from '@/lib/validation';
 import { AuditMonitor } from '@/lib/auditMonitor';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { checkPassCreationRateLimit } from './rateLimiter.redis';
 
 export interface PassServiceResult {
   success: boolean;
@@ -29,7 +28,7 @@ export class PassService {
         };
       }
       // ENFORCE REDIS-BASED RATE LIMITING
-      const rateLimitResult = await checkPassCreationRateLimit(student.id);
+      const rateLimitResult = await checkRateLimit(student.id);
       if (!rateLimitResult.allowed) {
         return {
           success: false,
@@ -325,5 +324,24 @@ export class PassService {
     const stateMachine = new PassStateMachine(pass, {} as User);
     const currentLeg = stateMachine.getCurrentLeg();
     return currentLeg?.state === 'IN';
+  }
+}
+
+// Client-safe rate limiting check
+async function checkRateLimit(userId: string): Promise<{ allowed: boolean; error?: string }> {
+  try {
+    // If we're on the server side, use Redis directly
+    if (typeof window === 'undefined') {
+      const { checkPassCreationRateLimit } = await import('./rateLimiter.redis');
+      return await checkPassCreationRateLimit(userId);
+    } else {
+      // If we're on the client side, use the in-memory fallback
+      const { RateLimiter } = await import('./rateLimiter');
+      const result = RateLimiter.checkRateLimit(userId, 'PASS_CREATION');
+      return { allowed: result.allowed, error: result.error };
+    }
+  } catch (error) {
+    console.warn('Rate limiting check failed, allowing request:', error);
+    return { allowed: true };
   }
 } 

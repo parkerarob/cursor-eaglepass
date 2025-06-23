@@ -1,0 +1,45 @@
+#!/bin/sh
+
+echo "🔍 Running pre-commit quality gates..."
+
+echo "🧪 Running tests..."
+npm test || exit 1
+
+echo "🔍 Running linting..."
+npm run lint || exit 1
+
+echo "🔍 Running type checking..."
+npm run type-check || exit 1
+
+echo "🔍 Checking for TODO/FIXME comments..."
+if grep -r "TODO\|FIXME" src/ --exclude-dir=node_modules; then
+  echo "❌ TODO/FIXME comments found in source code"
+  exit 1
+fi
+
+echo "🔍 Checking for @ts-ignore comments..."
+if grep -r "@ts-ignore" src/ --exclude-dir=node_modules; then
+  echo "❌ @ts-ignore comments found. Fix types instead."
+  exit 1
+fi
+
+echo "🔍 Checking for console.log statements..."
+if grep -r "console\.log" src/ --exclude-dir=node_modules; then
+  echo "❌ console.log statements found in source code"
+  exit 1
+fi
+
+echo "🔍 Checking for large files..."
+find . -type f -size +1M | grep -v node_modules | grep -v .git
+if [ $? -eq 0 ]; then
+  echo "❌ Large files detected. Please review before committing."
+  exit 1
+fi
+
+echo "🔍 Basic secret detection..."
+if grep -r "password\|secret\|key\|token" src/ --exclude-dir=node_modules | grep -v "test\|mock\|example"; then
+  echo "⚠️  Potential secrets found. Please review."
+  exit 1
+fi
+
+echo "✅ Pre-commit checks passed!"
