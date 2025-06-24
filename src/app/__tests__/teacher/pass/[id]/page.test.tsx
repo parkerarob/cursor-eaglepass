@@ -194,7 +194,7 @@ describe('PassDetailPage', () => {
     render(<PassDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+      expect(screen.getByText(/Alice\s+Johnson/)).toBeInTheDocument();
     });
   });
 
@@ -202,7 +202,8 @@ describe('PassDetailPage', () => {
     render(<PassDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('badge')).toBeInTheDocument();
+      expect(screen.getByTestId('status-badge')).toBeInTheDocument();
+      expect(screen.getByTestId('status-badge')).toHaveTextContent(/OPEN/i);
     });
   });
 

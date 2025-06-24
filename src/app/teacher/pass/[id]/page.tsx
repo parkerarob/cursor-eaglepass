@@ -340,14 +340,12 @@ export default function PassDetailPage() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Status</p>
                 <div className="flex items-center gap-2">
-                  <Badge variant={processedPass.status === 'OPEN' ? 'default' : 'secondary'}>
+                  <Badge data-testid="status-badge" variant={processedPass.status === 'OPEN' ? 'default' : 'secondary'}>
                     {processedPass.status}
                   </Badge>
-                  {processedPass.status === 'OPEN' && (
-                    <Badge variant={processedPass.legs[processedPass.legs.length - 1]?.state === 'IN' ? 'default' : 'outline'}>
-                      {processedPass.legs[processedPass.legs.length - 1]?.state || 'OUT'}
-                    </Badge>
-                  )}
+                  <Badge data-testid="location-badge" variant="outline">
+                    {processedPass.legs[processedPass.legs.length - 1]?.state === 'IN' ? 'IN' : 'OUT'}
+                  </Badge>
                 </div>
               </div>
               <div>
