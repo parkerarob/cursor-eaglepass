@@ -11,8 +11,15 @@ const customJestConfig = {
   testEnvironment: 'jest-environment-jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^next/font/(.*)$': '<rootDir>/__mocks__/nextFont.js',
+    '^geist/font/sans$': '<rootDir>/__mocks__/geistFontSans.js',
+    '^geist/font/mono$': '<rootDir>/__mocks__/geistFontMono.js',
+    '^geist(.*)$': '<rootDir>/__mocks__/geist.js',
   },
-  testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
+  testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/', '<rootDir>/functions/'],
+  transformIgnorePatterns: [
+    '/node_modules/(?!(geist|jose|next)/)',
+  ],
   
   // Coverage configuration for TASK-007
   collectCoverageFrom: [

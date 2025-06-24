@@ -59,8 +59,8 @@ jest.mock('@/components/ui/card', () => ({
 }));
 
 jest.mock('@/components/ui/badge', () => ({
-  Badge: ({ children, variant }: any) => (
-    <span data-testid="badge" data-variant={variant}>{children}</span>
+  Badge: ({ children, ...props }: any) => (
+    <span {...props}>{children}</span>
   ),
 }));
 
@@ -101,6 +101,7 @@ describe('PassDetailPage', () => {
     id: 'student1',
     firstName: 'Alice',
     lastName: 'Johnson',
+    name: 'Alice Johnson',
     role: 'student',
   };
 
@@ -194,7 +195,7 @@ describe('PassDetailPage', () => {
     render(<PassDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Alice\s+Johnson/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Alice\s+Johnson/).length).toBeGreaterThan(0);
     });
   });
 

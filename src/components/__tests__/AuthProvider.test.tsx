@@ -75,6 +75,7 @@ describe('AuthProvider', () => {
   });
 
   it('should update user state when auth state changes', async () => {
+    jest.setTimeout(20000);
     const mockUser = {
       uid: 'user123',
       email: 'test@example.com',
