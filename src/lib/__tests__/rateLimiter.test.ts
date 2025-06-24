@@ -26,6 +26,11 @@ describe('In-Memory RateLimiter - Comprehensive Coverage', () => {
     (RateLimiter as any).limits.clear();
   });
 
+  afterEach(() => {
+    // Ensure all spies are cleaned up
+    jest.clearAllMocks();
+  });
+
   describe('checkRateLimit', () => {
     it('should allow first request and return correct remaining count', () => {
       const result = RateLimiter.checkRateLimit('user1', 'PASS_CREATION');
@@ -90,8 +95,8 @@ describe('In-Memory RateLimiter - Comprehensive Coverage', () => {
       expect(rapidResult.allowed).toBe(false);
       expect(rapidResult.resetTime).toBeGreaterThanOrEqual(originalResetTime); // Extended ban
       
-      // Restore Date.now
-      Date.now = originalNow;
+      // Cleanup handled by afterEach
+      jest.clearAllMocks();
     });
 
     it('should handle different operations independently', () => {
@@ -142,8 +147,8 @@ describe('In-Memory RateLimiter - Comprehensive Coverage', () => {
         expect(result.allowed).toBe(true);
         expect(result.remainingRequests).toBe(4);
       } finally {
-        // Restore Date.now
-        dateSpy.mockRestore();
+        // Cleanup handled by afterEach
+        jest.clearAllMocks();
       }
     });
 
@@ -277,8 +282,8 @@ describe('In-Memory RateLimiter - Comprehensive Coverage', () => {
       expect(status.PASS_CREATION.count).toBe(0);
       expect(status.PASS_CREATION.timeRemaining).toBe(0);
 
-      // Restore Date.now
-      Date.now = originalNow;
+      // Cleanup handled by afterEach
+      jest.clearAllMocks();
     });
   });
 
@@ -413,8 +418,8 @@ describe('In-Memory RateLimiter - Comprehensive Coverage', () => {
         result = RateLimiter.checkRateLimit('user1', 'PASS_CREATION');
         expect(result.allowed).toBe(true);
       } finally {
-        // Restore Date.now
-        dateSpy.mockRestore();
+        // Cleanup handled by afterEach
+        jest.clearAllMocks();
       }
     });
   });
