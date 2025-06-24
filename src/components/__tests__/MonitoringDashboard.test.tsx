@@ -1,15 +1,16 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MonitoringDashboard } from '../MonitoringDashboard';
+import { monitoringService } from '@/lib/monitoringService';
 
 // Mock the monitoring service
-const mockMonitoringService = {
-  getSystemHealth: jest.fn(),
-};
-
 jest.mock('@/lib/monitoringService', () => ({
-  monitoringService: mockMonitoringService,
+  monitoringService: {
+    getSystemHealth: jest.fn(),
+  },
 }));
+
+const mockMonitoringService = monitoringService as jest.Mocked<typeof monitoringService>;
 
 // Mock UI components
 jest.mock('@/components/ui/card', () => ({

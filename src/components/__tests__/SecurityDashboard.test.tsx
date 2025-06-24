@@ -1,18 +1,20 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { SecurityDashboard } from '../SecurityDashboard';
 
-// Mock the AuditMonitor
-const mockAuditMonitor = {
-  getActiveAlerts: jest.fn(),
-  generateAuditMetrics: jest.fn(),
-  getAuditSummary: jest.fn(),
-  acknowledgeAlert: jest.fn(),
-};
-
+// Mock the AuditMonitor - must be hoisted
 jest.mock('@/lib/auditMonitor', () => ({
-  AuditMonitor: mockAuditMonitor,
+  AuditMonitor: {
+    getActiveAlerts: jest.fn(),
+    generateAuditMetrics: jest.fn(),
+    getAuditSummary: jest.fn(),
+    acknowledgeAlert: jest.fn(),
+  },
 }));
+
+import { SecurityDashboard } from '../SecurityDashboard';
+import { AuditMonitor } from '@/lib/auditMonitor';
+
+const mockAuditMonitor = AuditMonitor as jest.Mocked<typeof AuditMonitor>;
 
 // Mock UI components
 jest.mock('@/components/ui/card', () => ({
@@ -390,10 +392,10 @@ describe('SecurityDashboard', () => {
     const alertsWithDifferentTypes = [
       { ...mockAlerts[0], type: 'EXCESSIVE_PASSES' },
       { ...mockAlerts[1], type: 'RAPID_CREATION' },
-      { id: 'alert-3', ...mockAlerts[0], type: 'LONG_DURATION' },
-      { id: 'alert-4', ...mockAlerts[0], type: 'UNUSUAL_PATTERN' },
-      { id: 'alert-5', ...mockAlerts[0], type: 'SECURITY_VIOLATION' },
-      { id: 'alert-6', ...mockAlerts[0], type: 'UNKNOWN_TYPE' },
+      { ...mockAlerts[0], id: 'alert-3', type: 'LONG_DURATION' },
+      { ...mockAlerts[0], id: 'alert-4', type: 'UNUSUAL_PATTERN' },
+      { ...mockAlerts[0], id: 'alert-5', type: 'SECURITY_VIOLATION' },
+      { ...mockAlerts[0], id: 'alert-6', type: 'UNKNOWN_TYPE' },
     ];
 
     mockAuditMonitor.getActiveAlerts.mockReturnValue(alertsWithDifferentTypes);
