@@ -2,6 +2,6 @@
   "projects": {
     "default": "eaglepass-dev",
     "staging": "eaglepass-test",
-    "production": "eaglepass-prod"
+    "production": "eaglepass-dev"
   }
 }

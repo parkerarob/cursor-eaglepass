@@ -1,21 +1,26 @@
 import {
-  getAuth,
   onAuthStateChanged,
   signInWithPopup,
   signOut as firebaseSignOut,
   GoogleAuthProvider,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { firebaseApp } from './config';
+import { auth } from './config';
 
-export const auth = getAuth(firebaseApp);
 export const googleProvider = new GoogleAuthProvider();
 
 googleProvider.setCustomParameters({
   prompt: 'select_account',
 });
 
-export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+export const signInWithGoogle = async () => {
+  try {
+    return await signInWithPopup(auth, googleProvider);
+  } catch (error) {
+    console.error('Google sign-in failed:', error);
+    throw error;
+  }
+};
 
 export const signOut = async () => {
   try {

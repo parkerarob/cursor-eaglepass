@@ -1,10 +1,13 @@
 import { getPerformance, trace } from '@firebase/performance';
-import { firebaseApp } from '@/lib/firebase/config';
+import { getFirebaseApp } from '@/lib/firebase/config';
 
-let perf: ReturnType<typeof getPerformance> | undefined = undefined;
-if (typeof window !== 'undefined') {
-  perf = getPerformance(firebaseApp);
-}
+// Use lazy initialization instead of module-level initialization
+const getPerf = () => {
+  if (typeof window === 'undefined') return undefined;
+  const app = getFirebaseApp();
+  if (!app) return undefined;
+  return getPerformance(app);
+};
 
 export interface MonitoringEvent {
   eventType: 'error' | 'warning' | 'info' | 'performance' | 'security' | 'user_action';
@@ -34,6 +37,7 @@ class MonitoringService {
   private isInitialized = false;
   private eventQueue: MonitoringEvent[] = [];
   private performanceTraces: Map<string, ReturnType<typeof trace>> = new Map();
+  private isLoggingError = false; // Circuit breaker to prevent infinite loops
 
   private constructor() {
     if (typeof window !== 'undefined') {
@@ -51,18 +55,24 @@ class MonitoringService {
   private initializeErrorHandling(): void {
     if (typeof window === 'undefined') return;
     window.addEventListener('error', (event) => {
+      // Prevent infinite loops by checking if we're already logging an error
+      if (this.isLoggingError) return;
+      
       this.logError('Unhandled Error', {
         message: event.message,
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
-        error: event.error?.stack,
+        error: event.error?.stack || event.error?.toString() || 'Unknown error',
       });
     });
     window.addEventListener('unhandledrejection', (event) => {
+      // Prevent infinite loops by checking if we're already logging an error
+      if (this.isLoggingError) return;
+      
       this.logError('Unhandled Promise Rejection', {
-        reason: event.reason,
-        promise: event.promise,
+        reason: typeof event.reason === 'object' ? JSON.stringify(event.reason) : event.reason,
+        promise: event.promise?.toString(),
       });
     });
   }
@@ -71,19 +81,47 @@ class MonitoringService {
    * Log an error event
    */
   public logError(message: string, details?: Record<string, unknown>, severity: 'low' | 'medium' | 'high' | 'critical' = 'medium'): void {
-    const event: MonitoringEvent = {
-      eventType: 'error',
-      category: 'application',
-      message,
-      details,
-      timestamp: new Date(),
-      severity,
-      url: typeof window !== 'undefined' ? window.location.href : undefined,
-      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
-    };
+    // Circuit breaker: prevent infinite loops
+    if (this.isLoggingError) return;
+    
+    try {
+      this.isLoggingError = true;
+      
+      const event: MonitoringEvent = {
+        eventType: 'error',
+        category: 'application',
+        message,
+        details,
+        timestamp: new Date(),
+        severity,
+        url: typeof window !== 'undefined' ? window.location.href : undefined,
+        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
+      };
 
-    this.queueEvent(event);
-    console.error(`[Monitoring] ${message}`, details);
+      this.queueEvent(event);
+      
+      // Use a safer logging method that won't trigger error handlers
+      // Only log in development to avoid production console noise
+      if (process.env.NODE_ENV === 'development') {
+        const logMessage = `[Monitoring] ${message}`;
+        const logDetails = details && Object.keys(details).length > 0 ? details : undefined;
+        
+        // Use setTimeout to async log and prevent triggering error handlers
+        setTimeout(() => {
+          try {
+            if (logDetails) {
+              console.error(logMessage, logDetails);
+            } else {
+              console.error(logMessage);
+            }
+          } catch {
+            // Silently fail if console.error fails
+          }
+        }, 0);
+      }
+    } finally {
+      this.isLoggingError = false;
+    }
   }
 
   /**
@@ -157,7 +195,9 @@ class MonitoringService {
    * Start a performance trace
    */
   public startTrace(traceName: string): void {
-    if (typeof window === 'undefined' || !perf) return;
+    const perf = getPerf();
+    if (!perf) return;
+    
     try {
       const performanceTrace = trace(perf, traceName);
       performanceTrace.start();
@@ -171,7 +211,9 @@ class MonitoringService {
    * Stop a performance trace
    */
   public stopTrace(traceName: string, attributes?: Record<string, string>): void {
-    if (typeof window === 'undefined' || !perf) return;
+    const perf = getPerf();
+    if (!perf) return;
+    
     try {
       const performanceTrace = this.performanceTraces.get(traceName);
       if (performanceTrace) {
@@ -212,21 +254,27 @@ class MonitoringService {
         metadata,
       });
 
-      this.stopTrace(`api_${apiName}`, { status: 'success' });
+      this.stopTrace(`api_${apiName}`, {
+        success: 'true',
+        duration: duration.toString(),
+      });
+
       return result;
     } catch (error) {
       const duration = performance.now() - startTime;
       
-      this.recordPerformanceMetric({
-        name: `api_${apiName}`,
-        value: duration,
-        unit: 'ms',
-        category: 'api',
-        timestamp: new Date(),
-        metadata: { ...metadata, error: true },
+      this.logError(`API call failed: ${apiName}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        duration,
+        metadata,
       });
 
-      this.stopTrace(`api_${apiName}`, { status: 'error' });
+      this.stopTrace(`api_${apiName}`, {
+        success: 'false',
+        duration: duration.toString(),
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
       throw error;
     }
   }
@@ -280,12 +328,20 @@ class MonitoringService {
       // In a real implementation, this would send events to Firebase Analytics
       // or a logging service. For now, we'll just log them.
       events.forEach(event => {
-        if (event.eventType === 'error' || event.eventType === 'security') {
-          console.error(`[${event.eventType.toUpperCase()}] ${event.message}`, event.details);
-        } else if (event.eventType === 'warning') {
-          console.warn(`[WARNING] ${event.message}`, event.details);
-        } else {
-          console.log(`[${event.eventType.toUpperCase()}] ${event.message}`, event.details);
+        try {
+          // Safely serialize details to avoid circular references or undefined values
+          const safeDetails = event.details ? JSON.parse(JSON.stringify(event.details)) : undefined;
+          
+          if (event.eventType === 'error' || event.eventType === 'security') {
+            console.error(`[${event.eventType.toUpperCase()}] ${event.message}`, safeDetails);
+          } else if (event.eventType === 'warning') {
+            console.warn(`[WARNING] ${event.message}`, safeDetails);
+          } else {
+            console.log(`[${event.eventType.toUpperCase()}] ${event.message}`, safeDetails);
+          }
+        } catch (logError) {
+          // If individual event logging fails, just log the message without details
+          console.log(`[${event.eventType.toUpperCase()}] ${event.message} [details could not be logged]`);
         }
       });
     } catch (error) {
@@ -322,18 +378,22 @@ class MonitoringService {
    * Cleanup resources
    */
   public cleanup(): void {
-    // Stop all active traces
-    this.performanceTraces.forEach((trace, name) => {
-      try {
-        trace.stop();
-      } catch (error) {
-        console.warn(`Failed to stop trace during cleanup: ${name}`, error);
-      }
-    });
-    this.performanceTraces.clear();
+    try {
+      // Stop all active traces
+      this.performanceTraces.forEach((trace, name) => {
+        try {
+          trace.stop();
+        } catch (error) {
+          console.warn(`Failed to stop trace during cleanup: ${name}`, error);
+        }
+      });
+      this.performanceTraces.clear();
 
-    // Process any remaining events
-    this.processEventQueue();
+      // Process any remaining events
+      this.processEventQueue();
+    } catch (error) {
+      console.warn('Error during monitoring service cleanup:', error);
+    }
   }
 }
 

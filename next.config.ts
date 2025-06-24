@@ -17,10 +17,8 @@ const nextConfig: NextConfig = {
     
     return config;
   },
-  // Disable server-side rendering for functions directory
-  experimental: {
-    serverComponentsExternalPackages: ['firebase-functions'],
-  },
+  // External packages for server components
+  serverExternalPackages: ['firebase-functions'],
 };
 
 export default nextConfig;

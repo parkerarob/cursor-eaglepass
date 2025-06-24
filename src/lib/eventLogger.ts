@@ -1,7 +1,8 @@
 import { addDoc, collection, getFirestore } from 'firebase/firestore';
-import { firebaseApp } from '@/lib/firebase/config';
+import { getFirebaseFirestore } from '@/lib/firebase/config';
 
-const db = getFirestore(firebaseApp);
+// Use lazy initialization instead of module-level initialization
+const getDb = () => getFirebaseFirestore();
 
 export type EventType =
   | 'PASS_CREATED'
@@ -38,6 +39,12 @@ export interface EventLog {
 }
 
 export async function logEvent(event: Omit<EventLog, 'id'>): Promise<void> {
+  const db = getDb();
+  if (!db) {
+    console.error('Firebase not initialized, cannot log event');
+    return;
+  }
+  
   const eventWithTimestamp = {
     ...event,
     timestamp: event.timestamp || new Date(),

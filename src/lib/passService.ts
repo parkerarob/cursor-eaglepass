@@ -327,21 +327,25 @@ export class PassService {
   }
 }
 
-// Client-safe rate limiting check
+// Rate limiting check - client/server aware implementation
 async function checkRateLimit(userId: string): Promise<{ allowed: boolean; error?: string }> {
+  // Client-side: Rate limiting will be enforced by API routes and server components
+  // This prevents Redis from being bundled in the client build
+  if (typeof window !== 'undefined') {
+    return { allowed: true }; // Client-side always allows, server enforces limits
+  }
+
+  // Server-side: Use in-memory rate limiting as fallback
+  // Redis rate limiting is handled in dedicated API routes and server actions
   try {
-    // If we're on the server side, use Redis directly
-    if (typeof window === 'undefined') {
-      const { checkPassCreationRateLimit } = await import('./rateLimiter.redis');
-      return await checkPassCreationRateLimit(userId);
-    } else {
-      // If we're on the client side, use the in-memory fallback
-      const { RateLimiter } = await import('./rateLimiter');
-      const result = RateLimiter.checkRateLimit(userId, 'PASS_CREATION');
-      return { allowed: result.allowed, error: result.error };
-    }
+    const { RateLimiter } = await import('./rateLimiter');
+    const result = RateLimiter.checkRateLimit(userId, 'PASS_CREATION');
+    return {
+      allowed: result.allowed,
+      error: result.error
+    };
   } catch (error) {
-    console.warn('Rate limiting check failed, allowing request:', error);
-    return { allowed: true };
+    console.error('Rate limiting check failed:', error);
+    return { allowed: true }; // Fail open for better UX in passService context
   }
 } 

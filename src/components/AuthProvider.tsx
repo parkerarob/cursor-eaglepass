@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { auth, onAuthStateChanged, FirebaseUser } from '@/lib/firebase/auth';
+import { onAuthStateChanged, FirebaseUser } from '@/lib/firebase/auth';
+import { getFirebaseAuth } from '@/lib/firebase/config';
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -15,8 +16,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Get auth instance at runtime
+    const auth = getFirebaseAuth();
+    
+    // Check if auth is initialized
+    if (!auth) {
+      console.warn('Firebase Auth not initialized, user will remain null');
+      setIsLoading(false);
+      return () => {}; // Return no-op cleanup function
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Auth state change error:', error);
+      setUser(null);
       setIsLoading(false);
     });
 

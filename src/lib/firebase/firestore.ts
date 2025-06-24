@@ -14,15 +14,22 @@ import {
   onSnapshot,
   writeBatch,
 } from "firebase/firestore";
-import { firebaseApp } from "./config";
+import { getFirebaseApp, getFirebaseFirestore } from "./config";
 import { User, Location, Pass } from "@/types";
 import { Group, Restriction, ClassroomPolicy, StudentPolicyOverride } from "@/types/policy";
 import { EventLog } from '@/lib/eventLogger';
 import { getSortableName, splitFullName } from '@/lib/utils';
 
-const db = getFirestore(firebaseApp);
+// Use lazy initialization instead of module-level initialization
+export const db = getFirebaseFirestore();
 
-export { db };
+// Helper function to ensure db is initialized
+const ensureDbInitialized = () => {
+  if (!db) {
+    throw new Error('Firestore not initialized. Please check your Firebase configuration.');
+  }
+  return db;
+};
 
 // Function to convert Firestore Timestamps to JS Dates in a deeply nested object
 const convertTimestamps = (data: unknown): unknown => {
@@ -63,7 +70,8 @@ const convertDatesToTimestamps = (data: unknown): unknown => {
 }
 
 export const getUserById = async (id: string): Promise<User | null> => {
-  const userDocRef = doc(db, "users", id);
+  const database = ensureDbInitialized();
+  const userDocRef = doc(database, "users", id);
   const userSnap = await getDoc(userDocRef);
   if (userSnap.exists()) {
     const userData = userSnap.data();
@@ -610,7 +618,8 @@ export const getEventLogsByDateRange = async (startDate: Date, endDate: Date): P
 // Emergency Freeze State
 
 export const getEmergencyState = async (): Promise<{ active: boolean; activatedBy?: string; activatedAt?: Date } | null> => {
-  const docRef = doc(db, 'system', 'emergency');
+  const database = ensureDbInitialized();
+  const docRef = doc(database, 'system', 'emergency');
   const snap = await getDoc(docRef);
   if (!snap.exists()) return null;
   const data = convertTimestamps(snap.data());
@@ -618,7 +627,8 @@ export const getEmergencyState = async (): Promise<{ active: boolean; activatedB
 };
 
 export const setEmergencyState = async (active: boolean, activatedBy: string): Promise<void> => {
-  const docRef = doc(db, 'system', 'emergency');
+  const database = ensureDbInitialized();
+  const docRef = doc(database, 'system', 'emergency');
   await setDoc(docRef, {
     active,
     activatedBy,
@@ -627,7 +637,15 @@ export const setEmergencyState = async (active: boolean, activatedBy: string): P
 };
 
 export const subscribeToEmergencyState = (callback: (state: { active: boolean; activatedBy?: string; activatedAt?: Date } | null) => void) => {
-  const docRef = doc(db, 'system', 'emergency');
+  // Check if db is initialized
+  if (!db) {
+    console.warn('Firestore not initialized, cannot subscribe to emergency state');
+    // Return a no-op unsubscribe function
+    return () => {};
+  }
+  
+  const database = ensureDbInitialized();
+  const docRef = doc(database, 'system', 'emergency');
   return onSnapshot(docRef, (snap) => {
     if (!snap.exists()) {
       callback(null);
@@ -635,6 +653,9 @@ export const subscribeToEmergencyState = (callback: (state: { active: boolean; a
       const data = convertTimestamps(snap.data());
       callback(data as { active: boolean; activatedBy?: string; activatedAt?: Date });
     }
+  }, (error) => {
+    console.error('Error subscribing to emergency state:', error);
+    callback(null);
   });
 };
 

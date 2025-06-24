@@ -419,11 +419,22 @@ export class RedisRateLimiter {
   }
 }
 
+// Auto-initialization removed to prevent client-side bundling issues
+// Redis will be initialized on first use in server-side contexts only
+
 // Convenience functions for backward compatibility
 export async function checkPassCreationRateLimit(userId: string): Promise<RateLimitResult> {
+  // Ensure Redis is initialized before use
+  if (!RedisRateLimiter.isRedisAvailable()) {
+    await RedisRateLimiter.initialize();
+  }
   return RedisRateLimiter.checkRateLimit(userId, 'PASS_CREATION');
 }
 
 export async function checkLoginRateLimit(userId: string): Promise<RateLimitResult> {
+  // Ensure Redis is initialized before use
+  if (!RedisRateLimiter.isRedisAvailable()) {
+    await RedisRateLimiter.initialize();
+  }
   return RedisRateLimiter.checkRateLimit(userId, 'LOGIN_ATTEMPTS');
 } 

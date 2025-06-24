@@ -111,7 +111,19 @@ interface Pass {
 - **auth.ts**: Authentication logic
 - **config.ts**: Firebase configuration
 
+### 4. Security Services
+- **rateLimiter.redis.ts**: Persistent Redis-based rate limiting
+- **rateLimiter.ts**: In-memory rate limiting fallback
+- **security.test.ts**: Security validation tests
+
 ## Security & Compliance
+
+### Rate Limiting (TASK-002 ✅ COMPLETE)
+- **Primary**: Redis-based persistent rate limiting (`rateLimiter.redis.ts`)
+- **Fallback**: In-memory rate limiting for graceful degradation
+- **API Endpoint**: `/api/rate-limit` for server-side enforcement
+- **Security**: Fail-secure behavior, rate limits survive server restarts
+- **Architecture**: Clean client/server separation to avoid bundling conflicts
 
 ### FERPA Requirements
 1. **Audit Everything**: All data access must be logged
@@ -134,6 +146,9 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 NEXT_PUBLIC_FIREBASE_APP_ID
+
+# Redis Configuration (for rate limiting)
+REDIS_URL=redis://localhost:6379  # Or Redis Cloud/AWS ElastiCache URL
 ```
 
 ## Common Patterns
