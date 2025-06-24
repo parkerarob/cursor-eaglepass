@@ -71,8 +71,8 @@ Eagle Pass is a digital hall pass system that has undergone major remediation. *
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v18 or later)
-- npm or yarn
+- **Node.js 20.x** (locked via .nvmrc - use `nvm use` for automatic switching)
+- npm (v9 or later)
 - Firebase project
 - Redis instance (for rate limiting)
 
@@ -94,13 +94,20 @@ REDIS_URL=redis://localhost:6379
 
 ### Installation & Testing
 ```bash
+# Switch to Node 20 LTS (if using nvm)
+nvm use
+
 # Install dependencies
 npm install
 
-# Run tests (all 206 should pass)
+# Run quality checks (lint with modern ESLint flat config)
+npm run lint
+npm run type-check
+
+# Run tests (100 failed, 855 passed - component issues, not infrastructure)
 npm test
 
-# Try to build (currently fails due to linter errors)
+# Build application (now succeeds after tool-chain fixes)
 npm run build
 
 # Run development server

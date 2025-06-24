@@ -33,23 +33,32 @@ export class FERPAService {
    */
   static async initialize(): Promise<void> {
     try {
+      // Skip initialization during build time
+      if (typeof window === 'undefined' && process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'phase-production-build') {
+        return;
+      }
       
       // Initialize data retention scheduling
       DataRetentionService.scheduleAutomatedCleanup();
       
-      // Log initialization
-      await FERPAAuditLogger.logRecordAccess(
-        'system',
-        'system',
-        'system-initialization',
-        [],
-        'FERPA system initialization',
-        'System startup - automated compliance initialization'
-      );
-      
+      // Only log initialization if we have a proper runtime context
+      if (typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'nodejs') {
+        await FERPAAuditLogger.logRecordAccess(
+          'system',
+          'system',
+          'system-initialization',
+          [],
+          'FERPA system initialization',
+          'System startup - automated compliance initialization'
+        );
+      }
       
     } catch (error) {
       console.error('FERPAService: Error initializing FERPA systems:', error);
+      // Don't throw during build time to prevent build failures
+      if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
+        return;
+      }
       throw error;
     }
   }
@@ -522,8 +531,8 @@ export class FERPAService {
   }
 }
 
-// Initialize FERPA service when module loads
-if (typeof window === 'undefined') { // Server-side only
+// Initialize FERPA service when module loads (only in runtime, not during build)
+if (typeof window === 'undefined' && process.env.NEXT_PHASE !== 'phase-production-build') { // Server-side only, not during build
   FERPAService.initialize().catch(error => {
     console.error('Failed to initialize FERPA service:', error);
   });

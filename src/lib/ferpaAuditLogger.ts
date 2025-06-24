@@ -271,11 +271,31 @@ export class FERPAAuditLogger {
     try {
       const auditRef = doc(collection(db, 'ferpaAuditLogs'), auditLog.id);
       
-      // Convert Date to Timestamp for Firestore
+      // Convert Date to Timestamp for Firestore and filter undefined values
       const firestoreLog = {
         ...auditLog,
-        timestamp: Timestamp.fromDate(auditLog.timestamp)
+        timestamp: Timestamp.fromDate(auditLog.timestamp),
+        // Remove undefined fields that Firestore doesn't accept
+        ...(auditLog.ipAddress !== undefined && { ipAddress: auditLog.ipAddress }),
+        ...(auditLog.userAgent !== undefined && { userAgent: auditLog.userAgent }),
+        ...(auditLog.additionalDetails !== undefined && { additionalDetails: auditLog.additionalDetails })
       };
+      
+      // Remove the original optional fields to avoid undefined values
+      delete (firestoreLog as any).ipAddress;
+      delete (firestoreLog as any).userAgent;
+      delete (firestoreLog as any).additionalDetails;
+      
+      // Re-add them only if they have values
+      if (auditLog.ipAddress !== undefined) {
+        (firestoreLog as any).ipAddress = auditLog.ipAddress;
+      }
+      if (auditLog.userAgent !== undefined) {
+        (firestoreLog as any).userAgent = auditLog.userAgent;
+      }
+      if (auditLog.additionalDetails !== undefined) {
+        (firestoreLog as any).additionalDetails = auditLog.additionalDetails;
+      }
       
       await setDoc(auditRef, firestoreLog);
       

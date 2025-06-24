@@ -39,6 +39,43 @@
 - User interface (functional and responsive)
 - Documentation (honest and accurate)
 
+## 🚧 High Priority (Blocking Release)
+
+### 1. Test Failures
+- **24 failed test suites** - mostly component-level issues
+- **100 failed tests** - duplicate test IDs, jest.mocked API usage
+- Focus areas: RoleSwitcher, ReportingDashboard, rate-limiter
+
+### 2. Component Testing
+- Missing UI component test coverage
+- Multiple elements with same test IDs
+- Jest mocking patterns need updating
+
+## 📋 Tech Debt (Post-Release Cleanup)
+
+### ESLint Warnings (16 total)
+Track these unused variables/imports for cleanup:
+- Unused imports: `getFirestore`, `User`, `getFirebaseApp`
+- Unused parameters: `_context`, `_event`, `disclosure`, `request`
+- Unused variables: `subject`, `body`, `message`, `title`, `alert`, `result`
+
+**Action**: Create tickets to either use these variables or remove dead code
+
+## ✅ Recent Fixes (Tool-chain Cleanup)
+- ✅ ESLint flat config working (0 errors)
+- ✅ TypeScript 5.8 compatibility
+- ✅ FERPA build-time initialization fixed
+- ✅ Node 20 LTS locked (.nvmrc)
+- ✅ CI smoke tests added
+- ✅ Clean npm audit (0 vulnerabilities)
+
+## 🎯 Next Steps
+1. Fix duplicate test IDs in components
+2. Update jest.mocked API usage
+3. Add missing UI component tests
+4. Clean up ESLint warnings
+5. Integration testing
+
 ---
 
 **Focus**: Fix the build first, everything else is enhancement. 
