@@ -36,6 +36,39 @@ global.Response = class Response {
   }
 };
 
+// Add Request global for Next.js API routes
+global.Request = class Request {
+  constructor(input, init = {}) {
+    this.url = typeof input === 'string' ? input : input.url;
+    this.method = init.method || 'GET';
+    this.headers = new Map(Object.entries(init.headers || {}));
+    this.body = init.body;
+  }
+  
+  json() {
+    return Promise.resolve(JSON.parse(this.body));
+  }
+  
+  text() {
+    return Promise.resolve(this.body);
+  }
+};
+
+// Mock NextResponse for API route testing
+jest.mock('next/server', () => ({
+  NextResponse: {
+    json: (data, init = {}) => {
+      const response = {
+        status: init.status || 200,
+        json: () => Promise.resolve(data),
+        headers: new Map(Object.entries(init.headers || {}))
+      };
+      return response;
+    }
+  },
+  NextRequest: global.Request
+}));
+
 // Mock crypto.randomUUID for tests
 Object.defineProperty(global, 'crypto', {
   value: {

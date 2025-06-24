@@ -37,7 +37,11 @@ export const signOut = async () => {
   
   // Redirect to homepage after sign out to ensure clean state
   if (typeof window !== 'undefined') {
-    window.location.href = '/';
+    try {
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Redirect failed during logout:', error);
+    }
   }
 };
 

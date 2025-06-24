@@ -232,6 +232,7 @@ describe('EventLogger', () => {
 
     it('should handle Firebase not initialized', async () => {
       mockGetFirebaseFirestore.mockReturnValue(null as any);
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       const event: Omit<EventLog, 'id'> = {
         actorId: 'teacher-123',
@@ -241,13 +242,15 @@ describe('EventLogger', () => {
 
       await logEvent(event);
 
-      expect(mockConsoleError).toHaveBeenCalledWith('Firebase not initialized, cannot log event');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Firebase not initialized, cannot log event');
       expect(mockCollection).not.toHaveBeenCalled();
       expect(mockAddDoc).not.toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
     });
 
     it('should handle Firebase undefined', async () => {
       mockGetFirebaseFirestore.mockReturnValue(undefined as any);
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       const event: Omit<EventLog, 'id'> = {
         actorId: 'teacher-123',
@@ -257,9 +260,10 @@ describe('EventLogger', () => {
 
       await logEvent(event);
 
-      expect(mockConsoleError).toHaveBeenCalledWith('Firebase not initialized, cannot log event');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Firebase not initialized, cannot log event');
       expect(mockCollection).not.toHaveBeenCalled();
       expect(mockAddDoc).not.toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
     });
 
     it('should handle Firestore errors gracefully', async () => {
