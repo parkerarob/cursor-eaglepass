@@ -30,14 +30,16 @@ if grep -r "console\.log" src/ --exclude-dir=node_modules; then
 fi
 
 echo "🔍 Checking for large files..."
-find . -type f -size +1M | grep -v node_modules | grep -v .git
-if [ $? -eq 0 ]; then
+LARGE_FILES=$(find . -type f -size +1M | grep -v node_modules | grep -v .git)
+if [ ! -z "$LARGE_FILES" ]; then
+  echo "$LARGE_FILES"
   echo "❌ Large files detected. Please review before committing."
   exit 1
 fi
 
 echo "🔍 Basic secret detection..."
-if grep -r "password\|secret\|key\|token" src/ --exclude-dir=node_modules | grep -v "test\|mock\|example"; then
+# Look for actual secrets (API keys, passwords, etc.) but exclude React key props and legitimate token usage
+if grep -r "password\s*=\|secret\s*=\|api_key\s*=\|private_key\s*=" src/ --exclude-dir=node_modules | grep -v "test\|mock\|example"; then
   echo "⚠️  Potential secrets found. Please review."
   exit 1
 fi

@@ -73,7 +73,6 @@ export default function Home() {
           setCurrentStudent(userProfile);
           setIsDevMode(false);
         } else if (userProfile?.role === 'dev') {
-          console.log("Developer mode activated. Loading test student profile.");
           const testStudent = await getUserById('student-1');
           if (testStudent) {
             setCurrentStudent(testStudent);

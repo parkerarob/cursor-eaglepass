@@ -73,12 +73,12 @@ export class RedisRateLimiter {
       });
 
       this.redis.on('connect', () => {
-        console.log('Redis connected successfully');
+        // Redis connected successfully
         this.isConnected = true;
       });
 
       this.redis.on('reconnecting', () => {
-        console.log('Redis reconnecting...');
+        // Redis reconnecting...
         this.isConnected = false;
       });
 

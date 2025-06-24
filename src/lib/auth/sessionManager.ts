@@ -66,12 +66,12 @@ export class SessionManager {
       });
 
       this.redis.on('connect', () => {
-        console.log('Redis session manager connected successfully');
+        // Redis session manager connected successfully
         this.isConnected = true;
       });
 
       this.redis.on('reconnecting', () => {
-        console.log('Redis session manager reconnecting...');
+        // Redis session manager reconnecting...
         this.isConnected = false;
       });
 

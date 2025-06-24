@@ -87,7 +87,6 @@ export class EmergencyDisclosureManager {
       console.error('EmergencyDisclosureManager: Error logging to monitoringService:', err);
     }
     
-    console.log(`EmergencyDisclosureManager: Recorded emergency disclosure ${disclosure.id}`);
     
     return disclosure;
   }
@@ -101,7 +100,6 @@ export class EmergencyDisclosureManager {
     const notifications: PostEmergencyNotification[] = [];
     
     try {
-      console.log(`EmergencyDisclosureManager: Sending post-emergency notifications for disclosure ${disclosure.id}`);
       
       for (const studentId of disclosure.studentIds) {
         try {
@@ -116,7 +114,6 @@ export class EmergencyDisclosureManager {
               
               // For now, assume email would be sent successfully
               const emailResult = true;
-              console.log(`EmergencyDisclosureManager: Would send email to ${primaryContact.email} for student ${studentId}`);
               
               const notification: PostEmergencyNotification = {
                 disclosureId: disclosure.id,
@@ -135,7 +132,6 @@ export class EmergencyDisclosureManager {
               }
               notifications.push(notification);
               
-              console.log(`EmergencyDisclosureManager: Notification sent to ${primaryContact.email} for student ${studentId}`);
             } else {
               console.warn(`EmergencyDisclosureManager: Emergency contact found but no email for student ${studentId}`);
               
@@ -201,7 +197,6 @@ export class EmergencyDisclosureManager {
       // Mark disclosure as having notifications sent
       await this.markNotificationsSent(disclosure.id);
       
-      console.log(`EmergencyDisclosureManager: Completed ${notifications.length} notifications for disclosure ${disclosure.id}`);
       
       return notifications;
       
@@ -290,7 +285,6 @@ export class EmergencyDisclosureManager {
     try {
       const pendingDisclosures = await this.getPendingNotifications();
       
-      console.log(`EmergencyDisclosureManager: Processing ${pendingDisclosures.length} pending notifications`);
       
       for (const disclosure of pendingDisclosures) {
         try {
@@ -373,7 +367,6 @@ export class EmergencyDisclosureManager {
     // In a real implementation, this would integrate with a job scheduler
     // For now, we'll just set the scheduled time and rely on periodic processing
     
-    console.log(`EmergencyDisclosureManager: Scheduled post-emergency notification for ${disclosure.notificationScheduledFor}`);
   }
   
   /**

@@ -186,10 +186,10 @@ export function testExtractNameFromEmail(): void {
     '   '
   ];
 
-  console.log('Testing extractNameFromEmail function:');
+  // Testing extractNameFromEmail function
   testCases.forEach(email => {
     const result = extractNameFromEmail(email);
-    console.log(`"${email}" -> ${result.firstName} | ${result.lastName} (${result.confidence})`);
+    // `"${email}" -> ${result.firstName} | ${result.lastName} (${result.confidence})`
   });
 }
 
@@ -207,10 +207,10 @@ export function testSplitFullName(): void {
     ''
   ];
 
-  console.log('Testing splitFullName function:');
+  // Testing splitFullName function
   testCases.forEach(name => {
     const result = splitFullName(name);
-    console.log(`"${name}" -> "${result.firstName}" | "${result.lastName}" (${result.confidence})`);
+    // `"${name}" -> "${result.firstName}" | "${result.lastName}" (${result.confidence})`
   });
 }
 

@@ -116,7 +116,7 @@ export class ParentAccessService {
       // Notify administrators
       await this.notifyAdministrators(accessRequest);
 
-      console.log(`ParentAccessService: Created access request ${accessRequest.id} for parent ${parentId}`);
+      // Created access request ${accessRequest.id} for parent ${parentId}
 
       return accessRequest;
 
@@ -193,7 +193,7 @@ export class ParentAccessService {
         accessDate: new Date()
       };
 
-      console.log(`ParentAccessService: Provided ${accessSummary.totalRecords} records to parent ${parentId} for student ${studentId}`);
+      // Provided ${accessSummary.totalRecords} records to parent ${parentId} for student ${studentId}
 
       return {
         student,
@@ -275,7 +275,7 @@ export class ParentAccessService {
       // Notify administrators
       await this.notifyAdministratorsOfCorrection(correctionRequest);
 
-      console.log(`ParentAccessService: Created correction request ${correctionRequest.id}`);
+      // Created correction request ${correctionRequest.id}
 
       return correctionRequest;
 
@@ -404,7 +404,7 @@ export class ParentAccessService {
         await this.notifyParentOfApproval(accessRequest);
       }
 
-      console.log(`ParentAccessService: Access request ${requestId} approved by admin ${adminId}`);
+      // Access request ${requestId} approved by admin ${adminId}
 
     } catch (error) {
       console.error('ParentAccessService: Error approving access request:', error);
@@ -528,7 +528,7 @@ export class ParentAccessService {
   private static async notifyAdministrators(request: ParentAccessRequest): Promise<void> {
     try {
       // In a real implementation, this would send emails to administrators
-      console.log(`ParentAccessService: Notifying administrators of access request ${request.id}`);
+      // Notifying administrators of access request ${request.id}
       
       // Log for monitoring
       monitoringService.logInfo('Parent access request submitted', {
@@ -548,7 +548,7 @@ export class ParentAccessService {
    */
   private static async notifyAdministratorsOfCorrection(request: RecordCorrectionRequest): Promise<void> {
     try {
-      console.log(`ParentAccessService: Notifying administrators of correction request ${request.id}`);
+      // Notifying administrators of correction request ${request.id}
       
       monitoringService.logInfo('Record correction request submitted', {
         requestId: request.id,
@@ -569,7 +569,7 @@ export class ParentAccessService {
   private static async notifyParentOfApproval(request: ParentAccessRequest): Promise<void> {
     try {
       // In a real implementation, send email notification
-      console.log(`ParentAccessService: Notifying parent ${request.parentEmail} of approval for request ${request.id}`);
+      // Notifying parent ${request.parentEmail} of approval for request ${request.id}
 
     } catch (error) {
       console.error('ParentAccessService: Error notifying parent of approval:', error);

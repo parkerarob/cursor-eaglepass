@@ -33,7 +33,6 @@ export class FERPAService {
    */
   static async initialize(): Promise<void> {
     try {
-      console.log('FERPAService: Initializing FERPA compliance systems...');
       
       // Initialize data retention scheduling
       DataRetentionService.scheduleAutomatedCleanup();
@@ -48,7 +47,6 @@ export class FERPAService {
         'System startup - automated compliance initialization'
       );
       
-      console.log('FERPAService: FERPA compliance systems initialized successfully');
       
     } catch (error) {
       console.error('FERPAService: Error initializing FERPA systems:', error);
@@ -117,7 +115,6 @@ export class FERPAService {
     additionalDetails?: Record<string, unknown>
   ): Promise<EmergencyDisclosure> {
     try {
-      console.log(`FERPAService: Recording emergency disclosure for ${studentIds.length} students`);
       
       const disclosure = await EmergencyDisclosureManager.recordEmergencyDisclosure(
         studentIds,
@@ -150,7 +147,6 @@ export class FERPAService {
    */
   static async processPendingNotifications(): Promise<void> {
     try {
-      console.log('FERPAService: Processing pending emergency notifications...');
       await EmergencyDisclosureManager.processPendingNotifications();
       
     } catch (error) {
@@ -164,7 +160,6 @@ export class FERPAService {
    */
   static async runDataRetentionCleanup(recordType?: string): Promise<RetentionMetrics> {
     try {
-      console.log(`FERPAService: Running data retention cleanup${recordType ? ` for ${recordType}` : ''}`);
       
       const metrics = await DataRetentionService.runManualCleanup(recordType);
       

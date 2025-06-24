@@ -57,7 +57,6 @@ export class DirectoryInfoService {
         optOutItems
       );
 
-      console.log(`DirectoryInfoService: Created opt-out ${optOut.id} for student ${studentId}`);
 
       return optOut;
 

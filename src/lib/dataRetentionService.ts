@@ -67,7 +67,7 @@ export class DataRetentionService {
     // Note: In a real implementation, this would use a proper cron job or cloud function
     // For now, we'll implement the logic that can be called manually or via scheduled tasks
     if (typeof window === 'undefined') { // Node.js environment only
-      console.log('DataRetentionService: Automated cleanup scheduling enabled');
+      // Automated cleanup scheduling enabled
       
       // Check if we should run cleanup daily (for testing) or monthly (for production)
       const runDaily = process.env.NODE_ENV === 'development';
@@ -84,7 +84,7 @@ export class DataRetentionService {
    */
   static async runAutomatedCleanup(): Promise<RetentionMetrics> {
     if (this.isProcessing) {
-      console.log('DataRetentionService: Cleanup already in progress, skipping');
+      // Cleanup already in progress, skipping
       return {
         recordsProcessed: 0,
         recordsDeleted: 0,
@@ -99,7 +99,7 @@ export class DataRetentionService {
     const startTime = Date.now();
     
     try {
-      console.log('DataRetentionService: Starting automated cleanup');
+      // Starting automated cleanup
       
       const totalMetrics: RetentionMetrics = {
         recordsProcessed: 0,
@@ -135,7 +135,7 @@ export class DataRetentionService {
       this.lastProcessingTime = new Date();
 
       // Log completion
-      console.log('DataRetentionService: Automated cleanup completed', totalMetrics);
+      // Automated cleanup completed
       
       // Log to monitoring service
       monitoringService.logInfo('FERPA data retention cleanup completed', {
@@ -166,7 +166,7 @@ export class DataRetentionService {
     const startTime = Date.now();
 
     try {
-      console.log(`DataRetentionService: Processing policy for ${policy.recordType}`);
+      // Processing policy for ${policy.recordType}
       
       // Calculate cutoff date
       const cutoffDate = new Date();
@@ -177,11 +177,11 @@ export class DataRetentionService {
       metrics.recordsProcessed = expiredRecords.length;
 
       if (expiredRecords.length === 0) {
-        console.log(`DataRetentionService: No expired records found for ${policy.recordType}`);
+        // No expired records found for ${policy.recordType}
         return metrics;
       }
 
-      console.log(`DataRetentionService: Found ${expiredRecords.length} expired ${policy.recordType} records`);
+      // Found ${expiredRecords.length} expired ${policy.recordType} records
 
       // Process each expired record
       for (const record of expiredRecords) {
@@ -212,7 +212,7 @@ export class DataRetentionService {
       }
 
       metrics.processingTime = Date.now() - startTime;
-      console.log(`DataRetentionService: Completed processing ${policy.recordType}`, metrics);
+      // Completed processing ${policy.recordType}
 
       return metrics;
 
@@ -292,7 +292,7 @@ export class DataRetentionService {
       // Delete the document
       await deleteDoc(docRef);
       
-      console.log(`DataRetentionService: Securely deleted ${recordType} record ${record.id}`);
+      // Securely deleted ${recordType} record ${record.id}
       
     } catch (error) {
       console.error(`DataRetentionService: Error securely deleting record ${record.id}:`, error);
@@ -317,7 +317,7 @@ export class DataRetentionService {
         originalDataHash: this.generateDataHash(record) // For audit purposes
       });
       
-      console.log(`DataRetentionService: Anonymized ${recordType} record ${record.id}`);
+      // Anonymized ${recordType} record ${record.id}
       
     } catch (error) {
       console.error(`DataRetentionService: Error anonymizing record ${record.id}:`, error);
@@ -468,7 +468,7 @@ export class DataRetentionService {
    * Manual cleanup for testing/emergency purposes
    */
   static async runManualCleanup(recordType?: string): Promise<RetentionMetrics> {
-    console.log('DataRetentionService: Starting manual cleanup');
+    // Starting manual cleanup
     
     if (recordType) {
       const policy = FERPA_RETENTION_POLICIES.find(p => p.recordType === recordType);

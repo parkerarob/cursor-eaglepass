@@ -284,7 +284,6 @@ class MonitoringService {
    */
   public recordPerformanceMetric(metric: PerformanceMetric): void {
     // Log to console for development
-    console.log(`[Performance] ${metric.name}: ${metric.value}${metric.unit}`, metric.metadata);
     
     // In a real implementation, this would send to Firebase Performance
     // For now, we'll just queue it as an event
@@ -337,11 +336,9 @@ class MonitoringService {
           } else if (event.eventType === 'warning') {
             console.warn(`[WARNING] ${event.message}`, safeDetails);
           } else {
-            console.log(`[${event.eventType.toUpperCase()}] ${event.message}`, safeDetails);
           }
         } catch (logError) {
           // If individual event logging fails, just log the message without details
-          console.log(`[${event.eventType.toUpperCase()}] ${event.message} [details could not be logged]`);
         }
       });
     } catch (error) {

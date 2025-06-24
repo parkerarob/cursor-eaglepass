@@ -5,13 +5,7 @@ import { collection, doc, setDoc, getDocs, query, where, Timestamp } from 'fireb
 import { db } from '@/lib/firebase/firestore';
 
 // Debug: Check what's being imported
-console.log('collection imported:', typeof collection);
-console.log('setDoc imported:', typeof setDoc);
-console.log('doc imported:', typeof doc);
-console.log('getDocs imported:', typeof getDocs);
-console.log('query imported:', typeof query);
-console.log('where imported:', typeof where);
-console.log('Timestamp imported:', typeof Timestamp);
+// Firebase imports verified
 
 // Get the mocked functions from the global mock
 const mockCollection = collection as jest.MockedFunction<typeof collection>;
@@ -23,8 +17,7 @@ const mockWhere = where as jest.MockedFunction<typeof where>;
 const mockTimestamp = Timestamp as jest.Mocked<typeof Timestamp>;
 
 // Debug: Check if mocks are working
-console.log('mockCollection is function:', typeof mockCollection);
-console.log('mockSetDoc is function:', typeof mockSetDoc);
+// Mock functions verified
 
 describe('ParentRelationshipVerifier', () => {
   beforeEach(() => {

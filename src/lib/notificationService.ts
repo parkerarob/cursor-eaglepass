@@ -298,9 +298,6 @@ export class NotificationService {
 
       // Mock implementation - replace with actual email service
       if (this.channelConfig.email?.service === 'mock') {
-        console.log(`[EMAIL] ${subject}`);
-        console.log(`To: ${recipients.join(', ')}`);
-        console.log(`Body: ${body}`);
         return { success: true };
       }
 
@@ -336,8 +333,6 @@ export class NotificationService {
 
       // Mock implementation - replace with actual SMS service  
       if (this.channelConfig.sms?.service === 'mock') {
-        console.log(`[SMS] To: ${recipients.join(', ')}`);
-        console.log(`Message: ${message}`);
         return { success: true };
       }
 
@@ -371,9 +366,6 @@ export class NotificationService {
 
       // Mock implementation - replace with actual push service
       if (this.channelConfig.push?.service === 'mock') {
-        console.log(`[PUSH] Title: ${title}`);
-        console.log(`Body: ${body}`);
-        console.log(`Tokens: ${tokens.length} devices`);
         return { success: true };
       }
 
@@ -416,7 +408,6 @@ export class NotificationService {
 
       // In a real implementation, this would update a real-time dashboard
       // using Firestore, WebSockets, or Server-Sent Events
-      console.log(`[DASHBOARD] Creating ${level} alert for pass ${pass.id}`, alert);
 
       return { success: true };
     } catch (error) {

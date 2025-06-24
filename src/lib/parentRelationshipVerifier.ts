@@ -92,7 +92,6 @@ export class ParentRelationshipVerifier {
         'Administrative verification of parent relationship'
       );
 
-      console.log(`ParentRelationshipVerifier: Created relationship ${relationship.id}`);
 
       return relationship;
 
