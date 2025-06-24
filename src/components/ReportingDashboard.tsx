@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ interface ReportingMetrics {
   uniqueLocations: number;
 }
 
-interface ReportingDashboardProps {
+export interface ReportingDashboardProps {
   passes: Pass[];
   students: User[];
   locations: Location[];
@@ -28,7 +28,7 @@ interface ReportingDashboardProps {
   children?: React.ReactNode;
 }
 
-export function ReportingDashboard({
+const ReportingDashboard: React.FC<ReportingDashboardProps> = ({
   passes,
   students,
   locations,
@@ -36,14 +36,15 @@ export function ReportingDashboard({
   description,
   onExport,
   children
-}: ReportingDashboardProps) {
+}) => {
+  // ---------------- filters (local state) ----------------
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<string>('all');
 
-  // Calculate metrics - simplified for JSDOM compatibility
-  const metrics: ReportingMetrics = useMemo(() => {
+  // ---------------- memoised metrics ----------------
+  const metrics = useMemo(() => {
     const totalPasses = passes.length;
     const activePasses = passes.filter(p => p.status === 'OPEN').length;
     const closedPasses = passes.filter(p => p.status === 'CLOSED');
@@ -55,20 +56,18 @@ export function ReportingDashboard({
     
     const averageDuration = closedPasses.length > 0 ? totalDuration / closedPasses.length : 0;
     
-    // Count overdue and escalated passes (this would need to be calculated based on your notification logic)
+    // Count overdue and escalated passes
     const overduePasses = passes.filter(p => {
-      // This is a simplified check - you'd want to use your actual escalation logic
-      return p.status === 'OPEN' && (p.durationMinutes || 0) > 30; // Example: 30 minutes
+      return p.status === 'OPEN' && (p.durationMinutes || 0) > 30; // 30 minutes
     }).length;
     
     const escalatedPasses = passes.filter(p => {
-      // This is a simplified check - you'd want to use your actual escalation logic
-      return p.status === 'OPEN' && (p.durationMinutes || 0) > 60; // Example: 60 minutes
+      return p.status === 'OPEN' && (p.durationMinutes || 0) > 60; // 60 minutes
     }).length;
     
     const uniqueStudents = new Set(passes.map(p => p.studentId)).size;
     
-    // Fix: Simplify unique locations calculation for JSDOM compatibility
+    // Simplified unique locations calculation for JSDOM compatibility
     const allLocationIds: string[] = [];
     passes.forEach(p => {
       p.legs.forEach(l => {
@@ -89,7 +88,7 @@ export function ReportingDashboard({
     };
   }, [passes]);
 
-  // Filter passes based on current filters
+  // ---------------- filtered passes ----------------
   const filteredPasses = useMemo(() => {
     return passes.filter(pass => {
       // Search term filter
@@ -148,46 +147,48 @@ export function ReportingDashboard({
     });
   }, [passes, students, searchTerm, statusFilter, locationFilter, dateRange]);
 
+  // ---------------- export handler ----------------
   const handleExport = () => {
     if (onExport) {
       onExport(filteredPasses);
-    } else {
-      // Gate browser-only DOM manipulation for JSDOM compatibility
-      if (typeof window === 'undefined') {
-        console.log('Export would be triggered with', filteredPasses.length, 'passes');
-        return;
-      }
-
-      // Default export behavior
-      const csvData = filteredPasses.map(pass => {
-        const student = students.find(s => s.id === pass.studentId);
-        return {
-          'Pass ID': pass.id,
-          'Student Name': (student?.firstName && student?.lastName ? 
-            `${student.firstName} ${student.lastName}` : student?.name || 'Unknown'),
-          'Student Email': student?.email || 'Unknown',
-          'Status': pass.status,
-          'Duration (minutes)': pass.durationMinutes || 0,
-          'Created': new Date(pass.createdAt).toISOString(),
-          'Last Updated': new Date(pass.lastUpdatedAt).toISOString(),
-        };
-      });
-
-      const csv = [
-        Object.keys(csvData[0] || {}).join(','),
-        ...csvData.map(row => Object.values(row).join(','))
-      ].join('\n');
-
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${title.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
+      return;
     }
+
+    // Browser-only CSV export with SSR/test safety
+    if (typeof window === 'undefined') {
+      console.log('Export would be triggered with', filteredPasses.length, 'passes');
+      return;
+    }
+
+    const csvData = filteredPasses.map(pass => {
+      const student = students.find(s => s.id === pass.studentId);
+      return {
+        'Pass ID': pass.id,
+        'Student Name': (student?.firstName && student?.lastName ? 
+          `${student.firstName} ${student.lastName}` : student?.name || 'Unknown'),
+        'Student Email': student?.email || 'Unknown',
+        'Status': pass.status,
+        'Duration (minutes)': pass.durationMinutes || 0,
+        'Created': new Date(pass.createdAt).toISOString(),
+        'Last Updated': new Date(pass.lastUpdatedAt).toISOString(),
+      };
+    });
+
+    const csv = [
+      Object.keys(csvData[0] || {}).join(','),
+      ...csvData.map(row => Object.values(row).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
+  // ---------------- duration formatter ----------------
   const formatDuration = (minutes: number) => {
     if (minutes < 60) {
       return `${Math.round(minutes)}m`;
@@ -197,31 +198,31 @@ export function ReportingDashboard({
     return `${hours}h ${remainingMinutes}m`;
   };
 
+  // ---------------- render ----------------
   return (
-    <div className="space-y-6">
+    <section className="space-y-6" role="main">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <header className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold">{title}</h1>
           {description && (
             <p className="text-muted-foreground mt-2">{description}</p>
           )}
         </div>
-        {/* Temporarily comment out Button to isolate JSDOM issue */}
-        {/* <div className="flex gap-2">
-          <Button onClick={handleExport} variant="outline">
-            <Download className="h-4 w-4 mr-2" />
+        <div className="flex gap-2">
+          <Button onClick={handleExport} variant="outline" aria-label="Export pass data as CSV">
+            <Download className="h-4 w-4 mr-2" aria-hidden="true" />
             Export Data
           </Button>
-        </div> */}
-      </div>
+        </div>
+      </header>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" role="region" aria-label="Pass metrics">
+        <Card data-testid="metric-total">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Passes</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <BarChart3 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.totalPasses}</div>
@@ -231,10 +232,10 @@ export function ReportingDashboard({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="metric-duration">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Average Duration</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatDuration(metrics.averageDuration)}</div>
@@ -244,10 +245,10 @@ export function ReportingDashboard({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="metric-students">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Students</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.uniqueStudents}</div>
@@ -257,10 +258,10 @@ export function ReportingDashboard({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="metric-locations">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Locations</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.uniqueLocations}</div>
@@ -273,9 +274,9 @@ export function ReportingDashboard({
 
       {/* Alert Cards for Issues */}
       {(metrics.overduePasses > 0 || metrics.escalatedPasses > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" role="region" aria-label="Pass alerts">
           {metrics.overduePasses > 0 && (
-            <Card className="border-orange-200 bg-orange-50">
+            <Card className="border-orange-200 bg-orange-50" data-testid="alert-overdue">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-orange-800">
                   Overdue Passes
@@ -291,7 +292,7 @@ export function ReportingDashboard({
           )}
 
           {metrics.escalatedPasses > 0 && (
-            <Card className="border-red-200 bg-red-50">
+            <Card className="border-red-200 bg-red-50" data-testid="alert-escalated">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-red-800">
                   Escalated Passes
@@ -309,18 +310,21 @@ export function ReportingDashboard({
       )}
 
       {/* Filters */}
-      <Card>
+      <Card role="region" aria-label="Pass filters">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4" />
+            <Filter className="h-4 w-4" aria-hidden="true" />
             <CardTitle className="text-lg">Filters</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Search Students</label>
+              <label htmlFor="search-students" className="text-sm font-medium mb-2 block">
+                Search Students
+              </label>
               <Input
+                id="search-students"
                 placeholder="Name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -328,9 +332,11 @@ export function ReportingDashboard({
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Status</label>
+              <label htmlFor="status-filter" className="text-sm font-medium mb-2 block">
+                Status
+              </label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
+                <SelectTrigger id="status-filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -342,9 +348,11 @@ export function ReportingDashboard({
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Location</label>
+              <label htmlFor="location-filter" className="text-sm font-medium mb-2 block">
+                Location
+              </label>
               <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger>
+                <SelectTrigger id="location-filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -359,9 +367,11 @@ export function ReportingDashboard({
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Date Range</label>
+              <label htmlFor="date-range-filter" className="text-sm font-medium mb-2 block">
+                Date Range
+              </label>
               <Select value={dateRange} onValueChange={setDateRange}>
-                <SelectTrigger>
+                <SelectTrigger id="date-range-filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -387,6 +397,7 @@ export function ReportingDashboard({
                 setLocationFilter('all');
                 setDateRange('all');
               }}
+              aria-label="Clear all filters"
             >
               Clear Filters
             </Button>
@@ -402,6 +413,8 @@ export function ReportingDashboard({
           </CardContent>
         </Card>
       )}
-    </div>
+    </section>
   );
-} 
+};
+
+export default ReportingDashboard; 
