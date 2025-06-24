@@ -115,6 +115,21 @@ export const eventLogSchema = z.object({
   notificationLevel: z.enum(['student', 'teacher', 'admin']).optional()
 });
 
+// Parent relationship verification request schema
+export const parentRelationshipVerifySchema = z.object({
+  parentId: uuidSchema,
+  studentId: uuidSchema
+});
+
+// Generic API request validator for Next.js API routes
+export async function validateRequest<T extends z.ZodTypeAny>(
+  request: Request | { json: () => Promise<any> },
+  schema: T
+): Promise<z.infer<T>> {
+  const data = await request.json();
+  return schema.parse(data);
+}
+
 // Sanitization utilities
 export class ValidationService {
   /**
