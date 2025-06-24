@@ -1,3 +1,63 @@
+# Current Issues and Blockers
+
+## Active Development Issues
+
+### ReportingDashboard Component - JSDOM Compatibility (HIGH PRIORITY)
+**Status**: Ready for complete rewrite  
+**Impact**: 18 test failures, blocks CI/testing pipeline  
+**Root Cause**: Deep JSDOM `appendChild` compatibility issue in legacy component
+
+#### Investigation Results:
+- ✅ Browser-gating export functionality implemented
+- ✅ Simplified metrics calculations (removed `flatMap().flat()`)
+- ✅ All UI components properly mocked in tests
+- ✅ Basic React rendering works in same test environment
+- 🚫 **Core JSDOM appendChild error persists** even with stub components
+
+#### Resolution Plan:
+**Complete component rewrite** rather than debugging legacy implementation.
+- Comprehensive prompt created for clean rebuild
+- Focus on JSDOM-safe patterns from ground up
+- Maintain API compatibility with existing props interface
+- Target: ~40+ test failure reduction upon completion
+
+#### Next Steps:
+1. Execute rewrite following detailed prompt specifications
+2. Implement clean React patterns with proper browser-gating
+3. Create new test suite with accessibility-first queries
+4. Remove/rename legacy component after validation
+
+---
+
+## Tool-chain & Infrastructure Issues
+
+### ESLint Warnings (LOW PRIORITY)
+**Count**: 16 warnings tracked  
+**Status**: Documented as technical debt  
+- Prefer-const violations
+- No-explicit-any usage in test files
+- Import order inconsistencies
+
+### Type Coverage Gaps
+- Some test files use liberal `any` typing
+- Legacy components missing proper TypeScript interfaces
+
+## Performance & Optimization
+
+### Test Suite Performance
+- Current runtime: ~30s for full suite
+- 90 failing tests remaining after RoleSwitcher fixes
+- Target: <20s runtime with <10 failing tests
+
+### Build Performance
+- Clean production builds functioning
+- FERPA service build-time checks implemented
+
+## Next Priority Components
+1. **PassStatus/DurationTimer**: Duplicate badge testids
+2. **SessionTimeoutWarning**: Jest.mocked pattern issues  
+3. **API Routes**: Session logout 500 errors
+
 # Current Issues
 
 **Last Updated**: December 19, 2024
