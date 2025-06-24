@@ -163,7 +163,7 @@ describe('Admin Page', () => {
     render(<AdminPage />);
     
     await waitFor(() => {
-      expect(screen.getByText('Eagle Pass Admin')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Admin Dashboard/i })).toBeInTheDocument();
     });
   });
 
@@ -176,6 +176,6 @@ describe('Admin Page', () => {
     render(<AdminPage />);
     
     // Should not crash
-    expect(screen.queryByText('Eagle Pass Admin')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Admin Dashboard/i })).not.toBeInTheDocument();
   });
 }); 
