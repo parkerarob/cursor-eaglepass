@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/components/AuthProvider";
@@ -9,16 +10,6 @@ import { MonitoringProvider } from "@/components/MonitoringProvider";
 import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 import { Analytics } from "@vercel/analytics/next";
 import { GlobalEmergencyBanner } from '@/components/GlobalEmergencyBanner';
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Eagle Pass",
@@ -33,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
         <GlobalEmergencyBanner />
         <ThemeProvider>
