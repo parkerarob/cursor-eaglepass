@@ -187,8 +187,8 @@ describe('TeacherSettingsPage', () => {
   it('should render teacher settings page', async () => {
     render(<TeacherSettingsPage />);
 
-    expect(screen.getByText('Teacher Settings')).toBeInTheDocument();
-    expect(screen.getByText('Profile Information')).toBeInTheDocument();
+    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByText('My Profile')).toBeInTheDocument();
     expect(screen.getByText('Classroom Policy')).toBeInTheDocument();
   });
 
@@ -197,7 +197,7 @@ describe('TeacherSettingsPage', () => {
 
     await waitFor(() => {
       const inputs = screen.getAllByTestId('input');
-      expect(inputs).toHaveLength(4); // First name, last name, room, school
+      expect(inputs).toHaveLength(5); // First name, last name, room, school, email
     });
   });
 
@@ -217,7 +217,7 @@ describe('TeacherSettingsPage', () => {
     fireEvent.change(firstNameInput, { target: { value: 'Jane' } });
 
     // Click update button
-    const updateButton = screen.getByText('Update Profile');
+    const updateButton = screen.getByText('Save Changes');
     fireEvent.click(updateButton);
 
     await waitFor(() => {
@@ -237,7 +237,7 @@ describe('TeacherSettingsPage', () => {
     render(<TeacherSettingsPage />);
 
     await waitFor(() => {
-      const updateButton = screen.getByText('Update Profile');
+      const updateButton = screen.getByText('Save Changes');
       fireEvent.click(updateButton);
     });
 
@@ -250,9 +250,9 @@ describe('TeacherSettingsPage', () => {
     render(<TeacherSettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Student Leave')).toBeInTheDocument();
-      expect(screen.getByText('Student Arrive')).toBeInTheDocument();
-      expect(screen.getByText('Teacher Request')).toBeInTheDocument();
+      expect(screen.getByText(/Students who want to leave my classroom/)).toBeInTheDocument();
+      expect(screen.getByText(/Students who want to come to my classroom/)).toBeInTheDocument();
+      expect(screen.getByText(/Teachers who request a student from my classroom/)).toBeInTheDocument();
     });
   });
 
@@ -286,7 +286,7 @@ describe('TeacherSettingsPage', () => {
     render(<TeacherSettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Student Policy Overrides')).toBeInTheDocument();
+      expect(screen.getByText('Student-Specific Overrides')).toBeInTheDocument();
       expect(screen.getByText('Add Override')).toBeInTheDocument();
     });
   });
@@ -313,7 +313,7 @@ describe('TeacherSettingsPage', () => {
     });
 
     // In the dialog, click save
-    const saveButton = screen.getByText('Save Override');
+    const saveButton = screen.getByText('Save changes');
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -335,7 +335,7 @@ describe('TeacherSettingsPage', () => {
     });
 
     // Save the override
-    const saveButton = screen.getByText('Save Override');
+    const saveButton = screen.getByText('Save changes');
     fireEvent.click(saveButton);
 
     await waitFor(() => {
@@ -489,6 +489,6 @@ describe('TeacherSettingsPage', () => {
     render(<TeacherSettingsPage />);
 
     expect(screen.getByTestId('link')).toHaveAttribute('href', '/teacher');
-    expect(screen.getByText('Back to Dashboard')).toBeInTheDocument();
+    expect(screen.getAllByText('Back to Dashboard')).toHaveLength(2);
   });
 }); 
