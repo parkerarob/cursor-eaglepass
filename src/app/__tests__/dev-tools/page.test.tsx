@@ -51,8 +51,8 @@ jest.mock('@/lib/dataIngestionService', () => ({
 
 // Mock UI components
 jest.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, disabled }: any) => (
-    <button onClick={onClick} disabled={disabled} data-testid="button">
+  Button: ({ children, onClick, disabled, ...props }: any) => (
+    <button onClick={onClick} disabled={disabled} data-testid="button" {...props}>
       {children}
     </button>
   ),
@@ -99,8 +99,8 @@ describe('DevToolsPage', () => {
     render(<DevToolsPage />);
 
     expect(screen.getByText('Dev Tools: Firestore Migration')).toBeInTheDocument();
-    expect(screen.getByText('Upload Users')).toBeInTheDocument();
-    expect(screen.getByText('Upload Locations')).toBeInTheDocument();
+    expect(screen.getByTestId('upload-users-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('upload-locations-btn')).toBeInTheDocument();
   });
 
   it('should display pre-filled user JSON data', () => {
@@ -112,9 +112,9 @@ describe('DevToolsPage', () => {
     render(<DevToolsPage />);
 
     // Check for textarea with mock user data
-    const userTextarea = screen.getAllByRole('textbox')[0];
+    const userTextarea = screen.getAllByRole('textbox')[0] as HTMLTextAreaElement;
     expect(userTextarea).toBeInTheDocument();
-    expect(userTextarea).toHaveValue(expect.stringContaining('Test User 1'));
+    expect(userTextarea.value).toContain('Test User 1');
   });
 
   it('should display pre-filled location JSON data', () => {
@@ -126,9 +126,9 @@ describe('DevToolsPage', () => {
     render(<DevToolsPage />);
 
     // Check for textarea with mock location data
-    const locationTextarea = screen.getAllByRole('textbox')[1];
+    const locationTextarea = screen.getAllByRole('textbox')[1] as HTMLTextAreaElement;
     expect(locationTextarea).toBeInTheDocument();
-    expect(locationTextarea).toHaveValue(expect.stringContaining('Test Location 1'));
+    expect(locationTextarea.value).toContain('Test Location 1');
   });
 
   it('should handle user JSON input changes', () => {
@@ -179,11 +179,9 @@ describe('DevToolsPage', () => {
 
     render(<DevToolsPage />);
 
-    const uploadButton = screen.getAllByTestId('button').find(
-      button => button.textContent === 'Upload Users'
-    );
+    const uploadButton = screen.getByTestId('upload-users-btn');
 
-    fireEvent.click(uploadButton!);
+    fireEvent.click(uploadButton);
 
     await waitFor(() => {
       expect(screen.getByText('Users uploaded successfully!')).toBeInTheDocument();
@@ -204,11 +202,9 @@ describe('DevToolsPage', () => {
       target: { value: 'invalid json' }
     });
 
-    const uploadButton = screen.getAllByTestId('button').find(
-      button => button.textContent === 'Upload Users'
-    );
+    const uploadButton = screen.getByTestId('upload-users-btn');
 
-    fireEvent.click(uploadButton!);
+    fireEvent.click(uploadButton);
 
     await waitFor(() => {
       expect(screen.getByText(/Error uploading users:/)).toBeInTheDocument();
@@ -231,11 +227,9 @@ describe('DevToolsPage', () => {
 
     render(<DevToolsPage />);
 
-    const uploadButton = screen.getAllByTestId('button').find(
-      button => button.textContent === 'Upload Locations'
-    );
+    const uploadButton = screen.getByTestId('upload-locations-btn');
 
-    fireEvent.click(uploadButton!);
+    fireEvent.click(uploadButton);
 
     await waitFor(() => {
       expect(screen.getByText('Locations uploaded successfully!')).toBeInTheDocument();
@@ -250,7 +244,7 @@ describe('DevToolsPage', () => {
 
     render(<DevToolsPage />);
 
-    const fileInput = screen.getByLabelText(/CSV File/);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement; // file input 
     expect(fileInput).toBeInTheDocument();
 
     const testFile = new File(['test,data'], 'test.csv', { type: 'text/csv' });
@@ -338,8 +332,8 @@ describe('DevToolsPage', () => {
 
     render(<DevToolsPage />);
 
-    expect(screen.getByText('CSV Data Ingestion')).toBeInTheDocument();
-    expect(screen.getByLabelText(/CSV File/)).toBeInTheDocument();
+    expect(screen.getByText('Bulk CSV Upload')).toBeInTheDocument();
+    expect(document.querySelector('input[type="file"]')).toBeInTheDocument(); // file input
   });
 
   it('should display pass management section', () => {

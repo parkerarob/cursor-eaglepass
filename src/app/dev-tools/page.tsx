@@ -172,7 +172,7 @@ export default function DevToolsPage() {
             value={userJson}
             onChange={(e) => setUserJson(e.target.value)}
           />
-          <Button onClick={uploadUsers}>Upload Users</Button>
+          <Button onClick={uploadUsers} data-testid="upload-users-btn">Upload Users</Button>
           {userStatus && (
             <div
               className={`text-sm ${
@@ -197,7 +197,7 @@ export default function DevToolsPage() {
             value={locationJson}
             onChange={(e) => setLocationJson(e.target.value)}
           />
-          <Button onClick={uploadLocations}>Upload Locations</Button>
+          <Button onClick={uploadLocations} data-testid="upload-locations-btn">Upload Locations</Button>
           {locationStatus && (
             <div
               className={`text-sm ${
