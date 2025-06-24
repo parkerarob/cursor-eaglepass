@@ -61,7 +61,12 @@ jest.mock('next/server', () => ({
       const response = {
         status: init.status || 200,
         json: () => Promise.resolve(data),
-        headers: new Map(Object.entries(init.headers || {}))
+        headers: new Map(Object.entries(init.headers || {})),
+        cookies: {
+          delete: jest.fn(),
+          get: jest.fn(),
+          set: jest.fn(),
+        }
       };
       return response;
     }

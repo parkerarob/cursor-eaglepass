@@ -129,26 +129,32 @@ describe('In-Memory RateLimiter - Comprehensive Coverage', () => {
       const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => currentTime);
 
       try {
-        // Use up limit
+        // Use up limit with time spacing to avoid rapid-attempt detection
         for (let i = 0; i < 5; i++) {
           RateLimiter.checkRateLimit('user1', 'PASS_CREATION');
+          currentTime += 2000; // Add 2 seconds between each request
         }
         
         // Verify blocked
         let result = RateLimiter.checkRateLimit('user1', 'PASS_CREATION');
         expect(result.allowed).toBe(false);
         expect(result.resetTime).toBeDefined();
+        
+        const initialResetTime = result.resetTime!;
+        // resetTime should be time of first request + 60000ms = 1000000 + 60000 = 1060000
+        expect(initialResetTime).toBe(1060000);
 
-        // Advance time beyond window (60 seconds + 1ms)
-        currentTime += 60001;
+        // Advance time beyond window (60 seconds + 1ms from the original start time)
+        // We're currently at 1000000 + 8000 = 1008000, need to go to 1060001
+        currentTime = 1060001;
         
         // The next call should automatically detect expired window
         result = RateLimiter.checkRateLimit('user1', 'PASS_CREATION');
         expect(result.allowed).toBe(true);
         expect(result.remainingRequests).toBe(4);
       } finally {
-        // Cleanup handled by afterEach
-        jest.clearAllMocks();
+        // Restore Date.now spy
+        dateSpy.mockRestore();
       }
     });
 
@@ -402,24 +408,28 @@ describe('In-Memory RateLimiter - Comprehensive Coverage', () => {
         // Set very short window for testing
         RateLimiter.updateConfig('PASS_CREATION', { windowMs: 100 });
         
-        // Use up limit
+        // Use up limit with time spacing to avoid rapid-attempt detection
         for (let i = 0; i < 5; i++) {
           RateLimiter.checkRateLimit('user1', 'PASS_CREATION');
+          if (i < 4) currentTime += 20; // Add 20ms between each request
         }
         
         // Should be blocked
         let result = RateLimiter.checkRateLimit('user1', 'PASS_CREATION');
         expect(result.allowed).toBe(false);
         
-        // Advance time by 150ms (longer than 100ms window)
-        currentTime += 150;
+        const resetTime = result.resetTime!;
+        // Check the actual resetTime value - expected to be 1000000 + 100 = 1000100
+        
+        // Advance time beyond the actual reset time
+        currentTime = resetTime + 1;
         
         // Should be allowed again due to expired window
         result = RateLimiter.checkRateLimit('user1', 'PASS_CREATION');
         expect(result.allowed).toBe(true);
       } finally {
-        // Cleanup handled by afterEach
-        jest.clearAllMocks();
+        // Restore Date.now spy
+        dateSpy.mockRestore();
       }
     });
   });

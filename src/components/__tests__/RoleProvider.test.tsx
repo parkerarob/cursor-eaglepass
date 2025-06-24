@@ -5,15 +5,25 @@ import * as AuthProvider from '../AuthProvider';
 import * as firestore from '@/lib/firebase/firestore';
 import * as utils from '@/lib/utils';
 
-// Mock AuthProvider
-const mockAuthContext = {
+// Mock AuthProvider at module level
+jest.mock('../AuthProvider', () => ({
+  useAuth: jest.fn(),
+}));
+
+const mockUseAuth = jest.mocked(AuthProvider.useAuth);
+
+// Mock AuthProvider context value
+const mockAuthContext: {
+  user: any;
+  isLoading: boolean;
+  signIn: jest.Mock;
+  signOut: jest.Mock;
+} = {
   user: null,
   isLoading: false,
   signIn: jest.fn(),
   signOut: jest.fn(),
 };
-
-jest.spyOn(AuthProvider, 'useAuth').mockImplementation(() => mockAuthContext);
 
 // Mock firestore functions
 jest.mock('@/lib/firebase/firestore', () => ({
@@ -114,6 +124,9 @@ describe('RoleProvider', () => {
     jest.clearAllMocks();
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    
+    // Setup mock implementation
+    mockUseAuth.mockReturnValue(mockAuthContext);
     
     // Reset auth context
     mockAuthContext.user = null;

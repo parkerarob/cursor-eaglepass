@@ -7,15 +7,25 @@ import * as firestore from '@/lib/firebase/firestore';
 // Mock fetch globally
 global.fetch = jest.fn();
 
-// Mock AuthProvider
-const mockAuthContext = {
+// Mock AuthProvider at module level
+jest.mock('../AuthProvider', () => ({
+  useAuth: jest.fn(),
+}));
+
+const mockUseAuth = jest.mocked(AuthProvider.useAuth);
+
+// Mock AuthProvider context value
+const mockAuthContext: {
+  user: any;
+  isLoading: boolean;
+  signIn: jest.Mock;
+  signOut: jest.Mock;
+} = {
   user: null,
   isLoading: false,
   signIn: jest.fn(),
   signOut: jest.fn(),
 };
-
-jest.spyOn(AuthProvider, 'useAuth').mockImplementation(() => mockAuthContext);
 
 // Mock firestore
 jest.mock('@/lib/firebase/firestore', () => ({
@@ -85,7 +95,7 @@ describe('SessionProvider', () => {
     id: 'user-1',
     email: 'test@example.com',
     name: 'Test User',
-    role: 'teacher',
+    role: 'teacher' as const,
     schoolId: 'school-1',
   };
 
@@ -102,6 +112,9 @@ describe('SessionProvider', () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2023-12-15T14:30:00Z'));
+    
+    // Setup mock implementation
+    mockUseAuth.mockReturnValue(mockAuthContext);
     
     // Reset auth context
     mockAuthContext.user = null;
