@@ -240,11 +240,14 @@ describe('/api/session', () => {
       const data1 = await response1.json();
 
       // Small delay to ensure different timestamps
-      await new Promise(resolve => setTimeout(resolve, 1));
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       const response2 = await GET(mockRequest as any);
       const data2 = await response2.json();
 
+      // Check that both timestamps are valid and different
+      expect(data1.timestamp).toBeDefined();
+      expect(data2.timestamp).toBeDefined();
       expect(data1.timestamp).not.toBe(data2.timestamp);
     });
   });

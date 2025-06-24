@@ -146,8 +146,8 @@ export default function StudentDetailPage() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+              <CardTitle>
+                <FileText data-testid="reports-icon-summary" className="w-5 h-5" />
                 Pass History
               </CardTitle>
               <CardDescription>
@@ -186,7 +186,7 @@ export default function StudentDetailPage() {
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
+                          <Clock data-testid="clock-icon-duration" className="w-4 h-4" />
                           {pass.durationMinutes || 0} min
                         </div>
                         <div className="flex items-center gap-1">
@@ -206,8 +206,8 @@ export default function StudentDetailPage() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+              <CardTitle>
+                <FileText data-testid="reports-icon-details" className="w-5 h-5" />
                 Pass Details
               </CardTitle>
               <CardDescription>
@@ -229,7 +229,7 @@ export default function StudentDetailPage() {
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Duration</label>
                       <div className="mt-1 flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
+                        <Clock data-testid="clock-icon-details" className="w-4 h-4" />
                         {selectedPass.durationMinutes || 0} minutes
                       </div>
                     </div>
@@ -298,7 +298,7 @@ export default function StudentDetailPage() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <FileText data-testid="reports-icon-empty" className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">Select a pass from the list to view details</p>
                 </div>
               )}

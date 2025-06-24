@@ -39,14 +39,15 @@ jest.mock('@/components/ui/badge', () => ({
   ),
 }));
 
+// Mock Lucide icons with proper prop forwarding
 jest.mock('lucide-react', () => ({
-  ArrowLeft: () => <div data-testid="arrow-left-icon">←</div>,
-  Clock: () => <div data-testid="clock-icon">🕐</div>,
-  Calendar: () => <div data-testid="calendar-icon">📅</div>,
-  User: () => <div data-testid="user-icon">👤</div>,
-  MapPin: () => <div data-testid="map-pin-icon">📍</div>,
-  FileText: () => <div data-testid="file-text-icon">📄</div>,
-  Navigation: () => <div data-testid="navigation-icon">🧭</div>,
+  ArrowLeft: ({ ...props }) => <div data-testid="arrow-left-icon" {...props}>←</div>,
+  Clock: ({ ...props }) => <div data-testid={props['data-testid'] || 'clock-icon'} {...props}>🕐</div>,
+  Calendar: ({ ...props }) => <div data-testid="calendar-icon" {...props}>📅</div>,
+  User: ({ ...props }) => <div data-testid="user-icon" {...props}>👤</div>,
+  MapPin: ({ ...props }) => <div data-testid="map-pin-icon" {...props}>📍</div>,
+  FileText: ({ ...props }) => <div data-testid={props['data-testid'] || 'file-text-icon'} {...props}>📄</div>,
+  Navigation: ({ ...props }) => <div data-testid="navigation-icon" {...props}>🧭</div>,
 }));
 
 describe('StudentDetailPage', () => {
@@ -308,13 +309,16 @@ describe('StudentDetailPage', () => {
   it('should handle pass click highlighting', async () => {
     render(<StudentDetailPage />);
 
-    await waitFor(() => {
-      const passContainers = screen.getAllByText('OPEN')[0].closest('div');
-      fireEvent.click(passContainers!);
-    });
+    // Get all pass containers
+    const passContainers = screen.getAllByRole('generic').filter(el => 
+      el.className.includes('p-4 border rounded-lg cursor-pointer')
+    );
+
+    // Click the first pass
+    fireEvent.click(passContainers[0]);
 
     await waitFor(() => {
-      expect(passContainers).toHaveClass('border-blue-500', 'bg-blue-50');
+      expect(passContainers[0]).toHaveClass('border-blue-500', 'bg-blue-50');
     });
   });
 
@@ -336,7 +340,7 @@ describe('StudentDetailPage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('user-icon')).toBeInTheDocument();
-      expect(screen.getByTestId('file-text-icon')).toBeInTheDocument();
+      expect(screen.getByTestId('reports-icon-summary')).toBeInTheDocument();
       expect(screen.getByTestId('arrow-left-icon')).toBeInTheDocument();
     });
   });
@@ -361,7 +365,9 @@ describe('StudentDetailPage', () => {
     render(<StudentDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('clock-icon')).toBeInTheDocument();
+      // Use getAllByTestId for the duplicated clock icons (one per pass)
+      const clockIcons = screen.getAllByTestId('clock-icon-duration');
+      expect(clockIcons).toHaveLength(2); // Two passes with clock icons
       expect(screen.getByTestId('map-pin-icon')).toBeInTheDocument();
     });
   });

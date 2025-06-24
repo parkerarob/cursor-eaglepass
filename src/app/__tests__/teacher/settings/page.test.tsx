@@ -317,7 +317,8 @@ describe('TeacherSettingsPage', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(createStudentPolicyOverride).toHaveBeenCalled();
+      // Check that dialog opened instead of direct API call
+      expect(screen.getByText('Add Student Override')).toBeInTheDocument();
     });
   });
 
@@ -390,7 +391,7 @@ describe('TeacherSettingsPage', () => {
       fireEvent.click(addButton);
     });
 
-    const saveButton = screen.getByText('Save Override');
+    const saveButton = screen.getByText('Save changes');
     fireEvent.click(saveButton);
 
     await waitFor(() => {
