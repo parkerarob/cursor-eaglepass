@@ -27,8 +27,8 @@ jest.mock('@/components/ui/card', () => ({
   CardHeader: ({ children, className }: any) => (
     <div className={className} data-testid="card-header">{children}</div>
   ),
-  CardTitle: ({ children, className }: any) => (
-    <h3 className={className} data-testid="card-title">{children}</h3>
+  CardTitle: ({ children, className, ...props }: any) => (
+    <h3 className={className} data-testid="card-title" {...props}>{children}</h3>
   ),
 }));
 
@@ -75,13 +75,13 @@ jest.mock('@/components/ui/tabs', () => ({
 
 // Mock lucide-react icons
 jest.mock('lucide-react', () => ({
-  AlertTriangle: () => <div data-testid="alert-triangle-icon">AlertTriangle</div>,
-  Shield: () => <div data-testid="shield-icon">Shield</div>,
-  Bell: () => <div data-testid="bell-icon">Bell</div>,
-  Activity: () => <div data-testid="activity-icon">Activity</div>,
-  Clock: () => <div data-testid="clock-icon">Clock</div>,
-  Users: () => <div data-testid="users-icon">Users</div>,
-  Eye: () => <div data-testid="eye-icon">Eye</div>,
+  AlertTriangle: (props: any) => <div data-testid="alert-triangle-icon" {...props}>AlertTriangle</div>,
+  Shield: (props: any) => <div data-testid="shield-icon" {...props}>Shield</div>,
+  Bell: (props: any) => <div data-testid="bell-icon" {...props}>Bell</div>,
+  Activity: (props: any) => <div data-testid={props['data-testid'] || 'activity-icon'} {...props}>Activity</div>,
+  Clock: (props: any) => <div data-testid="clock-icon" {...props}>Clock</div>,
+  Users: (props: any) => <div data-testid="users-icon" {...props}>Users</div>,
+  Eye: (props: any) => <div data-testid="eye-icon" {...props}>Eye</div>,
 }));
 
 describe('SecurityDashboard', () => {
@@ -100,6 +100,7 @@ describe('SecurityDashboard', () => {
       studentId: 'student-1',
       timestamp: new Date('2023-12-15T14:30:00'),
       details: { count: 5 },
+      acknowledged: false,
     },
     {
       id: 'alert-2',
@@ -109,8 +110,9 @@ describe('SecurityDashboard', () => {
       studentId: 'student-2',
       timestamp: new Date('2023-12-15T15:00:00'),
       details: { duration: 45 },
+      acknowledged: false,
     },
-  ];
+  ] as any;
 
   const mockMetrics = {
     totalPasses: 150,
@@ -250,7 +252,7 @@ describe('SecurityDashboard', () => {
     });
 
     expect(screen.getByText('Pass Activity')).toBeInTheDocument();
-    expect(screen.getByText('Security Events')).toBeInTheDocument();
+    expect(screen.getByTestId('security-events-metrics-title')).toBeInTheDocument();
     expect(screen.getByText('Total Passes Created:')).toBeInTheDocument();
     expect(screen.getByText('Long Duration Alerts:')).toBeInTheDocument();
     expect(screen.getByText('Rapid Creation Incidents:')).toBeInTheDocument();
@@ -408,13 +410,14 @@ describe('SecurityDashboard', () => {
       expect(screen.getByText('Active Security Alerts')).toBeInTheDocument();
     });
 
-    // Check that different icons are rendered
+    // Check that different icons are rendered (some appear multiple times)
     expect(screen.getByTestId('users-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('activity-icon')).toBeInTheDocument();
+    expect(screen.getByTestId('activity-icon')).toBeInTheDocument(); // This is in alert list
+    expect(screen.getByTestId('summary-activity-icon')).toBeInTheDocument(); // This is in summary card
     expect(screen.getByTestId('clock-icon')).toBeInTheDocument();
     expect(screen.getByTestId('eye-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('alert-triangle-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('shield-icon')).toBeInTheDocument();
+    expect(screen.getAllByTestId('alert-triangle-icon')).toHaveLength(2); // One in summary, one in alert
+    expect(screen.getAllByTestId('shield-icon')).toHaveLength(3); // Multiple shields (summary, header, default alert type)
   });
 
   it('should clean up interval on unmount', async () => {
@@ -438,11 +441,11 @@ describe('SecurityDashboard', () => {
     render(<SecurityDashboard currentUser={mockUser} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Student ID: student-1')).toBeInTheDocument();
+      const alertDetails = screen.getAllByTestId('alert-details');
+      expect(alertDetails[0]).toHaveTextContent('Student ID: student-1');
+      expect(alertDetails[0]).toHaveTextContent(/Time:/);
+      expect(alertDetails[0]).toHaveTextContent(/Type: EXCESSIVE PASSES/);
     });
-
-    expect(screen.getByText(/Time:/)).toBeInTheDocument();
-    expect(screen.getByText(/Type: EXCESSIVE PASSES/)).toBeInTheDocument();
   });
 
   it('should handle failed alert acknowledgment', async () => {

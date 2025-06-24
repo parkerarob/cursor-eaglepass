@@ -146,7 +146,7 @@ export function SecurityDashboard({ currentUser }: SecurityDashboardProps) {
                 <p className="text-sm font-medium text-muted-foreground">Total Passes (24h)</p>
                 <p className="text-2xl font-bold">{metrics?.totalPasses || 0}</p>
               </div>
-              <Activity className="h-8 w-8 text-blue-500" />
+              <Activity className="h-8 w-8 text-blue-500" data-testid="summary-activity-icon" />
             </div>
           </CardContent>
         </Card>
@@ -217,7 +217,7 @@ export function SecurityDashboard({ currentUser }: SecurityDashboardProps) {
                               </Badge>
                             </AlertTitle>
                             <AlertDescription className="mt-2">
-                              <div className="text-sm text-muted-foreground">
+                              <div className="text-sm text-muted-foreground" data-testid="alert-details">
                                 Student ID: {alert.studentId} | 
                                 Time: {alert.timestamp.toLocaleString()} |
                                 Type: {alert.type.replace('_', ' ')}
@@ -267,7 +267,7 @@ export function SecurityDashboard({ currentUser }: SecurityDashboardProps) {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Security Events</CardTitle>
+                    <CardTitle className="text-base" data-testid="security-events-metrics-title">Security Events</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
