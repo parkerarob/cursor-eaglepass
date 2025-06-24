@@ -39,7 +39,7 @@ describe('MonitoringProvider Component', () => {
       </MonitoringProvider>
     );
     
-    // Should render but be empty with null children
-    expect(container.firstChild).toBeInTheDocument();
+    // Should render nothing when children is null (React behavior)
+    expect(container.firstChild).toBeNull();
   });
 }); 
