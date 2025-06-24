@@ -6,8 +6,8 @@ import { Pass, Location } from '@/types';
 
 // Mock UI components
 jest.mock('@/components/ui/badge', () => ({
-  Badge: ({ children, variant, className }: any) => (
-    <span data-testid="badge" data-variant={variant} className={className}>
+  Badge: ({ children, variant, className, 'data-testid': dataTestId }: any) => (
+    <span data-testid={dataTestId || "badge"} data-variant={variant} className={className}>
       {children}
     </span>
   ),
@@ -72,9 +72,9 @@ describe('PassStatus Component', () => {
     expect(screen.getByText("You're currently in Classroom 101")).toBeInTheDocument();
     expect(screen.getByText('IN CLASS')).toBeInTheDocument();
     
-    const badges = screen.getAllByTestId('badge');
-    const inClassBadge = badges.find(badge => badge.textContent === 'IN CLASS');
-    expect(inClassBadge).toHaveAttribute('data-variant', 'success');
+    const locationBadge = screen.getByTestId('location-badge');
+    expect(locationBadge).toHaveAttribute('data-variant', 'success');
+    expect(locationBadge).toHaveTextContent('IN CLASS');
   });
 
   it('should render active pass with OUT state', async () => {
@@ -108,12 +108,13 @@ describe('PassStatus Component', () => {
       expect(screen.getByText('Main Bathroom')).toBeInTheDocument();
     });
 
-    const badges = screen.getAllByTestId('badge');
-    const openBadge = badges.find(badge => badge.textContent === 'OPEN');
-    const outBadge = badges.find(badge => badge.textContent === 'OUT');
+    const statusBadge = screen.getByTestId('status-badge');
+    const stateBadge = screen.getByTestId('state-badge');
     
-    expect(openBadge).toHaveAttribute('data-variant', 'info');
-    expect(outBadge).toHaveAttribute('data-variant', 'warning');
+    expect(statusBadge).toHaveAttribute('data-variant', 'info');
+    expect(statusBadge).toHaveTextContent('OPEN');
+    expect(stateBadge).toHaveAttribute('data-variant', 'warning');
+    expect(stateBadge).toHaveTextContent('OUT');
 
     expect(screen.getByText(/Started: \d{1,2}:\d{2}:\d{2}/)).toBeInTheDocument();
     expect(screen.getByText("You're on your way")).toBeInTheDocument();
@@ -144,18 +145,20 @@ describe('PassStatus Component', () => {
     );
 
     expect(screen.getByTestId('card-title')).toHaveTextContent('Active Pass');
-    expect(screen.getByText('IN')).toBeInTheDocument();
+    // Use more specific query to avoid duplicate "IN" text
+    expect(screen.getByText('IN', { selector: 'p' })).toBeInTheDocument();
     
     await waitFor(() => {
       expect(screen.getByText('Main Bathroom')).toBeInTheDocument();
     });
 
-    const badges = screen.getAllByTestId('badge');
-    const openBadge = badges.find(badge => badge.textContent === 'OPEN');
-    const inBadge = badges.find(badge => badge.textContent === 'IN');
+    const statusBadge = screen.getByTestId('status-badge');
+    const stateBadge = screen.getByTestId('state-badge');
     
-    expect(openBadge).toHaveAttribute('data-variant', 'info');
-    expect(inBadge).toHaveAttribute('data-variant', 'success');
+    expect(statusBadge).toHaveAttribute('data-variant', 'info');
+    expect(statusBadge).toHaveTextContent('OPEN');
+    expect(stateBadge).toHaveAttribute('data-variant', 'success');
+    expect(stateBadge).toHaveTextContent('IN');
 
     expect(screen.getByText(/Arrived: \d{1,2}:\d{2}:\d{2}/)).toBeInTheDocument();
     expect(screen.getByText("You've arrived")).toBeInTheDocument();
@@ -166,8 +169,12 @@ describe('PassStatus Component', () => {
       id: 'pass-123',
       studentId: 'student-456',
       status: 'CLOSED',
+      createdAt: new Date('2024-01-15T10:30:00Z'),
+      lastUpdatedAt: new Date('2024-01-15T10:30:00Z'),
       legs: [{
         id: 'leg-1',
+        legNumber: 1,
+        originLocationId: 'classroom-101',
         destinationLocationId: 'bathroom-main',
         state: 'IN',
         timestamp: new Date('2024-01-15T10:30:00Z')
@@ -187,9 +194,9 @@ describe('PassStatus Component', () => {
       expect(screen.getByText('Main Bathroom')).toBeInTheDocument();
     });
 
-    const badges = screen.getAllByTestId('badge');
-    const closedBadge = badges.find(badge => badge.textContent === 'CLOSED');
-    expect(closedBadge).toHaveAttribute('data-variant', 'secondary');
+    const statusBadge = screen.getByTestId('status-badge');
+    expect(statusBadge).toHaveAttribute('data-variant', 'secondary');
+    expect(statusBadge).toHaveTextContent('CLOSED');
 
     expect(screen.getByText(/Arrived: \d{1,2}:\d{2}:\d{2}/)).toBeInTheDocument();
     expect(screen.queryByText("You've arrived")).not.toBeInTheDocument();
@@ -200,8 +207,12 @@ describe('PassStatus Component', () => {
       id: 'pass-123',
       studentId: 'student-456',
       status: 'OPEN',
+      createdAt: new Date('2024-01-15T10:30:00Z'),
+      lastUpdatedAt: new Date('2024-01-15T10:30:00Z'),
       legs: [{
         id: 'leg-1',
+        legNumber: 1,
+        originLocationId: 'classroom-101',
         destinationLocationId: 'bathroom-main',
         state: 'OUT',
         timestamp: new Date('2024-01-15T10:30:00Z')
@@ -228,15 +239,21 @@ describe('PassStatus Component', () => {
       id: 'pass-123',
       studentId: 'student-456',
       status: 'OPEN',
+      createdAt: new Date('2024-01-15T10:30:00Z'),
+      lastUpdatedAt: new Date('2024-01-15T10:35:00Z'),
       legs: [
         {
           id: 'leg-1',
+          legNumber: 1,
+          originLocationId: 'classroom-101',
           destinationLocationId: 'bathroom-main',
           state: 'OUT',
           timestamp: new Date('2024-01-15T10:30:00Z')
         },
         {
           id: 'leg-2',
+          legNumber: 2,
+          originLocationId: 'bathroom-main',
           destinationLocationId: 'library',
           state: 'IN',
           timestamp: new Date('2024-01-15T10:35:00Z')
@@ -247,8 +264,7 @@ describe('PassStatus Component', () => {
     const libraryLocation: Location = {
       id: 'library',
       name: 'Library',
-      type: 'LIBRARY',
-      allowedDestinations: []
+      locationType: 'library'
     };
 
     mockGetLocationById.mockResolvedValue(libraryLocation);
@@ -260,7 +276,7 @@ describe('PassStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('IN')).toBeInTheDocument();
+    expect(screen.getByText('IN', { selector: 'p' })).toBeInTheDocument();
     
     await waitFor(() => {
       expect(screen.getByText('Library')).toBeInTheDocument();

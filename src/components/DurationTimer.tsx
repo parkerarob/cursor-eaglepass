@@ -50,7 +50,7 @@ export function DurationTimer({ pass, className }: DurationTimerProps) {
   const getNotificationBadge = () => {
     if (notificationStatus.isOverdue) {
       return (
-        <Badge variant="destructive" className="ml-2">
+        <Badge variant="destructive" className="ml-2" data-testid="duration-badge">
           OVERDUE ({formatDuration(notificationStatus.durationMinutes)})
         </Badge>
       );
@@ -58,7 +58,7 @@ export function DurationTimer({ pass, className }: DurationTimerProps) {
     
     if (notificationStatus.shouldEscalate) {
       return (
-        <Badge variant="secondary" className="ml-2">
+        <Badge variant="secondary" className="ml-2" data-testid="duration-badge">
           ESCALATED ({formatDuration(notificationStatus.durationMinutes)})
         </Badge>
       );
@@ -90,7 +90,7 @@ export function DurationTimer({ pass, className }: DurationTimerProps) {
           </div>
           
           {notificationStatus.notificationLevel !== 'none' && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs" data-testid="notification-badge">
               {notificationStatus.notificationLevel.toUpperCase()} NOTIFIED
             </Badge>
           )}

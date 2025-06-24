@@ -29,7 +29,7 @@ export function PassStatus({ pass, currentLocation }: PassStatusProps) {
           <p className="text-muted-foreground mb-4">
             {`You're currently in ${currentLocation.name}`}
           </p>
-          <Badge variant="success" className="text-sm">
+          <Badge variant="success" className="text-sm" data-testid="location-badge">
             IN CLASS
           </Badge>
         </CardContent>
@@ -60,12 +60,14 @@ export function PassStatus({ pass, currentLocation }: PassStatusProps) {
           <Badge 
             variant={isOpen ? "info" : "secondary"}
             className="text-sm"
+            data-testid="status-badge"
           >
             {isOpen ? "OPEN" : "CLOSED"}
           </Badge>
           <Badge 
             variant={isOut ? "warning" : "success"}
             className="text-sm"
+            data-testid="state-badge"
           >
             {isOut ? "OUT" : "IN"}
           </Badge>

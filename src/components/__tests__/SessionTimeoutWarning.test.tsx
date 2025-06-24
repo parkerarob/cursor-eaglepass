@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SessionTimeoutWarning } from '../SessionTimeoutWarning';
+import * as SessionProvider from '../SessionProvider';
 
 // Mock the SessionProvider hook
 const mockRefreshSession = jest.fn();
@@ -9,12 +10,15 @@ const mockLogout = jest.fn();
 const mockSessionContext = {
   timeUntilExpiry: 4 * 60 * 1000, // 4 minutes
   refreshSession: mockRefreshSession,
-  logout: mockLogout
+  logout: mockLogout,
+  sessionData: null,
+  isLoading: false,
+  error: null,
+  sessionExpiresAt: new Date(Date.now() + 4 * 60 * 1000),
 };
 
-jest.mock('../SessionProvider', () => ({
-  useSession: () => mockSessionContext
-}));
+jest.mock('../SessionProvider');
+const mockUseSession = SessionProvider.useSession as jest.MockedFunction<typeof SessionProvider.useSession>;
 
 // Mock UI components
 jest.mock('@/components/ui/dialog', () => ({
@@ -60,6 +64,8 @@ describe('SessionTimeoutWarning', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    // Set default mock return value
+    mockUseSession.mockReturnValue(mockSessionContext);
   });
 
   afterEach(() => {
@@ -76,7 +82,7 @@ describe('SessionTimeoutWarning', () => {
 
   it('should not show warning when time until expiry is above threshold', () => {
     const longTimeContext = { ...mockSessionContext, timeUntilExpiry: 10 * 60 * 1000 };
-    jest.mocked(require('../SessionProvider').useSession).mockReturnValue(longTimeContext);
+    mockUseSession.mockReturnValue(longTimeContext);
 
     render(<SessionTimeoutWarning />);
 
@@ -85,7 +91,7 @@ describe('SessionTimeoutWarning', () => {
 
   it('should not show warning when timeUntilExpiry is null', () => {
     const nullTimeContext = { ...mockSessionContext, timeUntilExpiry: null };
-    jest.mocked(require('../SessionProvider').useSession).mockReturnValue(nullTimeContext);
+    mockUseSession.mockReturnValue(nullTimeContext);
 
     render(<SessionTimeoutWarning />);
 
@@ -94,7 +100,7 @@ describe('SessionTimeoutWarning', () => {
 
   it('should show critical warning when time is very low', () => {
     const criticalContext = { ...mockSessionContext, timeUntilExpiry: 30 * 1000 }; // 30 seconds
-    jest.mocked(require('../SessionProvider').useSession).mockReturnValue(criticalContext);
+    mockUseSession.mockReturnValue(criticalContext);
 
     render(<SessionTimeoutWarning />);
 
@@ -146,7 +152,7 @@ describe('SessionTimeoutWarning', () => {
 
   it('should format time correctly for different values', () => {
     const twoMinutesContext = { ...mockSessionContext, timeUntilExpiry: 2 * 60 * 1000 + 30 * 1000 };
-    jest.mocked(require('../SessionProvider').useSession).mockReturnValue(twoMinutesContext);
+    mockUseSession.mockReturnValue(twoMinutesContext);
 
     render(<SessionTimeoutWarning />);
 
@@ -155,7 +161,7 @@ describe('SessionTimeoutWarning', () => {
 
   it('should format time correctly for seconds only', () => {
     const secondsOnlyContext = { ...mockSessionContext, timeUntilExpiry: 45 * 1000 };
-    jest.mocked(require('../SessionProvider').useSession).mockReturnValue(secondsOnlyContext);
+    mockUseSession.mockReturnValue(secondsOnlyContext);
 
     render(<SessionTimeoutWarning />);
 
@@ -184,10 +190,11 @@ describe('SessionTimeoutWarning', () => {
 
   it('should show appropriate icon for critical warning', () => {
     const criticalContext = { ...mockSessionContext, timeUntilExpiry: 30 * 1000 };
-    jest.mocked(require('../SessionProvider').useSession).mockReturnValue(criticalContext);
+    mockUseSession.mockReturnValue(criticalContext);
 
     render(<SessionTimeoutWarning />);
 
-    expect(screen.getByTestId('alert-triangle-icon')).toBeInTheDocument();
+    const alertTriangleIcons = screen.getAllByTestId('alert-triangle-icon');
+    expect(alertTriangleIcons.length).toBeGreaterThan(0);
   });
 });

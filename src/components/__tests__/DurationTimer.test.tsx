@@ -13,8 +13,8 @@ jest.mock('@/lib/notificationService', () => ({
 
 // Mock UI components
 jest.mock('@/components/ui/badge', () => ({
-  Badge: ({ children, variant, className }: any) => (
-    <div className={`badge ${variant} ${className}`} data-testid="badge">
+  Badge: ({ children, variant, className, 'data-testid': dataTestId }: any) => (
+    <div className={`badge ${variant} ${className}`} data-testid={dataTestId || "badge"}>
       {children}
     </div>
   ),
@@ -35,15 +35,18 @@ describe('DurationTimer', () => {
   const mockPass: Pass = {
     id: 'pass1',
     studentId: 'student1',
-    studentName: 'John Doe',
-    status: 'active',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    destinationLocationId: 'bathroom1',
-    currentLocationId: 'classroom1',
-    schoolId: 'school1',
-    teacherId: 'teacher1',
-    passType: 'bathroom',
+    status: 'OPEN',
+    createdAt: new Date(),
+    lastUpdatedAt: new Date(),
+    legs: [{
+      id: 'leg1',
+      legNumber: 1,
+      originLocationId: 'classroom1',
+      destinationLocationId: 'bathroom1',
+      state: 'OUT',
+      timestamp: new Date(),
+    }],
+    durationMinutes: 15,
   };
 
   beforeEach(() => {
@@ -108,8 +111,8 @@ describe('DurationTimer', () => {
     render(<DurationTimer pass={mockPass} />);
 
     expect(screen.getByText('OVERDUE (1h 0m)')).toBeInTheDocument();
-    const badge = screen.getByTestId('badge');
-    expect(badge).toHaveClass('destructive');
+    const durationBadge = screen.getByTestId('duration-badge');
+    expect(durationBadge).toHaveClass('destructive');
   });
 
   it('should display escalated badge when pass should escalate', () => {
@@ -124,9 +127,8 @@ describe('DurationTimer', () => {
     render(<DurationTimer pass={mockPass} />);
 
     expect(screen.getByText('ESCALATED (30m)')).toBeInTheDocument();
-    const badges = screen.getAllByTestId('badge');
-    const escalatedBadge = badges.find(badge => badge.textContent?.includes('ESCALATED'));
-    expect(escalatedBadge).toHaveClass('secondary');
+    const durationBadge = screen.getByTestId('duration-badge');
+    expect(durationBadge).toHaveClass('secondary');
   });
 
   it('should display notification level badge when notifications are active', () => {
@@ -140,8 +142,7 @@ describe('DurationTimer', () => {
     render(<DurationTimer pass={mockPass} />);
 
     expect(screen.getByText('MEDIUM NOTIFIED')).toBeInTheDocument();
-    const badges = screen.getAllByTestId('badge');
-    const notificationBadge = badges.find(badge => badge.textContent?.includes('NOTIFIED'));
+    const notificationBadge = screen.getByTestId('notification-badge');
     expect(notificationBadge).toHaveClass('outline');
   });
 
