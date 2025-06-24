@@ -147,7 +147,7 @@ export function MonitoringDashboard() {
               <div className="text-2xl font-bold text-green-600">
                 {systemHealth.isInitialized ? '✓' : '✗'}
               </div>
-              <div className="text-sm text-muted-foreground">Monitoring Status</div>
+              <div className="text-sm text-muted-foreground" data-testid="system-monitoring-status">Monitoring Status</div>
               <div className="text-xs text-muted-foreground">
                 {systemHealth.isInitialized ? 'Initialized' : 'Not initialized'}
               </div>
@@ -220,7 +220,7 @@ export function MonitoringDashboard() {
       {/* Monitoring Status */}
       <Card>
         <CardHeader>
-          <CardTitle>Monitoring Status</CardTitle>
+          <CardTitle data-testid="monitoring-section-title">Monitoring Status</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
