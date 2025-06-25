@@ -41,7 +41,7 @@ export const validatePassCreation = onCall(
   async (request) => {
     try {
       // Verify authentication
-      if (!request.auth) {
+      if (!request.auth || !request.auth.uid) {
         throw new Error("User must be authenticated");
       }
 
@@ -105,6 +105,10 @@ export const validatePassCreation = onCall(
         notificationLevel: "admin"
       });
 
+      // Propagate original error to allow clients and tests to inspect specific failure reasons
+      if (error instanceof Error) {
+        throw error;
+      }
       throw new Error("Pass validation failed");
     }
   }
@@ -123,7 +127,7 @@ export const getPassValidationStatus = onCall(
   async (request) => {
     try {
       // Verify authentication
-      if (!request.auth) {
+      if (!request.auth || !request.auth.uid) {
         throw new Error("User must be authenticated");
       }
 
