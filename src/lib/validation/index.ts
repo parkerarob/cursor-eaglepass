@@ -7,5 +7,5 @@
 
 export * from './sanitiser';
 export * from './guards';
-// Re-export *everything* from the legacy module for now
-export * from "../validation";          // one level up
+export * from './schemas';
+export * from './service';
