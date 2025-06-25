@@ -73,7 +73,7 @@ export default function Home() {
           setCurrentStudent(userProfile);
           setIsDevMode(false);
         } else if (userProfile?.role === 'dev') {
-          const testStudent = await getUserById('student-1');
+          const testStudent = await getUserById('student-00001');
           if (testStudent) {
             setCurrentStudent(testStudent);
             setIsDevMode(true);
