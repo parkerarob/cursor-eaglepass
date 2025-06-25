@@ -37,15 +37,44 @@ export class ParentRelationshipVerifier {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
+        // Log failed relationship check
+        try {
+          await FERPAAuditLogger.logRelationshipCheck(
+            parentId,
+            'parent',
+            parentId,
+            studentId,
+            'failure',
+            'system_lookup'
+          );
+        } catch (loggingError) {
+          console.error('FERPA audit logging failed:', loggingError);
+        }
         return null;
       }
 
       const data = querySnapshot.docs[0].data();
       
-      return {
+      const relationship: ParentStudentRelationship = {
         ...data,
         verifiedAt: data.verifiedAt.toDate()
       } as ParentStudentRelationship;
+
+      // Log successful check
+      try {
+        await FERPAAuditLogger.logRelationshipCheck(
+          parentId,
+          'parent',
+          parentId,
+          studentId,
+          'success',
+          'system_lookup'
+        );
+      } catch (loggingError) {
+        console.error('FERPA audit logging failed:', loggingError);
+      }
+
+      return relationship;
 
     } catch (error) {
       console.error('ParentRelationshipVerifier: Error verifying relationship:', error);

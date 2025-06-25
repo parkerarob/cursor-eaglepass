@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { POST } from '../../../api/rate-limit/route';
 
 // Mock the rate limiter
-jest.mock('@/lib/rateLimiter.redis', () => ({
+jest.mock('@/lib/rateLimiterFactory', () => ({
   checkPassCreationRateLimit: jest.fn(),
   checkLoginRateLimit: jest.fn(),
 }));
@@ -21,7 +21,7 @@ describe('/api/rate-limit', () => {
 
   describe('POST', () => {
     it('should check pass creation rate limit successfully', async () => {
-      const { checkPassCreationRateLimit } = require('@/lib/rateLimiter.redis');
+      const { checkPassCreationRateLimit } = require('@/lib/rateLimiterFactory');
       const mockResult = {
         allowed: true,
         remainingRequests: 4,
@@ -47,7 +47,7 @@ describe('/api/rate-limit', () => {
     });
 
     it('should check login rate limit successfully', async () => {
-      const { checkLoginRateLimit } = require('@/lib/rateLimiter.redis');
+      const { checkLoginRateLimit } = require('@/lib/rateLimiterFactory');
       const mockResult = {
         allowed: false,
         remainingRequests: 0,
@@ -163,7 +163,7 @@ describe('/api/rate-limit', () => {
     });
 
     it('should return 503 when pass creation rate limiter throws an error', async () => {
-      const { checkPassCreationRateLimit } = require('@/lib/rateLimiter.redis');
+      const { checkPassCreationRateLimit } = require('@/lib/rateLimiterFactory');
       checkPassCreationRateLimit.mockRejectedValue(new Error('Redis connection failed'));
 
       const request = new NextRequest('http://localhost/api/rate-limit', {
@@ -186,7 +186,7 @@ describe('/api/rate-limit', () => {
     });
 
     it('should return 503 when login rate limiter throws an error', async () => {
-      const { checkLoginRateLimit } = require('@/lib/rateLimiter.redis');
+      const { checkLoginRateLimit } = require('@/lib/rateLimiterFactory');
       checkLoginRateLimit.mockRejectedValue(new Error('Redis timeout'));
 
       const request = new NextRequest('http://localhost/api/rate-limit', {
@@ -259,7 +259,7 @@ describe('/api/rate-limit', () => {
     });
 
     it('should handle rate limit denial response', async () => {
-      const { checkPassCreationRateLimit } = require('@/lib/rateLimiter.redis');
+      const { checkPassCreationRateLimit } = require('@/lib/rateLimiterFactory');
       const mockResult = {
         allowed: false,
         remainingRequests: 0,

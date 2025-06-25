@@ -6,9 +6,9 @@
 >
 > Always verify claims against actual code and the remediation log before relying on this documentation.
 
-# Eagle Pass Documentation
+# Eagle Pass Documentation Handbook
 
-> **Note**: This is the documentation index. For the main project overview and setup instructions, see the [main README](../README.md).
+> **Note**: This is the canonical index for all living documentation. All status, progress, and issue tracking documents have been moved to [docs/archive/](../archive/).
 
 Welcome to the Eagle Pass system documentation. This directory contains comprehensive documentation for developers, AI assistants, and system administrators.
 
@@ -33,11 +33,6 @@ Welcome to the Eagle Pass system documentation. This directory contains comprehe
 - **[Testing Plan](./TESTING_PLAN.md)** - Comprehensive testing strategy
 - **[Testing Checklist](./TESTING_CHECKLIST.md)** - Test coverage checklist
 - **[Security Review](./SECURITY_REVIEW_AND_HARDENING.md)** - Security analysis and hardening guide
-
-### Project Status
-- **[Current State Analysis](./CURRENT_STATE_ANALYSIS.md)** - System capabilities and status
-- **[Task Progress](./TASK_PROGRESS.md)** - Development progress tracking
-- **[Reports Task Plan](./REPORTS_TASK_PLAN.md)** - Reporting system implementation plan
 
 ## 🚀 Quick Start for AI Assistants
 
@@ -112,20 +107,6 @@ When adding new features:
 2. Add to troubleshooting guide if introducing new error scenarios
 3. Update AI context guide with new patterns
 4. Keep FERPA docs current with compliance changes
-
-## 📊 Documentation Status
-
-| Document | Status | Last Updated |
-|----------|--------|--------------|
-| AI Context Guide | ✅ Complete | Current |
-| Code Conventions | ✅ Complete | Current |
-| API Documentation | ✅ Complete | Current |
-| Troubleshooting Guide | ✅ Complete | Current |
-| FERPA Docs | ✅ Complete | Current |
-| Testing Docs | ✅ Complete | Current |
-
-## Known Issues
-See [KNOWN_ISSUES.md](./KNOWN_ISSUES.md) for a list of all current problems and blockers.
 
 ---
 

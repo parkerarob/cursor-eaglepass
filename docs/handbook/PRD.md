@@ -51,10 +51,6 @@ Schools require a digital hall pass system to track student movement for safety 
 * **Hierarchical Classroom Policy System**: Teachers can set classroom-specific rules and student overrides.
 * **Teacher Dashboard**: Dedicated interface for classroom management and policy configuration.
 * **Group Management**: Teachers can create and manage student groups.
-* **[UPDATE 2024-12] Hierarchical Policy Engine implemented with Classroom Policy and Student Policy Overrides. Teachers have full autonomy to set classroom rules and student-specific exceptions.**
-* **[UPDATE 2024-12] Teacher Dashboard implemented with classroom policy summary and group management.**
-* **[UPDATE 2024-12] Event logging system is now implemented. All pass actions, policy decisions, and errors are logged to Firestore. Event log querying is available for admin reporting and audit.**
-* **[UPDATE 2024-12] Duration timers and notification engine are now fully implemented and tested. All passes are tracked in real time, notifications escalate at 10min (teacher) and 20min (admin), and all notification events are logged.**
 
 ### Deferred Features (Post-MVP Roadmap)
 
@@ -144,7 +140,6 @@ Schools require a digital hall pass system to track student movement for safety 
 
 * `sourceFileId`, `importType`, `mappingRules`
 
-**[UPDATE 2024-12] All policy-related data models (groups, restrictions, classroom policies, student overrides) are now implemented in code and Firestore, with full CRUD support.**
 
 ---
 
@@ -317,9 +312,5 @@ All deployments, tests, and build operations must target an explicitly specified
 
 ### 6. Implementation Readiness Status
 
-> **[UPDATE 2024-12] Hierarchical Policy Engine implemented with Classroom Policy and Student Policy Overrides. Teachers have full autonomy to set classroom rules and student-specific exceptions.**
-> **[UPDATE 2024-12] Teacher Dashboard implemented with classroom policy summary and group management.**
-> **[UPDATE 2024-12] Event logging system is now implemented. All pass actions, policy decisions, and errors are logged to Firestore. Event log querying is available for admin reporting and audit.**
-> **[UPDATE 2024-12] Duration timers and notification engine are now fully implemented and tested. All passes are tracked in real time, notifications escalate at 10min (teacher) and 20min (admin), and all notification events are logged.**
 
 > This system is now considered fully defined for one-shot MVP build initiation.

@@ -22,8 +22,8 @@ describe('/api/parent/verify-relationship', () => {
       const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
         method: 'POST',
         body: JSON.stringify({
-          parentId: 'parent123',
-          studentId: 'student456',
+          parentId: '123e4567-e89b-12d3-a456-426614174000',
+          studentId: '123e4567-e89b-12d3-a456-426614174001',
         }),
         headers: { 'Content-Type': 'application/json' },
       });
@@ -34,11 +34,11 @@ describe('/api/parent/verify-relationship', () => {
       expect(response.status).toBe(200);
       expect(data).toEqual({
         verified: true,
-        parentId: 'parent123',
-        studentId: 'student456',
+        parentId: '123e4567-e89b-12d3-a456-426614174000',
+        studentId: '123e4567-e89b-12d3-a456-426614174001',
       });
 
-      expect(FERPAService.verifyParentRelationship).toHaveBeenCalledWith('parent123', 'student456');
+      expect(FERPAService.verifyParentRelationship).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000', '123e4567-e89b-12d3-a456-426614174001');
     });
 
     it('should return false when relationship is not verified', async () => {
@@ -47,8 +47,8 @@ describe('/api/parent/verify-relationship', () => {
       const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
         method: 'POST',
         body: JSON.stringify({
-          parentId: 'parent123',
-          studentId: 'student789',
+          parentId: '123e4567-e89b-12d3-a456-426614174000',
+          studentId: '123e4567-e89b-12d3-a456-426614174002',
         }),
         headers: { 'Content-Type': 'application/json' },
       });
@@ -59,18 +59,29 @@ describe('/api/parent/verify-relationship', () => {
       expect(response.status).toBe(200);
       expect(data).toEqual({
         verified: false,
-        parentId: 'parent123',
-        studentId: 'student789',
+        parentId: '123e4567-e89b-12d3-a456-426614174000',
+        studentId: '123e4567-e89b-12d3-a456-426614174002',
       });
 
-      expect(FERPAService.verifyParentRelationship).toHaveBeenCalledWith('parent123', 'student789');
+      expect(FERPAService.verifyParentRelationship).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174000', '123e4567-e89b-12d3-a456-426614174002');
     });
+
+    function expectZodError(data: { error: string }, field: string, code: string = 'invalid_string') {
+      let errors: Array<{ path: string[]; code: string }>;
+      try {
+        errors = JSON.parse(data.error);
+      } catch {
+        throw new Error('Error is not a valid JSON string');
+      }
+      expect(Array.isArray(errors)).toBe(true);
+      expect(errors.some((e: { path: string[]; code: string }) => e.path && e.path[0] === field && e.code === code)).toBe(true);
+    }
 
     it('should return 400 when parentId is missing', async () => {
       const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
         method: 'POST',
         body: JSON.stringify({
-          studentId: 'student456',
+          studentId: '123e4567-e89b-12d3-a456-426614174001',
         }),
         headers: { 'Content-Type': 'application/json' },
       });
@@ -79,10 +90,7 @@ describe('/api/parent/verify-relationship', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Missing required fields: parentId, studentId',
-      });
-
+      expectZodError(data, 'parentId', 'invalid_type');
       expect(FERPAService.verifyParentRelationship).not.toHaveBeenCalled();
     });
 
@@ -90,7 +98,7 @@ describe('/api/parent/verify-relationship', () => {
       const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
         method: 'POST',
         body: JSON.stringify({
-          parentId: 'parent123',
+          parentId: '123e4567-e89b-12d3-a456-426614174000',
         }),
         headers: { 'Content-Type': 'application/json' },
       });
@@ -99,10 +107,7 @@ describe('/api/parent/verify-relationship', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Missing required fields: parentId, studentId',
-      });
-
+      expectZodError(data, 'studentId', 'invalid_type');
       expect(FERPAService.verifyParentRelationship).not.toHaveBeenCalled();
     });
 
@@ -117,10 +122,8 @@ describe('/api/parent/verify-relationship', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Missing required fields: parentId, studentId',
-      });
-
+      expectZodError(data, 'parentId', 'invalid_type');
+      expectZodError(data, 'studentId', 'invalid_type');
       expect(FERPAService.verifyParentRelationship).not.toHaveBeenCalled();
     });
 
@@ -138,19 +141,17 @@ describe('/api/parent/verify-relationship', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Missing required fields: parentId, studentId',
-      });
-
+      expectZodError(data, 'parentId');
+      expectZodError(data, 'studentId');
       expect(FERPAService.verifyParentRelationship).not.toHaveBeenCalled();
     });
 
-    it('should return 400 when parentId is empty string', async () => {
+    it('should return 400 when parentId is not a valid UUID', async () => {
       const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
         method: 'POST',
         body: JSON.stringify({
-          parentId: '',
-          studentId: 'student456',
+          parentId: 'not-a-uuid',
+          studentId: '123e4567-e89b-12d3-a456-426614174000',
         }),
         headers: { 'Content-Type': 'application/json' },
       });
@@ -159,19 +160,16 @@ describe('/api/parent/verify-relationship', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Missing required fields: parentId, studentId',
-      });
-
+      expectZodError(data, 'parentId');
       expect(FERPAService.verifyParentRelationship).not.toHaveBeenCalled();
     });
 
-    it('should return 400 when studentId is empty string', async () => {
+    it('should return 400 when studentId is not a valid UUID', async () => {
       const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
         method: 'POST',
         body: JSON.stringify({
-          parentId: 'parent123',
-          studentId: '',
+          parentId: '123e4567-e89b-12d3-a456-426614174000',
+          studentId: 'not-a-uuid',
         }),
         headers: { 'Content-Type': 'application/json' },
       });
@@ -180,10 +178,7 @@ describe('/api/parent/verify-relationship', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Missing required fields: parentId, studentId',
-      });
-
+      expectZodError(data, 'studentId');
       expect(FERPAService.verifyParentRelationship).not.toHaveBeenCalled();
     });
 
@@ -193,8 +188,8 @@ describe('/api/parent/verify-relationship', () => {
       const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
         method: 'POST',
         body: JSON.stringify({
-          parentId: 'parent123',
-          studentId: 'student456',
+          parentId: '123e4567-e89b-12d3-a456-426614174000',
+          studentId: '123e4567-e89b-12d3-a456-426614174001',
         }),
         headers: { 'Content-Type': 'application/json' },
       });
@@ -206,31 +201,27 @@ describe('/api/parent/verify-relationship', () => {
       expect(data).toEqual({
         error: 'Failed to verify parent relationship',
       });
-
-      expect(FERPAService.verifyParentRelationship).toHaveBeenCalledWith('parent123', 'student456');
     });
 
-    it('should handle malformed JSON', async () => {
-      const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
-        method: 'POST',
-        body: 'invalid json',
-        headers: { 'Content-Type': 'application/json' },
-      });
+    it('should return 400 when request body is malformed JSON', async () => {
+      // Simulate a request with invalid JSON by overriding the json() method
+      const request = {
+        json: async () => { throw new Error('Unexpected token < in JSON'); }
+      } as unknown as NextRequest;
 
       const response = await POST(request);
+      const data = await response.json();
 
-      expect(response.status).toBe(500);
-      expect(FERPAService.verifyParentRelationship).not.toHaveBeenCalled();
+      expect(response.status).toBe(400);
+      expect(typeof data.error).toBe('string');
     });
 
-    it('should handle complex parent and student IDs', async () => {
-      FERPAService.verifyParentRelationship.mockResolvedValue(true);
-
+    it('should return 400 when complex parent and student IDs are used', async () => {
       const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
         method: 'POST',
         body: JSON.stringify({
           parentId: 'parent-complex-id-123-abc',
-          studentId: 'student-uuid-456-def-789',
+          studentId: 'student-complex-id-456-def',
         }),
         headers: { 'Content-Type': 'application/json' },
       });
@@ -238,20 +229,12 @@ describe('/api/parent/verify-relationship', () => {
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(200);
-      expect(data).toEqual({
-        verified: true,
-        parentId: 'parent-complex-id-123-abc',
-        studentId: 'student-uuid-456-def-789',
-      });
-
-      expect(FERPAService.verifyParentRelationship).toHaveBeenCalledWith(
-        'parent-complex-id-123-abc',
-        'student-uuid-456-def-789'
-      );
+      expect(response.status).toBe(400);
+      expectZodError(data, 'parentId');
+      expectZodError(data, 'studentId');
     });
 
-    it('should handle null values', async () => {
+    it('should return 400 when null values are provided', async () => {
       const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
         method: 'POST',
         body: JSON.stringify({
@@ -265,14 +248,11 @@ describe('/api/parent/verify-relationship', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Missing required fields: parentId, studentId',
-      });
-
-      expect(FERPAService.verifyParentRelationship).not.toHaveBeenCalled();
+      expectZodError(data, 'parentId', 'invalid_type');
+      expectZodError(data, 'studentId', 'invalid_type');
     });
 
-    it('should handle undefined values', async () => {
+    it('should return 400 when undefined values are provided', async () => {
       const request = new NextRequest('http://localhost/api/parent/verify-relationship', {
         method: 'POST',
         body: JSON.stringify({
@@ -286,11 +266,8 @@ describe('/api/parent/verify-relationship', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data).toEqual({
-        error: 'Missing required fields: parentId, studentId',
-      });
-
-      expect(FERPAService.verifyParentRelationship).not.toHaveBeenCalled();
+      expectZodError(data, 'parentId', 'invalid_type');
+      expectZodError(data, 'studentId', 'invalid_type');
     });
   });
 }); 

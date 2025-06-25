@@ -138,24 +138,8 @@ jest.mock('@/lib/firebase/config', () => ({
   auth: {}
 }));
 
-// Mock the rate limiter to always allow
-jest.mock('@/lib/rateLimiter.redis', () => ({
-  RedisRateLimiter: {
-    checkRateLimit: jest.fn(() => Promise.resolve({
-      allowed: true,
-      remaining: 5,
-      resetTime: Date.now() + 60000
-    }))
-  },
-  checkPassCreationRateLimit: jest.fn(() => Promise.resolve({
-    allowed: true,
-    remaining: 5,
-    resetTime: Date.now() + 60000
-  }))
-}));
-
-// Mock the in-memory rate limiter as well
-jest.mock('@/lib/rateLimiter', () => ({
+// Mock unified rate limiter factory so security tests are independent of implementation
+jest.mock('@/lib/rateLimiterFactory', () => ({
   RateLimiter: {
     checkRateLimit: jest.fn(() => ({
       allowed: true,
@@ -163,7 +147,17 @@ jest.mock('@/lib/rateLimiter', () => ({
       resetTime: Date.now() + 60000
     })),
     resetRateLimit: jest.fn()
-  }
+  },
+  checkPassCreationRateLimit: jest.fn(() => Promise.resolve({
+    allowed: true,
+    remaining: 5,
+    resetTime: Date.now() + 60000
+  })),
+  checkLoginRateLimit: jest.fn(() => Promise.resolve({
+    allowed: true,
+    remaining: 5,
+    resetTime: Date.now() + 60000
+  }))
 }));
 
 // Now import the modules after mocks are set up
@@ -172,7 +166,7 @@ import { ValidationService } from '../validation';
 import { AuditMonitor } from '../auditMonitor';
 import { Pass, User, PassFormData } from '@/types';
 import { logEvent } from '@/lib/eventLogger';
-import { RateLimiter } from '../rateLimiter';
+import { RateLimiter } from '../rateLimiterFactory';
 import { PassStateMachine } from '../stateMachine';
 import { monitoringService } from '../monitoringService';
 

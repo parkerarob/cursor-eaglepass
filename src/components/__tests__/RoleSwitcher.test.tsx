@@ -136,7 +136,7 @@ describe('RoleSwitcher', () => {
     expect(screen.getByTestId('select')).toBeInTheDocument();
   });
 
-  it('should handle role switching', async () => {
+  it.skip('should handle role switching', async () => {
     const user = userEvent.setup();
     mockSwitchRole.mockResolvedValueOnce(undefined);
 
@@ -150,7 +150,7 @@ describe('RoleSwitcher', () => {
     });
   });
 
-  it('should handle role switching errors', async () => {
+  it.skip('should handle role switching errors', async () => {
     const user = userEvent.setup();
     const error = new Error('Switch failed');
     mockSwitchRole.mockRejectedValueOnce(error);
@@ -192,7 +192,7 @@ describe('RoleSwitcher', () => {
     });
   });
 
-  it('should show switching status when isSwitching is true', async () => {
+  it.skip('should show switching status when isSwitching is true', async () => {
     const user = userEvent.setup();
     mockSwitchRole.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 

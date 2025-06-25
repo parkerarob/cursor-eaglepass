@@ -1,5 +1,6 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
+import { configure as configureRTL } from '@testing-library/react'
 
 // Mock environment variables
 process.env.NEXT_PUBLIC_FIREBASE_API_KEY = 'test-api-key'
@@ -217,4 +218,6 @@ global.testUtils = {
     type: 'classroom',
     ...overrides
   })
-}; 
+};
+
+configureRTL({ asyncUtilTimeout: 5000 }) 

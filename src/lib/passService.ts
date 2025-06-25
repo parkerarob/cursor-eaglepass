@@ -7,6 +7,7 @@ import { formatUserName } from './utils';
 import { ValidationService } from '@/lib/validation';
 import { AuditMonitor } from '@/lib/auditMonitor';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { checkStudentHasOpenPass } from './passUtils';
 
 export interface PassServiceResult {
   success: boolean;
@@ -74,53 +75,24 @@ export class PassService {
           throw new Error('System is in emergency mode. Pass creation is disabled.');
         }
 
-        // Check for existing active pass within transaction
-        const passQuery = query(
-          collection(db, 'passes'),
-          where('studentId', '==', student.id),
-          where('status', '==', 'OPEN')
-        );
-        const existingPassSnapshot = await getDocs(passQuery);
-        
-        if (!existingPassSnapshot.empty) {
-          // Student has an active pass - handle multi-leg logic
-          const existingPassDoc = existingPassSnapshot.docs[0];
-          const existingPassData = existingPassDoc.data() as Pass;
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { id: _, ...passDataWithoutId } = existingPassData;
-          const existingPass = { id: existingPassDoc.id, ...passDataWithoutId };
-          
-          const stateMachine = new PassStateMachine(existingPass, student);
-          const currentLeg = stateMachine.getCurrentLeg();
-          
-          if (currentLeg && currentLeg.state === 'IN') {
-            // Student is currently "IN" at a location - add new leg from current location
-            const updatedPass = stateMachine.addLeg(
-              currentLeg.destinationLocationId, // Origin is current location
-              formData.destinationLocationId,   // Destination is new location
-              'OUT'                             // State is OUT (traveling)
-            );
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { id: __, ...updateData } = updatedPass;
-            transaction.update(existingPassDoc.ref, updateData);
-            return { success: true, updatedPass };
-          } else {
-            // Student is "OUT" - they can't create a new pass
-            throw new Error('Cannot create new pass while already traveling');
-          }
-        } else {
-          // No active pass - create new pass from assigned class atomically
-          const passRef = doc(collection(db, 'passes'));
-          const newPass = PassStateMachine.createPass(formData, student);
-          // Create a new pass object with the correct document ID
-          const passWithCorrectId = { ...newPass, id: passRef.id };
-          transaction.set(passRef, newPass); // Store without the ID field
-          
-          // SECURITY: Monitor for suspicious pass creation patterns
-          await AuditMonitor.checkPassCreationActivity(student.id, passWithCorrectId);
-          
-          return { success: true, updatedPass: passWithCorrectId };
+        // Centralized check for existing active pass
+        const hasOpenPass = await checkStudentHasOpenPass(db, student.id);
+        if (hasOpenPass) {
+          throw new Error('Student already has an open pass. Cannot create another.');
         }
+
+        // No active pass - create new pass from assigned class atomically
+        const passRef = doc(collection(db, 'passes'));
+        const newPass = PassStateMachine.createPass(formData, student);
+        // Create a new pass object with the correct document ID
+        const passWithCorrectId = { ...newPass, id: passRef.id };
+        // Store the pass with the correct ID to keep Firestore doc ID and payload in sync
+        transaction.set(passRef, passWithCorrectId);
+        
+        // SECURITY: Monitor for suspicious pass creation patterns
+        await AuditMonitor.checkPassCreationActivity(student.id, passWithCorrectId);
+        
+        return { success: true, updatedPass: passWithCorrectId };
       });
     } catch (error) {
       return { 
@@ -338,8 +310,8 @@ async function checkRateLimit(userId: string): Promise<{ allowed: boolean; error
   // Server-side: Use in-memory rate limiting as fallback
   // Redis rate limiting is handled in dedicated API routes and server actions
   try {
-    const { RateLimiter } = await import('./rateLimiter');
-    const result = RateLimiter.checkRateLimit(userId, 'PASS_CREATION');
+    const { RateLimiter } = await import('./rateLimiterFactory');
+    const result = await RateLimiter.checkRateLimit(userId, 'PASS_CREATION');
     return {
       allowed: result.allowed,
       error: result.error

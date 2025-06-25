@@ -1,0 +1,32 @@
+name: Dependency Check
+
+on:
+  schedule:
+    # Every Monday at 03:00 UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  dep-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run dependency checker
+        run: npm run dep:check | tee dep-report.txt
+
+      - name: Upload dependency report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-report
+          path: dep-report.txt 

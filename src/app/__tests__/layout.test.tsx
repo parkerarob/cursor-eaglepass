@@ -92,32 +92,30 @@ describe('RootLayout', () => {
   });
 
   it('should have correct HTML structure', () => {
-    render(
+    const { container } = render(
       <RootLayout>
         <div>Test content</div>
       </RootLayout>
     );
 
-    // Check for html element with lang attribute  
-    const htmlElement = document.documentElement;
+    const htmlElement = container.querySelector('html');
     expect(htmlElement).toHaveAttribute('lang', 'en');
 
-    // Check for body element with font classes
-    const bodyElement = document.body;
+    const bodyElement = container.querySelector('body');
     expect(bodyElement).toBeInTheDocument();
   });
 
   it('should apply font variables to body', () => {
-    render(
+    const { container } = render(
       <RootLayout>
         <div>Test content</div>
       </RootLayout>
     );
 
-    const bodyElement = document.body;
+    const bodyElement = container.querySelector('body');
     expect(bodyElement).toHaveClass('antialiased');
-    // Font variables are applied via className string interpolation
-    expect(bodyElement?.className).toContain('--font-geist');
+    // Class string should include mocked font variable names
+    expect(bodyElement?.className).toContain('GeistSans');
   });
 
   it('should render provider nesting in correct order', () => {

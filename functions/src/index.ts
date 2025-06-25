@@ -17,6 +17,16 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
+// Utility to check if a student has an open pass (mirrors app logic)
+async function checkStudentHasOpenPass(db, studentId) {
+  const openPassesQuery = await db.collection("passes")
+    .where("studentId", "==", studentId)
+    .where("status", "==", "OPEN")
+    .limit(1)
+    .get();
+  return !openPassesQuery.empty;
+}
+
 /**
  * Cloud Function to validate pass creation
  * Checks if a student already has an open pass before allowing creation of a new one
@@ -31,7 +41,7 @@ export const validatePassCreation = onCall(
   async (request) => {
     try {
       // Verify authentication
-      if (!request.auth) {
+      if (!request.auth || !request.auth.uid) {
         throw new Error("User must be authenticated");
       }
 
@@ -56,13 +66,7 @@ export const validatePassCreation = onCall(
       }
 
       // Query for existing open passes for this student
-      const openPassesQuery = await db.collection("passes")
-        .where("studentId", "==", studentId)
-        .where("status", "==", "OPEN")
-        .limit(1)
-        .get();
-
-      const hasOpenPass = !openPassesQuery.empty;
+      const hasOpenPass = await checkStudentHasOpenPass(db, studentId);
 
       // Log the validation attempt for audit purposes
       await db.collection("eventLogs").add({
@@ -101,6 +105,10 @@ export const validatePassCreation = onCall(
         notificationLevel: "admin"
       });
 
+      // Propagate original error to allow clients and tests to inspect specific failure reasons
+      if (error instanceof Error) {
+        throw error;
+      }
       throw new Error("Pass validation failed");
     }
   }
@@ -119,7 +127,7 @@ export const getPassValidationStatus = onCall(
   async (request) => {
     try {
       // Verify authentication
-      if (!request.auth) {
+      if (!request.auth || !request.auth.uid) {
         throw new Error("User must be authenticated");
       }
 

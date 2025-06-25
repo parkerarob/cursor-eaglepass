@@ -7,7 +7,7 @@
  * - System monitoring and alerting
  */
 
-import { RedisRateLimiter } from '../rateLimiter.redis';
+import { RateLimiter as RedisRateLimiter } from '../rateLimiterFactory';
 import { ValidationService } from '../validation';
 import { AuditMonitor } from '../auditMonitor';
 import { User, Pass } from '../../types';

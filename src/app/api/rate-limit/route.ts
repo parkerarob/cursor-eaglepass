@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkPassCreationRateLimit, checkLoginRateLimit } from '@/lib/rateLimiter.redis';
+import { checkPassCreationRateLimit, checkLoginRateLimit } from '@/lib/rateLimiterFactory';
 
 export async function POST(request: NextRequest) {
   try {

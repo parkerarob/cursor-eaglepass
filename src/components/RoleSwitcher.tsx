@@ -77,6 +77,7 @@ export function RoleSwitcher() {
             value={currentRole || ''} 
             onValueChange={(value) => handleRoleSwitch(value as UserRole)}
             disabled={isSwitching || isLoading}
+            data-disabled={isSwitching || isLoading}
           >
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Select role" />
@@ -101,6 +102,7 @@ export function RoleSwitcher() {
           size="sm" 
           onClick={handleReset}
           disabled={isSwitching || isLoading}
+          data-disabled={isSwitching || isLoading}
           className="w-full text-xs"
         >
           Reset to Original Role

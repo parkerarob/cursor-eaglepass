@@ -1,18 +1,21 @@
-> ⚠️ **NOT PRODUCTION READY**
-> 
-> This system is NOT PRODUCTION READY. While core functionality is secure and FERPA-compliant,
-> there are 18 linter errors preventing production build. Build process blocked.
-> **See CURRENT_STATUS_AND_NEXT_STEPS.md for simplified plan.**
->
 # Eagle Pass - Digital Hall Pass System (MOSTLY FUNCTIONAL)
+
+> **Documentation Structure Update:**
+> - All living, canonical, and reference documentation is now in [docs/handbook/](./docs/handbook/)
+> - All status, progress, and issue tracking documents are now in [docs/archive/](./docs/archive/)
+> - This README is for project setup and navigation only. See the handbook for all technical, compliance, and API docs.
 
 Eagle Pass is a digital hall pass system that has undergone major remediation. **Core business logic is secure, FERPA-compliant, and well-tested**, but build issues prevent production deployment.
 
 ## 📋 **Quick Navigation**
+- **[Handbook Documentation](./docs/handbook/README.md)** - Canonical index for all living docs
+- **[Archive](./docs/archive/)** - Status, progress, and issue tracking docs
 - **[Current Status & Next Steps](./CURRENT_STATUS_AND_NEXT_STEPS.md)** - Simplified plan and immediate actions
 - **[Daily Progress](./DAILY_PROGRESS.md)** - Simple daily updates
 - **[Current Issues](./CURRENT_ISSUES.md)** - Focused issue list
-- **[Detailed History](./REMEDIATION_LOG.md)** - Complete remediation log
+- **[Remediation Log (historical)](./docs/archive/REMEDIATION_LOG.md)**
+- **[Remediation Status Review (historical)](./docs/archive/REMEDIATION_STATUS_REVIEW.md)**
+- **[Process Explanation (historical)](./docs/archive/PROCESS_EXPLANATION.md)**
 
 ## ✅ What Actually Works (Tested & Functional)
 - **Pass creation and management** - Full lifecycle with state machine
@@ -123,11 +126,12 @@ npm run dev
   - **Business logic**: Pass service, state machine, audit logging
 - `/src/lib/__tests__/`: 14 test suites, 206 tests (all passing)
 
-## Documentation (Now Honest)
-- [REMEDIATION_LOG.md](./REMEDIATION_LOG.md) - Current status and progress
-- [review/CODEBASE_REVIEW_2024-12-19.md](./review/CODEBASE_REVIEW_2024-12-19.md) - Original issues
-- [review/START_HERE.md](./review/START_HERE.md) - Remediation overview
-- [DEPLOYMENT_BLOCKERS.md](./DEPLOYMENT_BLOCKERS.md) - Current blockers
+## Documentation
+- See [docs/handbook/README.md](./docs/handbook/README.md) for all technical, compliance, and API documentation.
+- See [docs/archive/](./docs/archive/) for all status, progress, and issue tracking docs.
+- See [docs/archive/REMEDIATION_LOG.md](./docs/archive/REMEDIATION_LOG.md) for the full remediation history.
+- See [docs/archive/REMEDIATION_STATUS_REVIEW.md](./docs/archive/REMEDIATION_STATUS_REVIEW.md) for the last full status review.
+- See [docs/archive/PROCESS_EXPLANATION.md](./docs/archive/PROCESS_EXPLANATION.md) for the documentation reorganization process.
 
 ## Realistic Timeline
 
