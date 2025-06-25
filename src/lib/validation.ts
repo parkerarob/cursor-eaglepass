@@ -1,12 +1,21 @@
+/**
+ * ⚠ LEGACY MONOLITH – being broken into smaller modules.
+ * Do NOT add new code here.  See src/lib/validation/* for the refactor.
+ */
 import { z } from 'zod';
 import { UserRole } from '@/types';
 
 // Accept either a standard UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 // or a Firestore-style document ID (alphanumeric, dash/underscore, >= 5 chars)
 const uuidRegex = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-// Accept alphanumeric Firestore IDs (Firebase auth UIDs and doc IDs are 20-30 chars, no symbols).
-const firestoreIdRegex = '[A-Za-z0-9_-]{20,30}';
+// Firestore auto-generated IDs are exactly 20 chars, alphanumeric only.
+const firestoreIdRegex = '[A-Za-z0-9]{20}';
 const combinedRegex = new RegExp(`^(?:${uuidRegex}|${firestoreIdRegex})$`, 'i');
+
+// Flexible ID schema: UUID OR 5-40 char slug (alphanum, dash, underscore)
+const slugIdRegex = '[A-Za-z0-9_-]{5,40}';
+const flexibleIdRegex = new RegExp(`^(?:${uuidRegex}|${slugIdRegex})$`, 'i');
+export const idSchema = z.string().regex(flexibleIdRegex, 'Invalid ID format');
 
 export const uuidSchema = z.string().regex(combinedRegex, 'Invalid ID format');
 
@@ -43,14 +52,14 @@ export const emergencyContactSchema = z.object({
 
 // User validation schema
 export const userSchema = z.object({
-  id: uuidSchema,
+  id: idSchema,
   name: nameSchema.optional(),
   firstName: nameSchema.optional(),
   lastName: nameSchema.optional(),
   email: emailSchema,
   role: userRoleSchema,
   schoolId: z.string().optional(),
-  assignedLocationId: uuidSchema.optional(),
+  assignedLocationId: idSchema.optional(),
   emergencyContacts: z.array(emergencyContactSchema).optional()
 }).refine(
   (user) => user.name || (user.firstName && user.lastName),
@@ -162,13 +171,24 @@ export class ValidationService {
    */
   static validateUser(data: unknown): z.infer<typeof userSchema> {
     try {
-      // Pre-sanitize string fields
       if (typeof data === 'object' && data !== null) {
         const sanitized = { ...data } as Record<string, unknown>;
-        if (typeof sanitized.name === 'string') sanitized.name = this.sanitizeString(sanitized.name);
-        if (typeof sanitized.firstName === 'string') sanitized.firstName = this.sanitizeString(sanitized.firstName);
-        if (typeof sanitized.lastName === 'string') sanitized.lastName = this.sanitizeString(sanitized.lastName);
-        if (typeof sanitized.email === 'string') sanitized.email = this.sanitizeString(sanitized.email);
+
+        // Security: reject any string field that contains suspicious patterns BEFORE sanitization
+        ['name', 'firstName', 'lastName', 'email'].forEach((key) => {
+          const raw = sanitized[key as keyof typeof sanitized];
+          if (typeof raw === 'string') {
+            const cleaned = this.sanitizeString(raw);
+
+            // Ensure no critical pattern sneaks through after sanitisation
+            if (this.hasCriticalPatterns(cleaned)) {
+              throw new Error('User validation failed: Suspicious patterns detected');
+            }
+
+            sanitized[key as keyof typeof sanitized] = cleaned;
+          }
+        });
+
         data = sanitized;
       }
       
@@ -339,7 +359,7 @@ export class ValidationService {
     const suspiciousPatterns = [
       /<script/i,           // Script tags
       /javascript:/i,       // Javascript URLs
-      /on\w+\s*=/i,        // Event handlers
+      /on\w+\s*=\s*/i,        // Event handlers
       /data:text\/html/i,   // Data URLs
       /vbscript:/i,        // VBScript
       /expression\(/i,      // CSS expressions
@@ -354,6 +374,11 @@ export class ValidationService {
       /\.\.\//,            // Directory traversal
       /__proto__/,         // Prototype pollution
       /constructor/,       // Constructor access
+      /select\s+.*from/i,   // SQL select
+      /union\s+select/i,    // SQL union
+      /XSS/,               // Uppercase XSS marker (post-sanitization)
+      /%3Cscript/i,       // Encoded script tag remains after sanitization
+      /insert\s+into/i,     // SQL insert
     ];
 
     return suspiciousPatterns.some(pattern => pattern.test(input));
@@ -380,6 +405,25 @@ export class ValidationService {
     }
 
     return sanitized;
+  }
+
+  /**
+   * Check for patterns that are dangerous even after basic sanitisation.
+   */
+  private static hasCriticalPatterns(input: string): boolean {
+    const critical = [
+      /javascript:/i,
+      /data:text\/html/i,
+      /vbscript:/i,
+      /expression\(/i,
+      /select\s+.*from/i,   // SQL select
+      /union\s+select/i,    // SQL union
+      /insert\s+into/i,     // SQL insert
+      /drop\s+table/i,      // SQL drop
+      /--/ ,                // SQL comment
+      /\bor\b\s+.*=/i,      // OR 1=1 style
+    ];
+    return critical.some(p => p.test(input));
   }
 }
 
