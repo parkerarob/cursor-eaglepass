@@ -25,7 +25,7 @@ const TEST_USERS = {
   teacher: 'teacher-00001',
   admin: 'admin-00001',
   // Firestore ID for the real dev account (robert.parker@nhcs.net)
-  dev: '15y7HSUgDXKwDGGQcKxg',
+  dev: '59d6dM275YRP9a6cqqr6',
 };
 
 export function RoleProvider({ children }: { children: ReactNode }) {
