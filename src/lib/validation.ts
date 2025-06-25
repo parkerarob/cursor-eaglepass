@@ -96,7 +96,8 @@ export const passSchema = z.object({
 
 // Pass form data validation
 export const passFormDataSchema = z.object({
-  destinationLocationId: uuidSchema
+  // Firestore document IDs are non-UUID 20-char strings, so allow any non-empty string
+  destinationLocationId: z.string().min(1, 'Destination is required')
 });
 
 // Event log validation schema

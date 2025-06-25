@@ -83,9 +83,7 @@ describe('ValidationService - Comprehensive Coverage', () => {
   });
 
   describe('validatePassFormData', () => {
-    const validFormData = {
-      destinationLocationId: '123e4567-e89b-12d3-a456-426614174001'
-    };
+    const validFormData = { destinationLocationId: 'bathroom-1' };
 
     it('should validate correct form data', () => {
       const result = ValidationService.validatePassFormData(validFormData);
@@ -93,7 +91,7 @@ describe('ValidationService - Comprehensive Coverage', () => {
     });
 
     it('should throw error for invalid form data', () => { 
-      expect(() => ValidationService.validatePassFormData({ ...validFormData, destinationLocationId: 'invalid-uuid' }))
+      expect(() => ValidationService.validatePassFormData({ destinationLocationId: '' }))
         .toThrow('Pass form validation failed');
     });
 
