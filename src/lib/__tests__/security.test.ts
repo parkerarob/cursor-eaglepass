@@ -162,7 +162,7 @@ jest.mock('@/lib/rateLimiterFactory', () => ({
 
 // Now import the modules after mocks are set up
 import { PassService } from '../passService';
-import { ValidationService } from '../validation';
+import { ValidationService } from '../validation/service';
 import { AuditMonitor } from '../auditMonitor';
 import { Pass, User, PassFormData } from '@/types';
 import { logEvent } from '@/lib/eventLogger';

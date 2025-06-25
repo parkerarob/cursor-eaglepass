@@ -58,7 +58,7 @@ jest.mock('../eventLogger', () => ({
 import { runTransaction, query, where, collection, getDocs, doc } from 'firebase/firestore';
 import { updatePass } from '../firebase/firestore';
 import { PassStateMachine } from '../stateMachine';
-import { ValidationService } from '../validation';
+import { ValidationService } from '../validation/service';
 import { AuditMonitor } from '../auditMonitor';
 import { logEvent } from '../eventLogger';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -70,7 +70,6 @@ const mockCollection = collection as jest.MockedFunction<typeof collection>;
 const mockGetDocs = getDocs as jest.MockedFunction<typeof getDocs>;
 const mockDoc = doc as jest.MockedFunction<typeof doc>;
 const mockUpdatePass = updatePass as jest.MockedFunction<typeof updatePass>;
-const mockValidationService = ValidationService as jest.Mocked<typeof ValidationService>;
 const mockAuditMonitor = AuditMonitor as jest.Mocked<typeof AuditMonitor>;
 const mockLogEvent = logEvent as jest.MockedFunction<typeof logEvent>;
 const mockHttpsCallable = httpsCallable as jest.MockedFunction<typeof httpsCallable>;
@@ -141,8 +140,8 @@ describe('PassService', () => {
     } as any;
 
     // Setup default mock implementations
-    mockValidationService.validatePassFormData.mockImplementation((arg) => arg as PassFormData);
-    mockValidationService.validateUser.mockImplementation((arg) => arg as User);
+    jest.spyOn(ValidationService, 'validatePassFormData').mockImplementation((arg) => arg as PassFormData);
+    jest.spyOn(ValidationService, 'validateUser').mockImplementation((arg) => arg as User);
     mockUpdatePass.mockResolvedValue();
     mockAuditMonitor.checkPassCreationActivity.mockResolvedValue();
     mockLogEvent.mockResolvedValue();
@@ -184,12 +183,12 @@ describe('PassService', () => {
 
       expect(result.success).toBe(true);
       expect(result.updatedPass).toBeDefined();
-      expect(mockValidationService.validatePassFormData).toHaveBeenCalledWith(mockFormData);
-      expect(mockValidationService.validateUser).toHaveBeenCalledWith(mockStudent);
+      expect(ValidationService.validatePassFormData).toHaveBeenCalledWith(mockFormData);
+      expect(ValidationService.validateUser).toHaveBeenCalledWith(mockStudent);
     });
 
     it('should reject when validation fails', async () => {
-      mockValidationService.validatePassFormData.mockImplementation(() => {
+      jest.spyOn(ValidationService, 'validatePassFormData').mockImplementation(() => {
         throw new Error('Invalid destination location');
       });
 

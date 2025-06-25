@@ -4,7 +4,7 @@ import { runTransaction, query, where, collection, getDocs, doc } from 'firebase
 import { PassStateMachine, ActionState } from '@/lib/stateMachine';
 import { logEvent } from '@/lib/eventLogger';
 import { formatUserName } from './utils';
-import { ValidationService } from '@/lib/validation';
+import { ValidationService } from '@/lib/validation/service';
 import { AuditMonitor } from '@/lib/auditMonitor';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { checkStudentHasOpenPass } from './passUtils';

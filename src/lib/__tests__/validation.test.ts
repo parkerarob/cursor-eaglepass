@@ -1,17 +1,17 @@
-import { 
-  ValidationService, 
-  isValidUUID, 
-  isValidEmail, 
+import {
+  ValidationService,
+  isValidUUID,
+  isValidEmail,
   isValidUserRole,
+  sanitizeString,
+  sanitizeAndValidateInput,
+  checkForSuspiciousPatterns,
   ValidatedUser,
   ValidatedLocation,
   ValidatedPass,
   ValidatedPassFormData,
   ValidatedEventLog,
-  ValidatedEmergencyContact,
-  sanitizeString,
-  sanitizeAndValidateInput,
-  checkForSuspiciousPatterns
+  ValidatedEmergencyContact
 } from '../validation';
 
 describe('ValidationService - Comprehensive Coverage', () => {

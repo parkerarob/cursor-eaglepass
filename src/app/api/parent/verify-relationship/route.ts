@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FERPAService } from '@/lib/ferpaService';
-import { parentRelationshipVerifySchema, validateRequest } from '@/lib/validation';
+import { parentRelationshipVerifySchema } from '@/lib/validation/schemas';
+import { validateRequest } from '@/lib/validation/service';
 
 export async function POST(request: NextRequest) {
   try {

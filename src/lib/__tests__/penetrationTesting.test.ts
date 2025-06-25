@@ -8,7 +8,7 @@
  */
 
 import { RateLimiter as RedisRateLimiter } from '../rateLimiterFactory';
-import { ValidationService } from '../validation';
+import { ValidationService } from '../validation/service';
 import { AuditMonitor } from '../auditMonitor';
 import { User, Pass } from '../../types';
 
