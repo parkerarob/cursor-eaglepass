@@ -5,7 +5,7 @@ import { UserRole } from '@/types';
 // or a Firestore-style document ID (alphanumeric, dash/underscore, >= 5 chars)
 const uuidRegex = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 // Accept alphanumeric Firestore IDs (Firebase auth UIDs and doc IDs are 20-30 chars, no symbols).
-const firestoreIdRegex = '[A-Za-z0-9]{20,30}';
+const firestoreIdRegex = '[A-Za-z0-9_-]{20,30}';
 const combinedRegex = new RegExp(`^(?:${uuidRegex}|${firestoreIdRegex})$`, 'i');
 
 export const uuidSchema = z.string().regex(combinedRegex, 'Invalid ID format');
