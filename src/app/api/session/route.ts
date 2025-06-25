@@ -1,33 +1,39 @@
-import { NextResponse } from 'next/server';
-import { createAuthenticatedRoute, AuthenticatedRequest } from '@/lib/auth/sessionMiddleware';
+import { NextRequest, NextResponse } from 'next/server';
+import { withSession } from '@/lib/auth/sessionMiddleware';
 
-async function sessionHandler(request: AuthenticatedRequest): Promise<NextResponse> {
-  const { session } = request;
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic';
 
-  if (!session) {
-    return NextResponse.json(
-      { error: 'No session found' },
-      { status: 401 }
-    );
+async function sessionHandler(request: NextRequest): Promise<NextResponse> {
+  // This route is used to check session status
+  const method = request.method;
+  
+  if (method === 'GET') {
+    // Return session information if available
+    const session = (request as any).session;
+    if (session) {
+      return NextResponse.json({
+        valid: true,
+        user: {
+          id: session.userId,
+          email: session.email,
+          role: session.role
+        }
+      });
+    } else {
+      return NextResponse.json(
+        { valid: false, error: 'No active session' },
+        { status: 401 }
+      );
+    }
   }
-
-  return NextResponse.json({
-    session: {
-      userId: session.userId,
-      email: session.email,
-      role: session.role,
-      schoolId: session.schoolId,
-      createdAt: new Date(session.createdAt).toISOString(),
-      lastActivity: new Date(session.lastActivity).toISOString(),
-      expiresAt: new Date(session.expiresAt).toISOString(),
-      userAgent: session.userAgent,
-      ipAddress: session.ipAddress
-    },
-    timestamp: new Date().toISOString()
-  });
+  
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  );
 }
 
-export const GET = createAuthenticatedRoute(sessionHandler, {
-  requireAuth: true,
-  redirectToLogin: false
-}); 
+export const GET = (request: NextRequest) => {
+  return withSession(request, sessionHandler, { requireAuth: false });
+}; 

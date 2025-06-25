@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { useAuth } from './AuthProvider';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { useAuth } from '@/components/AuthProvider';
 import { getUserByEmail, getUserById, createUser } from '@/lib/firebase/firestore';
 import { User, UserRole } from '@/types';
 import { extractNameFromEmail } from '@/lib/utils';
@@ -24,8 +24,8 @@ const TEST_USERS = {
   student: 'student-00001',
   teacher: 'teacher-00001',
   admin: 'admin-00001',
-  // Firestore ID for the real dev account (robert.parker@nhcs.net)
-  dev: '59d6dM275YRP9a6cqqr6',
+  // Use the actual Firebase Auth UID instead of Firestore document ID
+  dev: 'OcfLegbLZAeC1EuWuZcWNpywiKq1',
 };
 
 export function RoleProvider({ children }: { children: ReactNode }) {
@@ -40,48 +40,38 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   // Load initial user data
   useEffect(() => {
-    if (!authUser) {
-      setCurrentUser(null);
-      setOriginalUser(null);
-      setCurrentRole(null);
-      setIsDevMode(false);
-      setIsLoading(false);
-      return;
-    }
-
     const loadUserData = async () => {
-      setIsLoading(true);
+      if (!authUser?.email) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        let userProfile = await getUserByEmail(authUser.email!);
+        // First, try to get user by Firebase Auth UID
+        let userProfile = await getUserById(authUser.uid);
         
+        // If not found by UID, try by email (legacy support)
         if (!userProfile) {
-          console.warn(`No user profile found for ${authUser.email}. Creating a new one.`);
-          
-          // Extract name from email
-          const nameResult = extractNameFromEmail(authUser.email!);
-          
-          const newUserPayload: Omit<User, 'id'> = {
-            email: authUser.email!,
-            // If this is the lead developer's account, default to dev role
-            role: authUser.email === 'robert.parker@nhcs.net' ? 'dev' : 'teacher',
-            schoolId: '', // Default empty schoolId, can be updated in settings
-            // Use extracted names if available, otherwise fall back to display name or email
-            ...(nameResult.confidence === 'high' ? {
-              firstName: nameResult.firstName,
-              lastName: nameResult.lastName,
-            } : {
-              name: authUser.displayName || authUser.email!.split('@')[0], // Fallback to email prefix
-            }),
+          userProfile = await getUserByEmail(authUser.email);
+        }
+        
+        // If still not found, create a new user
+        if (!userProfile) {
+          console.log('Creating new user for:', authUser.email);
+          const nameExtraction = extractNameFromEmail(authUser.email);
+          const newUserData = {
+            email: authUser.email,
+            role: 'teacher' as UserRole, // Default role
+            schoolId: '',
+            name: authUser.displayName || nameExtraction.firstName,
           };
-          userProfile = await createUser(newUserPayload);
+          userProfile = await createUser(newUserData);
         }
 
-        if (userProfile) {
-          setOriginalUser(userProfile);
-          setCurrentUser(userProfile);
-          setCurrentRole(userProfile.role);
-          setIsDevMode(userProfile.role === 'dev');
-        }
+        setOriginalUser(userProfile);
+        setCurrentUser(userProfile);
+        setCurrentRole(userProfile.role);
+        setIsDevMode(userProfile.role === 'dev');
       } catch (error) {
         console.error('Failed to load user data:', error);
       } finally {
@@ -93,40 +83,30 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   }, [authUser]);
 
   const switchRole = async (role: UserRole) => {
-    if (!isDevMode) {
-      console.warn('Role switching is only available in dev mode');
-      return;
-    }
+    if (!originalUser) return;
 
-    setIsLoading(true);
     try {
-      let newUser: User | null = null;
-      const userId = TEST_USERS[role];
-      if (!userId) {
-        throw new Error(`No test user ID found for role: ${role}`);
+      setIsLoading(true);
+
+      if (originalUser.role !== 'dev') {
+        throw new Error('Only dev users can switch roles');
       }
 
-      newUser = await getUserById(userId);
-
-      if (!newUser) {
-        // Fallback to mock user if test user not in DB, but log a warning.
-        console.warn(`Test user with ID '${userId}' for role '${role}' not found in database. Falling back to a mock user object. Profile updates will not persist.`);
-        if (originalUser) {
-          newUser = {
-            ...originalUser,
-            id: userId,
-            role: role,
-            name: `Mock ${role.charAt(0).toUpperCase() + role.slice(1)}`,
-            email: `mock-${role}@school.com`
-          };
-        }
-      }
-
-      if (newUser) {
-        setCurrentUser(newUser);
-        setCurrentRole(role);
+      if (role === 'dev') {
+        setCurrentUser(originalUser);
+        setCurrentRole('dev');
+        setIsDevMode(true);
       } else {
-        throw new Error(`Could not load or create a user for role: ${role}`);
+        const testUserId = TEST_USERS[role];
+        const testUser = await getUserById(testUserId);
+        
+        if (!testUser) {
+          throw new Error(`Test ${role} user not found. Please run the seeding script first.`);
+        }
+
+        setCurrentUser(testUser);
+        setCurrentRole(role);
+        setIsDevMode(true);
       }
     } catch (error) {
       console.error('Failed to switch role:', error);
