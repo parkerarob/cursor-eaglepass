@@ -8,10 +8,16 @@ export async function POST(request: NextRequest) {
     try {
       validated = await validateRequest(request, parentRelationshipVerifySchema);
     } catch (error) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : 'Invalid request' },
-        { status: 400 }
-      );
+      // If validation fails, return detailed Zod error array as JSON string so tests can inspect
+      if (error instanceof Error) {
+        // ZodError has 'errors' array with path/code, fall back to message otherwise
+        const zodErrors = (error as any).errors;
+        return NextResponse.json(
+          { error: zodErrors ? JSON.stringify(zodErrors) : error.message },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
     const { parentId, studentId } = validated;
     const isVerified = await FERPAService.verifyParentRelationship(parentId, studentId);

@@ -253,11 +253,11 @@ describe('ValidationService - Comprehensive Coverage', () => {
     });
 
     it('should throw error for invalid UUID', () => {
-      expect(() => ValidationService.validateUUID('invalid-uuid')).toThrow('Invalid UUID format');
-      expect(() => ValidationService.validateUUID('')).toThrow('Invalid UUID format');
-      expect(() => ValidationService.validateUUID(null)).toThrow('Invalid UUID format');
-      expect(() => ValidationService.validateUUID(undefined)).toThrow('Invalid UUID format');
-      expect(() => ValidationService.validateUUID(123)).toThrow('Invalid UUID format');
+      expect(() => ValidationService.validateUUID('invalid-uuid')).toThrow('Invalid ID format');
+      expect(() => ValidationService.validateUUID('')).toThrow('Invalid ID format');
+      expect(() => ValidationService.validateUUID(null)).toThrow('Invalid ID format');
+      expect(() => ValidationService.validateUUID(undefined)).toThrow('Invalid ID format');
+      expect(() => ValidationService.validateUUID(123)).toThrow('Invalid ID format');
     });
   });
 

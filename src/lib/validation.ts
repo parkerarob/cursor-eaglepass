@@ -1,8 +1,15 @@
 import { z } from 'zod';
 import { UserRole } from '@/types';
 
+// Accept either a standard UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+// or a Firestore-style document ID (alphanumeric, dash/underscore, >= 5 chars)
+const uuidRegex = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const firestoreIdRegex = '[A-Za-z0-9_-]{20}';
+const combinedRegex = new RegExp(`^(?:${uuidRegex}|${firestoreIdRegex})$`, 'i');
+
+export const uuidSchema = z.string().regex(combinedRegex, 'Invalid ID format');
+
 // Base validation schemas
-export const uuidSchema = z.string().uuid('Invalid UUID format');
 export const emailSchema = z.string().email('Invalid email format');
 export const phoneSchema = z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format');
 export const nameSchema = z.string().min(1, 'Name is required').max(100, 'Name too long').trim();
@@ -281,7 +288,7 @@ export class ValidationService {
     try {
       return uuidSchema.parse(id);
     } catch {
-      throw new Error('Invalid UUID format');
+      throw new Error('Invalid ID format');
     }
   }
 
