@@ -5,5 +5,7 @@
  * Phase-5 will flip these exports to the new sub-modules.
  */
 
+export * from './sanitiser';
+export * from './guards';
 // Re-export *everything* from the legacy module for now
 export * from "../validation";          // one level up

@@ -4,6 +4,8 @@
  */
 import { z } from 'zod';
 import { UserRole } from '@/types';
+import { sanitizeString, sanitizeAndValidateInput } from './validation/sanitiser';
+import { checkForSuspiciousPatterns, hasCriticalPatterns } from './validation/guards';
 
 // Accept either a standard UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 // or a Firestore-style document ID (alphanumeric, dash/underscore, >= 5 chars)
@@ -151,22 +153,6 @@ export async function validateRequest<T extends z.ZodTypeAny>(
 // Sanitization utilities
 export class ValidationService {
   /**
-   * Sanitize and validate user input
-   */
-  static sanitizeString(input: unknown): string {
-    if (typeof input !== 'string') {
-      throw new Error('Input must be a string');
-    }
-    
-    // Remove dangerous characters and normalize
-    return input
-      .trim()
-      .replace(/[<>'"&]/g, '') // Remove potential XSS characters
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .substring(0, 1000); // Limit length
-  }
-
-  /**
    * Validate and sanitize user data
    */
   static validateUser(data: unknown): z.infer<typeof userSchema> {
@@ -178,10 +164,10 @@ export class ValidationService {
         ['name', 'firstName', 'lastName', 'email'].forEach((key) => {
           const raw = sanitized[key as keyof typeof sanitized];
           if (typeof raw === 'string') {
-            const cleaned = this.sanitizeString(raw);
+            const cleaned = sanitizeString(raw);
 
             // Ensure no critical pattern sneaks through after sanitisation
-            if (this.hasCriticalPatterns(cleaned)) {
+            if (hasCriticalPatterns(cleaned)) {
               throw new Error('User validation failed: Suspicious patterns detected');
             }
 
@@ -240,8 +226,8 @@ export class ValidationService {
       // Pre-sanitize string fields
       if (typeof data === 'object' && data !== null) {
         const sanitized = { ...data } as Record<string, unknown>;
-        if (typeof sanitized.name === 'string') sanitized.name = this.sanitizeString(sanitized.name);
-        if (typeof sanitized.teacherName === 'string') sanitized.teacherName = this.sanitizeString(sanitized.teacherName);
+        if (typeof sanitized.name === 'string') sanitized.name = sanitizeString(sanitized.name);
+        if (typeof sanitized.teacherName === 'string') sanitized.teacherName = sanitizeString(sanitized.teacherName);
         data = sanitized;
       }
       
@@ -263,7 +249,7 @@ export class ValidationService {
       // Pre-sanitize string fields
       if (typeof data === 'object' && data !== null) {
         const sanitized = { ...data } as Record<string, unknown>;
-        if (typeof sanitized.details === 'string') sanitized.details = this.sanitizeString(sanitized.details);
+        if (typeof sanitized.details === 'string') sanitized.details = sanitizeString(sanitized.details);
         data = sanitized;
       }
       
@@ -285,10 +271,10 @@ export class ValidationService {
       // Pre-sanitize string fields
       if (typeof data === 'object' && data !== null) {
         const sanitized = { ...data } as Record<string, unknown>;
-        if (typeof sanitized.name === 'string') sanitized.name = this.sanitizeString(sanitized.name);
-        if (typeof sanitized.relationship === 'string') sanitized.relationship = this.sanitizeString(sanitized.relationship);
-        if (typeof sanitized.email === 'string') sanitized.email = this.sanitizeString(sanitized.email);
-        if (typeof sanitized.phone === 'string') sanitized.phone = this.sanitizeString(sanitized.phone);
+        if (typeof sanitized.name === 'string') sanitized.name = sanitizeString(sanitized.name);
+        if (typeof sanitized.relationship === 'string') sanitized.relationship = sanitizeString(sanitized.relationship);
+        if (typeof sanitized.email === 'string') sanitized.email = sanitizeString(sanitized.email);
+        if (typeof sanitized.phone === 'string') sanitized.phone = sanitizeString(sanitized.phone);
         data = sanitized;
       }
       
@@ -319,7 +305,7 @@ export class ValidationService {
   static validateEmail(email: unknown): string {
     try {
       if (typeof email === 'string') {
-        email = this.sanitizeString(email);
+        email = sanitizeString(email);
       }
       return emailSchema.parse(email);
     } catch {
@@ -351,80 +337,6 @@ export class ValidationService {
 
     return { valid, errors };
   }
-
-  /**
-   * Security check for suspicious patterns
-   */
-  static checkForSuspiciousPatterns(input: string): boolean {
-    const suspiciousPatterns = [
-      /<script/i,           // Script tags
-      /javascript:/i,       // Javascript URLs
-      /on\w+\s*=\s*/i,        // Event handlers
-      /data:text\/html/i,   // Data URLs
-      /vbscript:/i,        // VBScript
-      /expression\(/i,      // CSS expressions
-      /\[object\s+object\]/i, // Object representations
-      /eval\s*\(/i,        // Eval calls
-      /setTimeout\s*\(/i,   // Timer functions
-      /setInterval\s*\(/i,  // Timer functions
-      /\${/,               // Template literals
-      /<%/,                // Server tags
-      /%3C/i,              // Encoded <
-      /%3E/i,              // Encoded >
-      /\.\.\//,            // Directory traversal
-      /__proto__/,         // Prototype pollution
-      /constructor/,       // Constructor access
-      /select\s+.*from/i,   // SQL select
-      /union\s+select/i,    // SQL union
-      /XSS/,               // Uppercase XSS marker (post-sanitization)
-      /%3Cscript/i,       // Encoded script tag remains after sanitization
-      /insert\s+into/i,     // SQL insert
-    ];
-
-    return suspiciousPatterns.some(pattern => pattern.test(input));
-  }
-
-  /**
-   * Advanced input sanitization with security checks
-   */
-  static sanitizeAndValidateInput(input: unknown, context: string): string {
-    if (typeof input !== 'string') {
-      throw new Error(`${context}: Input must be a string`);
-    }
-
-    // Check for suspicious patterns
-    if (this.checkForSuspiciousPatterns(input)) {
-      throw new Error(`${context}: Input contains suspicious patterns`);
-    }
-
-    // Sanitize and validate
-    const sanitized = this.sanitizeString(input);
-    
-    if (sanitized.length === 0) {
-      throw new Error(`${context}: Input cannot be empty after sanitization`);
-    }
-
-    return sanitized;
-  }
-
-  /**
-   * Check for patterns that are dangerous even after basic sanitisation.
-   */
-  private static hasCriticalPatterns(input: string): boolean {
-    const critical = [
-      /javascript:/i,
-      /data:text\/html/i,
-      /vbscript:/i,
-      /expression\(/i,
-      /select\s+.*from/i,   // SQL select
-      /union\s+select/i,    // SQL union
-      /insert\s+into/i,     // SQL insert
-      /drop\s+table/i,      // SQL drop
-      /--/ ,                // SQL comment
-      /\bor\b\s+.*=/i,      // OR 1=1 style
-    ];
-    return critical.some(p => p.test(input));
-  }
 }
 
 // Type guards for runtime validation
@@ -446,4 +358,7 @@ export type ValidatedLocation = z.infer<typeof locationSchema>;
 export type ValidatedPass = z.infer<typeof passSchema>;
 export type ValidatedPassFormData = z.infer<typeof passFormDataSchema>;
 export type ValidatedEventLog = z.infer<typeof eventLogSchema>;
-export type ValidatedEmergencyContact = z.infer<typeof emergencyContactSchema>; 
+export type ValidatedEmergencyContact = z.infer<typeof emergencyContactSchema>;
+
+export { sanitizeString, sanitizeAndValidateInput } from './validation/sanitiser';
+export { checkForSuspiciousPatterns } from './validation/guards'; 

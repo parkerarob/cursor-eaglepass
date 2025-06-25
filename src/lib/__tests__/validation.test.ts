@@ -8,34 +8,37 @@ import {
   ValidatedPass,
   ValidatedPassFormData,
   ValidatedEventLog,
-  ValidatedEmergencyContact
+  ValidatedEmergencyContact,
+  sanitizeString,
+  sanitizeAndValidateInput,
+  checkForSuspiciousPatterns
 } from '../validation';
 
 describe('ValidationService - Comprehensive Coverage', () => {
   describe('sanitizeString', () => {
     it('should sanitize HTML tags', () => {
-      expect(ValidationService.sanitizeString('<script>alert("xss")</script>')).toBe('scriptalert(xss)/script');
-      expect(ValidationService.sanitizeString('<img src="x" onerror="alert(1)">')).toBe('img src=x onerror=alert(1)');
+      expect(sanitizeString('<script>alert("xss")</script>')).toBe('scriptalert(xss)/script');
+      expect(sanitizeString('<img src="x" onerror="alert(1)">')).toBe('img src=x onerror=alert(1)');
     });
 
     it('should handle null and undefined', () => {
-      expect(() => ValidationService.sanitizeString(null)).toThrow('Input must be a string');
-      expect(() => ValidationService.sanitizeString(undefined)).toThrow('Input must be a string');
+      expect(() => sanitizeString(null)).toThrow('Input must be a string');
+      expect(() => sanitizeString(undefined)).toThrow('Input must be a string');
     });
 
     it('should handle non-string types', () => {
-      expect(() => ValidationService.sanitizeString(123)).toThrow('Input must be a string');
-      expect(() => ValidationService.sanitizeString(true)).toThrow('Input must be a string');
-      expect(() => ValidationService.sanitizeString({})).toThrow('Input must be a string');
+      expect(() => sanitizeString(123)).toThrow('Input must be a string');
+      expect(() => sanitizeString(true)).toThrow('Input must be a string');
+      expect(() => sanitizeString({})).toThrow('Input must be a string');
     });
 
     it('should trim whitespace', () => {
-      expect(ValidationService.sanitizeString('  hello world  ')).toBe('hello world');
+      expect(sanitizeString('  hello world  ')).toBe('hello world');
     });
 
     it('should handle empty strings', () => {
-      expect(ValidationService.sanitizeString('')).toBe('');
-      expect(ValidationService.sanitizeString('   ')).toBe('');
+      expect(sanitizeString('')).toBe('');
+      expect(sanitizeString('   ')).toBe('');
     });
   });
 
@@ -346,80 +349,80 @@ describe('ValidationService - Comprehensive Coverage', () => {
 
   describe('checkForSuspiciousPatterns', () => {
     it('should detect script tags', () => {
-      expect(ValidationService.checkForSuspiciousPatterns('<script>alert(1)</script>')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('<SCRIPT>alert(1)</SCRIPT>')).toBe(true);
+      expect(checkForSuspiciousPatterns('<script>alert(1)</script>')).toBe(true);
+      expect(checkForSuspiciousPatterns('<SCRIPT>alert(1)</SCRIPT>')).toBe(true);
     });
 
     it('should detect javascript URLs', () => {
-      expect(ValidationService.checkForSuspiciousPatterns('javascript:alert(1)')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('JAVASCRIPT:alert(1)')).toBe(true);
+      expect(checkForSuspiciousPatterns('javascript:alert(1)')).toBe(true);
+      expect(checkForSuspiciousPatterns('JAVASCRIPT:alert(1)')).toBe(true);
     });
 
     it('should detect event handlers', () => {
-      expect(ValidationService.checkForSuspiciousPatterns('onclick=alert(1)')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('onload = alert(1)')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('onmouseover=alert(1)')).toBe(true);
+      expect(checkForSuspiciousPatterns('onclick=alert(1)')).toBe(true);
+      expect(checkForSuspiciousPatterns('onload = alert(1)')).toBe(true);
+      expect(checkForSuspiciousPatterns('onmouseover=alert(1)')).toBe(true);
     });
 
     it('should detect data URLs', () => {
-      expect(ValidationService.checkForSuspiciousPatterns('data:text/html,<script>alert(1)</script>')).toBe(true);
+      expect(checkForSuspiciousPatterns('data:text/html,<script>alert(1)</script>')).toBe(true);
     });
 
     it('should detect various suspicious patterns', () => {
-      expect(ValidationService.checkForSuspiciousPatterns('vbscript:alert(1)')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('expression(alert(1))')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('[object Object]')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('eval(alert(1))')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('setTimeout(alert, 1000)')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('setInterval(alert, 1000)')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('${alert(1)}')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('<%=alert(1)%>')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('%3Cscript%3E')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('../../../etc/passwd')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('__proto__')).toBe(true);
-      expect(ValidationService.checkForSuspiciousPatterns('constructor')).toBe(true);
+      expect(checkForSuspiciousPatterns('vbscript:alert(1)')).toBe(true);
+      expect(checkForSuspiciousPatterns('expression(alert(1))')).toBe(true);
+      expect(checkForSuspiciousPatterns('[object Object]')).toBe(true);
+      expect(checkForSuspiciousPatterns('eval(alert(1))')).toBe(true);
+      expect(checkForSuspiciousPatterns('setTimeout(alert, 1000)')).toBe(true);
+      expect(checkForSuspiciousPatterns('setInterval(alert, 1000)')).toBe(true);
+      expect(checkForSuspiciousPatterns('${alert(1)}')).toBe(true);
+      expect(checkForSuspiciousPatterns('<%=alert(1)%>')).toBe(true);
+      expect(checkForSuspiciousPatterns('%3Cscript%3E')).toBe(true);
+      expect(checkForSuspiciousPatterns('../../../etc/passwd')).toBe(true);
+      expect(checkForSuspiciousPatterns('__proto__')).toBe(true);
+      expect(checkForSuspiciousPatterns('constructor')).toBe(true);
     });
 
     it('should not flag safe content', () => {
-      expect(ValidationService.checkForSuspiciousPatterns('Hello World')).toBe(false);
-      expect(ValidationService.checkForSuspiciousPatterns('This is a normal string')).toBe(false);
-      expect(ValidationService.checkForSuspiciousPatterns('user@example.com')).toBe(false);
-      expect(ValidationService.checkForSuspiciousPatterns('123-456-7890')).toBe(false);
+      expect(checkForSuspiciousPatterns('Hello World')).toBe(false);
+      expect(checkForSuspiciousPatterns('This is a normal string')).toBe(false);
+      expect(checkForSuspiciousPatterns('user@example.com')).toBe(false);
+      expect(checkForSuspiciousPatterns('123-456-7890')).toBe(false);
     });
   });
 
   describe('sanitizeAndValidateInput', () => {
     it('should sanitize and validate clean input', () => {
-      const result = ValidationService.sanitizeAndValidateInput('Hello World', 'test');
+      const result = sanitizeAndValidateInput('Hello World', 'test');
       expect(result).toBe('Hello World');
     });
 
     it('should throw error for non-string input', () => {
-      expect(() => ValidationService.sanitizeAndValidateInput(123, 'test'))
+      expect(() => sanitizeAndValidateInput(123, 'test'))
         .toThrow('test: Input must be a string');
-      expect(() => ValidationService.sanitizeAndValidateInput(null, 'test'))
+      expect(() => sanitizeAndValidateInput(null, 'test'))
         .toThrow('test: Input must be a string');
-      expect(() => ValidationService.sanitizeAndValidateInput(undefined, 'test'))
+      expect(() => sanitizeAndValidateInput(undefined, 'test'))
         .toThrow('test: Input must be a string');
     });
 
     it('should throw error for suspicious patterns', () => {
-      expect(() => ValidationService.sanitizeAndValidateInput('<script>alert(1)</script>', 'test'))
+      expect(() => sanitizeAndValidateInput('<script>alert(1)</script>', 'test'))
         .toThrow('test: Input contains suspicious patterns');
-      expect(() => ValidationService.sanitizeAndValidateInput('javascript:alert(1)', 'test'))
+      expect(() => sanitizeAndValidateInput('javascript:alert(1)', 'test'))
         .toThrow('test: Input contains suspicious patterns');
     });
 
     it('should throw error for empty input after sanitization', () => {
-      expect(() => ValidationService.sanitizeAndValidateInput('', 'test'))
+      expect(() => sanitizeAndValidateInput('', 'test'))
         .toThrow('test: Input cannot be empty after sanitization');
-      expect(() => ValidationService.sanitizeAndValidateInput('   ', 'test'))
+      expect(() => sanitizeAndValidateInput('   ', 'test'))
         .toThrow('test: Input cannot be empty after sanitization');
     });
 
     it('should handle input that becomes empty after HTML sanitization', () => {
       // This test should pass since '<div></div>' becomes 'div/div' after sanitization, not empty
-      const result = ValidationService.sanitizeAndValidateInput('<div></div>', 'test');
+      const result = sanitizeAndValidateInput('<div></div>', 'test');
       expect(result).toBe('div/div');
     });
   });
