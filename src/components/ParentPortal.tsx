@@ -106,7 +106,7 @@ export default function ParentPortal() {
   const handleDirectoryOptOutChange = async (infoType: string, optedOut: boolean) => {
     try {
       const mockParentId = 'parent-1';
-      const mockStudentId = 'student-1';
+      const mockStudentId = 'student-00001';
       const mockStudentName = 'Emma Johnson';
       
       const optOutItems = optedOut ? [infoType] : [];

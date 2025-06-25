@@ -492,7 +492,7 @@ class DataIngestionService {
             id: groupData.id,
             name: groupData.name,
             groupType: groupData.groupType.toLowerCase() as 'Positive' | 'Negative',
-            ownerId: 'admin-1',
+            ownerId: 'admin-00001',
             assignedStudents: groupData.assignedStudents ? groupData.assignedStudents.split(',').map((s: string) => s.trim()) : [],
             description: groupData.description,
             createdAt: new Date(),
