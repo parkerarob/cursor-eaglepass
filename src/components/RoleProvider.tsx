@@ -19,12 +19,13 @@ interface RoleContextType {
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
-// Test user IDs for different roles (you can modify these based on your data)
+// Map seeded test IDs so devs can switch roles without runtime errors
 const TEST_USERS = {
-  student: 'student-1',
-  teacher: 'teacher-1', 
-  admin: 'admin-1',
-  dev: 'dev-1'
+  student: 'student-00001',
+  teacher: 'teacher-00001',
+  admin: 'admin-00001',
+  // Firestore ID for the real dev account (robert.parker@nhcs.net)
+  dev: '15y7HSUgDXKwDGGQcKxg',
 };
 
 export function RoleProvider({ children }: { children: ReactNode }) {
@@ -61,7 +62,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
           
           const newUserPayload: Omit<User, 'id'> = {
             email: authUser.email!,
-            role: 'teacher', // Default role for new users
+            // If this is the lead developer's account, default to dev role
+            role: authUser.email === 'robert.parker@nhcs.net' ? 'dev' : 'teacher',
             schoolId: '', // Default empty schoolId, can be updated in settings
             // Use extracted names if available, otherwise fall back to display name or email
             ...(nameResult.confidence === 'high' ? {
