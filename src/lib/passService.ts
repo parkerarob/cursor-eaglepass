@@ -86,7 +86,8 @@ export class PassService {
         const newPass = PassStateMachine.createPass(formData, student);
         // Create a new pass object with the correct document ID
         const passWithCorrectId = { ...newPass, id: passRef.id };
-        transaction.set(passRef, newPass); // Store without the ID field
+        // Store the pass with the correct ID to keep Firestore doc ID and payload in sync
+        transaction.set(passRef, passWithCorrectId);
         
         // SECURITY: Monitor for suspicious pass creation patterns
         await AuditMonitor.checkPassCreationActivity(student.id, passWithCorrectId);
@@ -309,8 +310,8 @@ async function checkRateLimit(userId: string): Promise<{ allowed: boolean; error
   // Server-side: Use in-memory rate limiting as fallback
   // Redis rate limiting is handled in dedicated API routes and server actions
   try {
-    const { RateLimiter } = await import('./rateLimiter');
-    const result = RateLimiter.checkRateLimit(userId, 'PASS_CREATION');
+    const { RateLimiter } = await import('./rateLimiterFactory');
+    const result = await RateLimiter.checkRateLimit(userId, 'PASS_CREATION');
     return {
       allowed: result.allowed,
       error: result.error

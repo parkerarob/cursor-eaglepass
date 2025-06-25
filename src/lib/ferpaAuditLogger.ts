@@ -4,7 +4,7 @@ import { monitoringService } from './monitoringService';
 
 export interface FERPAAuditLog {
   id: string;
-  eventType: 'record_access' | 'record_disclosure' | 'record_correction' | 'data_destruction' | 'consent_granted' | 'consent_revoked' | 'emergency_disclosure';
+  eventType: 'record_access' | 'record_disclosure' | 'record_correction' | 'data_destruction' | 'consent_granted' | 'consent_revoked' | 'emergency_disclosure' | 'relationship_check';
   actorId: string;
   actorRole: 'parent' | 'teacher' | 'admin' | 'system' | 'student';
   studentId: string | 'multiple';
@@ -262,6 +262,49 @@ export class FERPAAuditLogger {
     };
     
     await this.storeAuditLog(auditLog);
+  }
+
+  /**
+   * Log parent-student relationship verification checks (success or failure)
+   */
+  static async logRelationshipCheck(
+    actorId: string,
+    actorRole: FERPAAuditLog['actorRole'],
+    parentId: string,
+    studentId: string,
+    result: 'success' | 'failure',
+    verificationMethod: string,
+    additionalDetails?: Record<string, unknown>
+  ): Promise<void> {
+    const auditLog: FERPAAuditLog = {
+      id: this.generateAuditId(),
+      eventType: 'relationship_check',
+      actorId,
+      actorRole,
+      studentId,
+      recordIds: [],
+      purpose: `Parent relationship ${result}`,
+      legalBasis: '§99.21 Verification of parent relationship',
+      timestamp: new Date(),
+      additionalDetails: {
+        parentId,
+        verificationMethod,
+        result,
+        ...additionalDetails
+      },
+      schoolYear: this.getCurrentSchoolYear()
+    };
+
+    await this.storeAuditLog(auditLog);
+
+    // Emit monitoring metric only on failures
+    if (result === 'failure') {
+      monitoringService.logWarning('FERPA relationship verification failed', {
+        parentId,
+        studentId,
+        verificationMethod
+      });
+    }
   }
 
   /**

@@ -157,6 +157,7 @@ export class PassStateMachine {
       ...this.pass,
       status: 'CLOSED',
       lastUpdatedAt: new Date(),
+      closedAt: new Date(),
       legs: [...this.pass.legs, newLeg],
     };
   }

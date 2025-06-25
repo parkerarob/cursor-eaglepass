@@ -104,7 +104,7 @@ describe('validatePassCreation cloud function', () => {
   });
 
   it('throws error if not authenticated', async () => {
-    const req = makeRequest({ studentId: 'student1' }, undefined);
+    const req = makeRequest({ studentId: 'student1' }, null);
     await expect(validatePassCreation.run(req)).rejects.toThrow('User must be authenticated');
   });
 
