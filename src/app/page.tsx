@@ -57,16 +57,29 @@ export default function Home() {
     }
 
     if (authLoading || roleLoading) {
+      console.log('🔄 Loading states:', { authLoading, roleLoading });
       setIsLoading(true);
       return;
     }
 
     if (!authUser || !roleUser) {
+      console.log('❌ Missing auth or role user:', { 
+        hasAuthUser: !!authUser, 
+        hasRoleUser: !!roleUser,
+        authUserEmail: authUser?.email,
+        roleUserRole: roleUser?.role 
+      });
       setIsLoading(false);
       setCurrentStudent(null);
       setCurrentPass(null);
       return;
     }
+
+    console.log('✅ Auth and role data available:', {
+      authUserEmail: authUser.email,
+      roleUserRole: roleUser.role,
+      currentRole
+    });
 
     const fetchUserData = async () => {
       setIsLoading(true);
@@ -74,29 +87,37 @@ export default function Home() {
       try {
         // Use RoleProvider's current user and role
         if (currentRole === 'student') {
+          console.log('👨‍🎓 Setting student user:', roleUser);
           setCurrentStudent(roleUser);
         } else if (currentRole === 'dev') {
+          console.log('🔧 Loading test student for dev mode');
           // For dev users, load the test student profile
           const testStudent = await getUserById('student-00001');
           if (testStudent) {
+            console.log('✅ Test student loaded:', testStudent);
             setCurrentStudent(testStudent);
           } else {
+            console.error('❌ Test student not found');
             setError('Could not load test student profile for dev mode.');
             setCurrentStudent(null);
           }
         } else if (currentRole === 'teacher') {
+          console.log('👨‍🏫 Redirecting to teacher interface');
           // Redirect teachers to teacher interface
           router.push('/teacher');
           return;
         } else if (currentRole === 'admin') {
+          console.log('👨‍💼 Redirecting to admin interface');
           // Redirect admins to admin interface
           router.push('/admin');
           return;
         } else {
+          console.error('❌ Invalid role:', currentRole);
           setError(`This application is for students only. Your role is: ${currentRole}.`);
           setCurrentStudent(null);
         }
       } catch (e) {
+        console.error('❌ Error in fetchUserData:', e);
         setError((e as Error).message);
         setCurrentStudent(null);
       }

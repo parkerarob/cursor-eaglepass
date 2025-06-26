@@ -45,10 +45,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Use onIdTokenChanged to get the token when user logs in or token refreshes
     const unsubscribe = onIdTokenChanged(auth, async (user) => {
+      console.log('🔄 AuthProvider: onIdTokenChanged called', { 
+        hasUser: !!user, 
+        userEmail: user?.email 
+      });
+      
       if (user) {
         setUser(user);
         try {
+          console.log('🔑 AuthProvider: Getting ID token for user');
           const idToken = await user.getIdToken();
+          console.log('📡 AuthProvider: Creating session with token');
           const response = await fetch('/api/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -57,22 +64,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (response.ok) {
             const data = await response.json();
+            console.log('✅ AuthProvider: Session created successfully');
             setToken(data.sessionToken);
             setSessionToken(data.sessionToken);
           } else {
             // Failed to create session, log user out
-            console.error('Failed to create session, logging out.');
+            console.error('❌ AuthProvider: Failed to create session, logging out. Status:', response.status);
             setToken(null);
             setSessionToken(null);
             auth.signOut();
           }
         } catch (error) {
-          console.error('Error during session creation:', error);
+          console.error('❌ AuthProvider: Error during session creation:', error);
           setToken(null);
           setSessionToken(null);
           auth.signOut();
         }
       } else {
+        console.log('🚪 AuthProvider: User logged out, clearing session');
         setUser(null);
         // Clear session token on logout
         if (sessionToken) {
@@ -90,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setIsLoading(false);
     }, (error) => {
-      console.error('Auth state change error:', error);
+      console.error('❌ AuthProvider: Auth state change error:', error);
       setUser(null);
       setToken(null);
       setSessionToken(null);

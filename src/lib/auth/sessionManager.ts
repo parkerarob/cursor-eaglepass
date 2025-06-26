@@ -25,12 +25,16 @@ export class SessionManager {
   private static redis: RedisClientType | null = null;
   private static isConnected = false;
   
+  // Development fallback: in-memory session storage
+  private static devSessions = new Map<string, SessionData>();
+  private static devUserSessions = new Map<string, Set<string>>();
+
   // Configuration
   private static readonly CONFIG = {
-    SESSION_DURATION: 4 * 60 * 60 * 1000, // 4 hours in milliseconds
-    REFRESH_THRESHOLD: 30 * 60 * 1000, // 30 minutes before expiry
-    MAX_SESSIONS_PER_USER: 3, // Maximum concurrent sessions per user
-    INACTIVITY_TIMEOUT: 30 * 60 * 1000, // 30 minutes of inactivity
+    SESSION_DURATION: 30 * 60 * 1000, // 30 minutes
+    INACTIVITY_TIMEOUT: 15 * 60 * 1000, // 15 minutes
+    REFRESH_THRESHOLD: 5 * 60 * 1000, // 5 minutes
+    MAX_SESSIONS_PER_USER: 3
   };
 
   /**
@@ -43,6 +47,14 @@ export class SessionManager {
       }
 
       const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      
+      // In development, if no Redis URL is explicitly set, use in-memory fallback
+      if (process.env.NODE_ENV === 'development' && !process.env.REDIS_URL) {
+        console.log('🔧 Development mode: Using in-memory session storage (Redis not configured)');
+        this.isConnected = true;
+        return;
+      }
+
       this.redis = createClient({
         url: redisUrl,
         socket: {
@@ -101,10 +113,6 @@ export class SessionManager {
     try {
       await this.initialize();
       
-      if (!this.isConnected || !this.redis) {
-        throw new Error('Redis not available for session management');
-      }
-
       const sessionToken = crypto.randomUUID();
       const now = Date.now();
       const expiresAt = now + this.CONFIG.SESSION_DURATION;
@@ -124,19 +132,32 @@ export class SessionManager {
       // Check for existing sessions and enforce limit
       await this.enforceSessionLimit(userId);
 
-      // Store session in Redis with expiration
-      const sessionKey = `session:${sessionToken}`;
-      const userSessionsKey = `user_sessions:${userId}`;
-      
-      await this.redis.setEx(
-        sessionKey,
-        Math.ceil(this.CONFIG.SESSION_DURATION / 1000),
-        JSON.stringify(sessionData)
-      );
+      if (this.isConnected && this.redis) {
+        // Use Redis if available
+        const sessionKey = `session:${sessionToken}`;
+        const userSessionsKey = `user_sessions:${userId}`;
+        
+        await this.redis.setEx(
+          sessionKey,
+          Math.ceil(this.CONFIG.SESSION_DURATION / 1000),
+          JSON.stringify(sessionData)
+        );
 
-      // Add to user's active sessions list
-      await this.redis.sAdd(userSessionsKey, sessionToken);
-      await this.redis.expire(userSessionsKey, Math.ceil(this.CONFIG.SESSION_DURATION / 1000));
+        // Add to user's active sessions list
+        await this.redis.sAdd(userSessionsKey, sessionToken);
+        await this.redis.expire(userSessionsKey, Math.ceil(this.CONFIG.SESSION_DURATION / 1000));
+      } else {
+        // Use in-memory fallback for development
+        this.devSessions.set(sessionToken, sessionData);
+        
+        if (!this.devUserSessions.has(userId)) {
+          this.devUserSessions.set(userId, new Set());
+        }
+        this.devUserSessions.get(userId)!.add(sessionToken);
+        
+        // Clean up expired sessions periodically
+        this.cleanupDevSessions();
+      }
 
       // Log session creation
       logEvent({
@@ -178,15 +199,18 @@ export class SessionManager {
     try {
       await this.initialize();
       
-      if (!this.isConnected || !this.redis) {
-        return {
-          valid: false,
-          error: 'Session management unavailable'
-        };
-      }
+      let sessionData: string | null = null;
+      let session: SessionData;
 
-      const sessionKey = `session:${token}`;
-      const sessionData = await this.redis.get(sessionKey);
+      if (this.isConnected && this.redis) {
+        // Use Redis if available
+        const sessionKey = `session:${token}`;
+        sessionData = await this.redis.get(sessionKey);
+      } else {
+        // Use in-memory fallback for development
+        const devSession = this.devSessions.get(token);
+        sessionData = devSession ? JSON.stringify(devSession) : null;
+      }
 
       if (!sessionData) {
         return {
@@ -195,7 +219,7 @@ export class SessionManager {
         };
       }
 
-      const session: SessionData = JSON.parse(sessionData);
+      session = JSON.parse(sessionData);
       const now = Date.now();
 
       // Check if session has expired
@@ -221,11 +245,19 @@ export class SessionManager {
 
       // Update last activity
       session.lastActivity = now;
-      await this.redis.setEx(
-        sessionKey,
-        Math.ceil((session.expiresAt - now) / 1000),
-        JSON.stringify(session)
-      );
+      
+      if (this.isConnected && this.redis) {
+        // Update in Redis
+        const sessionKey = `session:${token}`;
+        await this.redis.setEx(
+          sessionKey,
+          Math.ceil((session.expiresAt - now) / 1000),
+          JSON.stringify(session)
+        );
+      } else {
+        // Update in-memory
+        this.devSessions.set(token, session);
+      }
 
       return {
         valid: true,
@@ -310,34 +342,60 @@ export class SessionManager {
     try {
       await this.initialize();
       
-      if (!this.isConnected || !this.redis) {
-        return false;
-      }
-
-      const sessionKey = `session:${token}`;
-      const sessionData = await this.redis.get(sessionKey);
-
-      if (sessionData) {
-        const session: SessionData = JSON.parse(sessionData);
+      if (this.isConnected && this.redis) {
+        // Use Redis if available
+        const sessionKey = `session:${token}`;
+        const sessionData = await this.redis.get(sessionKey);
         
-        // Remove from user's active sessions
-        const userSessionsKey = `user_sessions:${session.userId}`;
-        await this.redis.sRem(userSessionsKey, token);
+        if (!sessionData) {
+          return false;
+        }
 
+        const session: SessionData = JSON.parse(sessionData);
+        const userSessionsKey = `user_sessions:${session.userId}`;
+        
+        // Remove from Redis
+        await this.redis.del(sessionKey);
+        await this.redis.sRem(userSessionsKey, token);
+        
         // Log session invalidation
         logEvent({
           eventType: 'SESSION_INVALIDATED',
           actorId: session.userId,
           details: {
             sessionToken: token.substring(0, 8) + '...',
-            reason: 'manual_logout'
+            reason: 'Manual invalidation'
+          },
+          timestamp: new Date()
+        });
+      } else {
+        // Use in-memory fallback for development
+        const devSession = this.devSessions.get(token);
+        if (!devSession) {
+          return false;
+        }
+
+        // Remove from in-memory storage
+        this.devSessions.delete(token);
+        const userSessions = this.devUserSessions.get(devSession.userId);
+        if (userSessions) {
+          userSessions.delete(token);
+          if (userSessions.size === 0) {
+            this.devUserSessions.delete(devSession.userId);
+          }
+        }
+
+        // Log session invalidation
+        logEvent({
+          eventType: 'SESSION_INVALIDATED',
+          actorId: devSession.userId,
+          details: {
+            sessionToken: token.substring(0, 8) + '...',
+            reason: 'Manual invalidation'
           },
           timestamp: new Date()
         });
       }
-
-      // Delete the session
-      await this.redis.del(sessionKey);
 
       return true;
 
@@ -444,28 +502,48 @@ export class SessionManager {
    * Enforce maximum sessions per user
    */
   private static async enforceSessionLimit(userId: string): Promise<void> {
-    if (!this.isConnected || !this.redis) {
-      return;
-    }
+    if (this.isConnected && this.redis) {
+      // Use Redis if available
+      const userSessionsKey = `user_sessions:${userId}`;
+      const sessionTokens = await this.redis.sMembers(userSessionsKey);
 
-    const userSessionsKey = `user_sessions:${userId}`;
-    const sessionTokens = await this.redis.sMembers(userSessionsKey);
+      if (sessionTokens.length >= this.CONFIG.MAX_SESSIONS_PER_USER) {
+        // Remove oldest session
+        const oldestToken = sessionTokens[0];
+        await this.invalidateSession(oldestToken);
 
-    if (sessionTokens.length >= this.CONFIG.MAX_SESSIONS_PER_USER) {
-      // Remove oldest session
-      const oldestToken = sessionTokens[0];
-      await this.invalidateSession(oldestToken);
+        // Log session limit enforcement
+        logEvent({
+          eventType: 'SESSION_LIMIT_ENFORCED',
+          actorId: userId,
+          details: {
+            maxSessions: this.CONFIG.MAX_SESSIONS_PER_USER,
+            removedSession: oldestToken.substring(0, 8) + '...'
+          },
+          timestamp: new Date()
+        });
+      }
+    } else {
+      // Use in-memory fallback for development
+      const userSessions = this.devUserSessions.get(userId);
+      if (userSessions && userSessions.size >= this.CONFIG.MAX_SESSIONS_PER_USER) {
+        // Remove oldest session (first one in the set)
+        const oldestToken = userSessions.values().next().value;
+        if (oldestToken) {
+          await this.invalidateSession(oldestToken);
 
-      // Log session limit enforcement
-      logEvent({
-        eventType: 'SESSION_LIMIT_ENFORCED',
-        actorId: userId,
-        details: {
-          maxSessions: this.CONFIG.MAX_SESSIONS_PER_USER,
-          removedSession: oldestToken.substring(0, 8) + '...'
-        },
-        timestamp: new Date()
-      });
+          // Log session limit enforcement
+          logEvent({
+            eventType: 'SESSION_LIMIT_ENFORCED',
+            actorId: userId,
+            details: {
+              maxSessions: this.CONFIG.MAX_SESSIONS_PER_USER,
+              removedSession: oldestToken.substring(0, 8) + '...'
+            },
+            timestamp: new Date()
+          });
+        }
+      }
     }
   }
 
@@ -539,6 +617,37 @@ export class SessionManager {
         activeSessions: 0,
         expiredSessions: 0
       };
+    }
+  }
+
+  private static cleanupDevSessions(): void {
+    const now = Date.now();
+    const expiredTokens: string[] = [];
+
+    // Find expired sessions
+    for (const [token, session] of this.devSessions.entries()) {
+      if (now > session.expiresAt) {
+        expiredTokens.push(token);
+      }
+    }
+
+    // Remove expired sessions
+    for (const token of expiredTokens) {
+      const session = this.devSessions.get(token);
+      if (session) {
+        this.devSessions.delete(token);
+        const userSessions = this.devUserSessions.get(session.userId);
+        if (userSessions) {
+          userSessions.delete(token);
+          if (userSessions.size === 0) {
+            this.devUserSessions.delete(session.userId);
+          }
+        }
+      }
+    }
+
+    if (expiredTokens.length > 0) {
+      console.log(`🧹 Cleaned up ${expiredTokens.length} expired dev sessions`);
     }
   }
 }

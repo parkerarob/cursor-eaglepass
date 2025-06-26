@@ -54,25 +54,34 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   // Load initial user data
   useEffect(() => {
     const loadUserData = async () => {
+      console.log('🔄 RoleProvider: loadUserData called', { 
+        hasAuthUser: !!authUser, 
+        authUserEmail: authUser?.email 
+      });
+      
       if (!authUser) {
+        console.log('❌ RoleProvider: No auth user, setting loading to false');
         setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
       try {
+        console.log('🔍 RoleProvider: Fetching user profile for:', authUser.uid);
         let userProfile = await getUserById(authUser.uid);
         
         if (!userProfile) {
+          console.log('⚠️ RoleProvider: User profile not found, creating new user');
           userProfile = await handleUserNotFound(authUser.uid, authUser.email!, authUser.displayName);
         }
 
+        console.log('✅ RoleProvider: User profile loaded:', userProfile);
         setOriginalUser(userProfile);
         setCurrentUser(userProfile);
         setCurrentRole(userProfile.role);
         setIsDevMode(userProfile.role === 'dev');
       } catch (error) {
-        console.error('Failed to load user data:', error);
+        console.error('❌ RoleProvider: Failed to load user data:', error);
       } finally {
         setIsLoading(false);
       }
