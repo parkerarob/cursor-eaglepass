@@ -297,6 +297,74 @@ export class PassService {
     const currentLeg = stateMachine.getCurrentLeg();
     return currentLeg?.state === 'IN';
   }
+
+  /**
+   * Add a new destination (multi-leg support)
+   */
+  static async addDestination(formData: PassFormData, pass: Pass, student: User): Promise<PassServiceResult> {
+    try {
+      // BASIC INPUT VALIDATION (reuse same validators)
+      try {
+        ValidationService.validatePassFormData(formData);
+        ValidationService.validateUser(student);
+      } catch (validationError) {
+        return {
+          success: false,
+          error: `Input validation failed: ${validationError instanceof Error ? validationError.message : 'Invalid input'}`
+        };
+      }
+
+      // Ensure the provided pass belongs to the student
+      if (pass.studentId !== student.id) {
+        return { success: false, error: 'Pass does not belong to this student.' };
+      }
+      if (pass.status !== 'OPEN') {
+        return { success: false, error: 'Cannot add destination: pass is not open.' };
+      }
+
+      // SERVER-SIDE VALIDATION via Cloud Function
+      try {
+        const functions = getFunctions();
+        const validateAddDestination = httpsCallable(functions, 'validateAddDestination');
+        const validationResp: any = await validateAddDestination({ passId: pass.id, studentId: student.id });
+        if (!validationResp.data?.allowed) {
+          return { success: false, error: 'Server validation failed: cannot add destination.' };
+        }
+      } catch (validationError) {
+        return { success: false, error: `Add destination validation failed: ${validationError instanceof Error ? validationError.message : 'Unknown error'}` };
+      }
+
+      // State-machine validation (client-side)
+      const stateMachine = new PassStateMachine(pass, student);
+      const validation = stateMachine.validateTransition('new_destination');
+      if (!validation.valid) {
+        return { success: false, error: validation.error };
+      }
+
+      // Create updated pass object
+      const updatedPass = stateMachine.startNewDestination(formData.destinationLocationId);
+
+      // Persist
+      await updatePass(updatedPass.id, updatedPass);
+
+      // Audit log
+      logEvent({
+        eventType: 'NEW_DESTINATION',
+        passId: updatedPass.id,
+        studentId: student.id,
+        actorId: student.id,
+        timestamp: new Date(),
+        details: JSON.stringify({ destination: formData.destinationLocationId }),
+      });
+
+      return { success: true, updatedPass };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to add destination'
+      };
+    }
+  }
 }
 
 // Rate limiting check - client/server aware implementation

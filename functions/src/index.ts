@@ -18,7 +18,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // Utility to check if a student has an open pass (mirrors app logic)
-async function checkStudentHasOpenPass(db, studentId) {
+async function checkStudentHasOpenPass(db: admin.firestore.Firestore, studentId: string): Promise<boolean> {
   const openPassesQuery = await db.collection("passes")
     .where("studentId", "==", studentId)
     .where("status", "==", "OPEN")
@@ -243,6 +243,66 @@ export const cleanupExpiredPasses = onSchedule(
     } catch (error) {
       logger.error("Pass cleanup error:", error);
       throw error;
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Validate Add Destination (multi-leg support)
+// ---------------------------------------------------------------------------
+export const validateAddDestination = onCall(
+  {
+    maxInstances: 10,
+    timeoutSeconds: 30,
+    memory: "256MiB"
+  },
+  async (request: any) => {
+    try {
+      if (!request.auth || !request.auth.uid) {
+        throw new Error("User must be authenticated");
+      }
+
+      const { passId, studentId } = request.data || {};
+      if (!passId || !studentId) {
+        throw new Error("passId and studentId are required");
+      }
+
+      // Permission check – student themselves or staff
+      if (request.auth.uid !== studentId) {
+        const userDoc = await db.collection("users").doc(request.auth.uid).get();
+        if (!userDoc.exists) throw new Error("User not found");
+        const role = userDoc.data()?.role;
+        if (!["admin", "teacher", "dev"].includes(role)) {
+          throw new Error("Insufficient permissions");
+        }
+      }
+
+      const passDoc = await db.collection("passes").doc(passId).get();
+      if (!passDoc.exists) throw new Error("Pass not found");
+      const passData = passDoc.data()!;
+
+      const isOpen = passData.status === "OPEN";
+      const legs = passData.legs || [];
+      const lastLeg = legs[legs.length - 1];
+      const lastLegIn = lastLeg && lastLeg.state === "IN";
+
+      const allowed = isOpen && lastLegIn;
+
+      await db.collection("eventLogs").add({
+        passId,
+        studentId,
+        actorId: request.auth.uid,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        eventType: "PASS_VALIDATION",
+        details: `AddDestination validation: allowed=${allowed}`,
+        notificationLevel: "system"
+      });
+
+      return { allowed };
+    } catch (error) {
+      logger.error("AddDestination validation error", error);
+      // propagate
+      throw error instanceof Error ? error : new Error("Validation failed");
     }
   }
 );

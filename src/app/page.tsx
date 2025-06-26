@@ -31,6 +31,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDevMode, setIsDevMode] = useState(false);
+  const [passCreationError, setPassCreationError] = useState<string | null>(null);
 
   const [actionState, setActionState] = useState({
     isRestroomTrip: false,
@@ -176,17 +177,32 @@ export default function Home() {
     updateActionState();
   }, [currentPass, currentStudent]);
 
-  const handleCreatePass = async (formData: PassFormData) => {
+  const handleCreateOrAddDestination = async (formData: PassFormData) => {
     if (!currentStudent) return;
     setIsLoading(true);
-    
-    const result = await PassService.createPass(formData, currentStudent);
+    setPassCreationError(null);
+
+    let result;
+    // If there is an OPEN pass and student is currently IN, add a destination instead of creating a new pass
+    if (currentPass && currentPass.status === 'OPEN') {
+      const lastLeg = currentPass.legs[currentPass.legs.length - 1];
+      if (lastLeg && lastLeg.state === 'IN') {
+        result = await PassService.addDestination(formData, currentPass, currentStudent);
+      } else {
+        // Should not happen because UI hides form, but guard anyway
+        setPassCreationError('You are currently in transit. Please arrive or return to class first.');
+        setIsLoading(false);
+        return;
+      }
+    } else {
+      result = await PassService.createPass(formData, currentStudent);
+    }
+
     if (result.success && result.updatedPass) {
       setCurrentPass(result.updatedPass);
-      // Update current location to reflect the new pass state
       await updateCurrentLocation(result.updatedPass);
     } else {
-      setError(result.error || 'Failed to create pass');
+      setPassCreationError(result.error || 'Failed to start pass');
     }
     setIsLoading(false);
   };
@@ -365,7 +381,7 @@ export default function Home() {
 
         {!currentPass && (
           <CreatePassForm
-            onCreatePass={handleCreatePass}
+            onCreatePass={handleCreateOrAddDestination}
             isLoading={isLoading}
           />
         )}
@@ -390,7 +406,7 @@ export default function Home() {
                       : 'Return to Scheduled Class'}
                   </Button>
                   <CreatePassForm
-                    onCreatePass={handleCreatePass}
+                    onCreatePass={handleCreateOrAddDestination}
                     isLoading={isLoading}
                     excludeLocationId={currentLeg.destinationLocationId}
                     heading="Need to go somewhere else?"

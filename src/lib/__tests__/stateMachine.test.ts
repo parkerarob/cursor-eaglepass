@@ -285,4 +285,68 @@ describe('PassStateMachine', () => {
       });
     });
   });
+
+  describe('startNewDestination (multi-leg)', () => {
+    it('should append a new OUT leg when current leg is IN', () => {
+      const pass: Pass = {
+        id: 'pass-1',
+        studentId: mockStudent.id,
+        status: 'OPEN',
+        createdAt: new Date(),
+        lastUpdatedAt: new Date(),
+        legs: [
+          {
+            id: generateUUID(),
+            legNumber: 1,
+            originLocationId: 'classroom-1',
+            destinationLocationId: 'library-1',
+            state: 'OUT',
+            timestamp: new Date(),
+          },
+          {
+            id: generateUUID(),
+            legNumber: 2,
+            originLocationId: 'library-1',
+            destinationLocationId: 'library-1',
+            state: 'IN',
+            timestamp: new Date(),
+          },
+        ],
+      };
+
+      const stateMachine = new PassStateMachine(pass, mockStudent);
+      const updatedPass = stateMachine.startNewDestination('bathroom-1');
+
+      expect(updatedPass.legs).toHaveLength(3);
+      expect(updatedPass.legs[2]).toMatchObject({
+        legNumber: 3,
+        originLocationId: 'library-1',
+        destinationLocationId: 'bathroom-1',
+        state: 'OUT',
+      });
+    });
+
+    it('should throw error when current leg is OUT', () => {
+      const pass: Pass = {
+        id: 'pass-1',
+        studentId: mockStudent.id,
+        status: 'OPEN',
+        createdAt: new Date(),
+        lastUpdatedAt: new Date(),
+        legs: [
+          {
+            id: generateUUID(),
+            legNumber: 1,
+            originLocationId: 'classroom-1',
+            destinationLocationId: 'library-1',
+            state: 'OUT',
+            timestamp: new Date(),
+          },
+        ],
+      };
+
+      const stateMachine = new PassStateMachine(pass, mockStudent);
+      expect(() => stateMachine.startNewDestination('bathroom-1')).toThrow();
+    });
+  });
 }); 

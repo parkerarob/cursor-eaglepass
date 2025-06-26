@@ -453,4 +453,23 @@ describe('PassService', () => {
       expect(result).toBe(false);
     });
   });
+
+  describe('addDestination', () => {
+    it('should add new destination successfully', async () => {
+      jest.spyOn(PassStateMachine.prototype, 'validateTransition').mockReturnValue({ valid: true });
+      jest.spyOn(PassStateMachine.prototype, 'startNewDestination').mockReturnValue(mockPass);
+      const result = await PassService.addDestination(mockFormData, mockPass, mockStudent);
+      expect(result.success).toBe(true);
+      expect(result.updatedPass).toEqual(mockPass);
+      expect(PassStateMachine.prototype.validateTransition).toHaveBeenCalledWith('new_destination');
+      expect(PassStateMachine.prototype.startNewDestination).toHaveBeenCalledWith(mockFormData.destinationLocationId);
+    });
+
+    it('should reject when transition invalid', async () => {
+      jest.spyOn(PassStateMachine.prototype, 'validateTransition').mockReturnValue({ valid: false, error: 'Cannot start new destination' });
+      const result = await PassService.addDestination(mockFormData, mockPass, mockStudent);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Cannot start new destination');
+    });
+  });
 }); 

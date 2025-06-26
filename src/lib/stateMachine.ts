@@ -230,13 +230,41 @@ export class PassStateMachine {
   }
 
   /**
+   * Start a new destination while pass is still OPEN (multi-leg support)
+   * Preconditions:
+   *   • Pass status is OPEN
+   *   • Current (last) leg exists and is in state IN
+   * @param destinationLocationId New destination chosen by student
+   */
+  startNewDestination(destinationLocationId: string): Pass {
+    if (this.pass.status !== 'OPEN') {
+      throw new Error('Cannot add destination: pass is not open');
+    }
+
+    const currentLeg = this.getCurrentLeg();
+    if (!currentLeg) {
+      throw new Error('Cannot add destination: no current leg');
+    }
+    if (currentLeg.state !== 'IN') {
+      throw new Error('Cannot add destination: student is not currently at a location');
+    }
+
+    // Append new OUT leg from current location to the chosen destination
+    return this.addLeg(
+      currentLeg.destinationLocationId,
+      destinationLocationId,
+      'OUT'
+    );
+  }
+
+  /**
    * Validate if a state transition is allowed
    */
   validateTransition(action: string): { valid: boolean; error?: string } {
     const currentLeg = this.getCurrentLeg();
 
     // If the action is not recognized, return unknown action error first
-    const validActions = ['arrive', 'return_to_class', 'close_pass', 'restroom_return'];
+    const validActions = ['arrive', 'return_to_class', 'close_pass', 'restroom_return', 'new_destination'];
     if (!validActions.includes(action)) {
       return { valid: false, error: `Unknown action: ${action}` };
     }
@@ -264,6 +292,11 @@ export class PassStateMachine {
       case 'restroom_return':
         if (currentLeg.state !== 'OUT') {
           return { valid: false, error: 'Cannot return from restroom: not currently out' };
+        }
+        break;
+      case 'new_destination':
+        if (currentLeg.state !== 'IN') {
+          return { valid: false, error: 'Cannot start new destination: not currently in' };
         }
         break;
     }

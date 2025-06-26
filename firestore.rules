@@ -15,5 +15,13 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if request.time < timestamp.date(2025, 7, 18);
     }
+
+    // Pass document rules - allow append-only legs
+    match /passes/{passId} {
+      allow update: if request.auth != null &&
+        request.resource.data.legs.size() == resource.data.legs.size() + 1 &&
+        request.resource.data.legs[0:resource.data.legs.size()] == resource.data.legs &&
+        request.resource.data.status == resource.data.status;
+    }
   }
 }

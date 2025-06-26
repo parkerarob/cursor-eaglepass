@@ -72,7 +72,7 @@ export interface EventLog {
   studentId: string;
   actorId: string; // Who performed the action
   timestamp: Date;
-  eventType: 'DEPARTED' | 'RETURNED' | 'PASS_CREATED' | 'PASS_CLOSED' | 'ARRIVED' | 'INVALID_TRANSITION' | 'POLICY_DENIED' | 'ERROR' | 'NOTIFICATION_SENT' | 'NOTIFICATION_FAILED';
+  eventType: 'DEPARTED' | 'RETURNED' | 'PASS_CREATED' | 'PASS_CLOSED' | 'ARRIVED' | 'NEW_DESTINATION' | 'INVALID_TRANSITION' | 'POLICY_DENIED' | 'ERROR' | 'NOTIFICATION_SENT' | 'NOTIFICATION_FAILED';
   details?: string;
   notificationLevel?: 'student' | 'teacher' | 'admin';
 }
