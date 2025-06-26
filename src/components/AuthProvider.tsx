@@ -29,7 +29,6 @@ const getSessionToken = (): string | null => {
   return localStorage.getItem(SESSION_TOKEN_KEY);
 };
 
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [sessionToken]); // Rerun effect if sessionToken changes externally
+  }, []); // Remove sessionToken dependency to prevent re-runs
 
   const value = { user, isLoading, sessionToken };
 

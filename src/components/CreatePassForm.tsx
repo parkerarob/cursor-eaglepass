@@ -37,7 +37,7 @@ export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocatio
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedDestination) {
+    if (selectedDestination && !isLoading) {
       onCreatePass({ destinationLocationId: selectedDestination });
       setSelectedDestination(''); // Reset form
     }
@@ -95,10 +95,11 @@ export function CreatePassForm({ onCreatePass, isLoading = false, excludeLocatio
             <button
               key={location.id}
               type="button"
-              onClick={() => onCreatePass({ destinationLocationId: location.id })}
+              onClick={() => !isLoading && onCreatePass({ destinationLocationId: location.id })}
               className={`
                 p-4 rounded-lg border-2 transition-all duration-200 text-left
                 border-border hover:border-primary/50 hover:bg-accent/50
+                ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
               `}
               disabled={isLoading}
             >

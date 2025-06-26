@@ -178,21 +178,50 @@ export default function Home() {
     updateActionState();
   }, [currentPass, currentStudent]);
 
+  // Refresh data when session token changes (indicating successful login)
+  useEffect(() => {
+    if (sessionToken && currentStudent && !isLoading) {
+      refreshData();
+    }
+  }, [sessionToken, currentStudent?.id]); // Only refresh when session token or student ID changes
+
   // This is the new, simplified handler that calls the Server Action
   const handleCreatePass = async (formData: PassFormData) => {
     if (!currentStudent) return;
     setIsLoading(true);
     setPassCreationError(null);
 
-    // Call the server action. The student is no longer passed as an argument.
-    // The server will identify the user via the session token.
-    const result = await createPassAction(formData);
+    try {
+      // Call the server action. The student is no longer passed as an argument.
+      // The server will identify the user via the session token.
+      const result = await createPassAction(formData);
 
-    if (!result.success) {
-      setPassCreationError(result.error || 'Failed to create pass.');
+      if (!result.success) {
+        setPassCreationError(result.error || 'Failed to create pass.');
+        return;
+      }
+
+      // Success! Refresh the pass data immediately
+      const updatedPass = await getActivePassByStudentId(currentStudent.id);
+      setCurrentPass(updatedPass);
+      
+      // Update current location based on the new pass
+      if (updatedPass && updatedPass.status === 'OPEN') {
+        const currentLeg = updatedPass.legs[updatedPass.legs.length - 1];
+        if (currentLeg && currentLeg.state === 'OUT') {
+          // Student is traveling - show origin location
+          const originLocation = await getLocationById(currentLeg.originLocationId);
+          if (originLocation) {
+            setCurrentLocation(originLocation);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Pass creation error:', error);
+      setPassCreationError('An unexpected error occurred while creating the pass.');
+    } finally {
+      setIsLoading(false);
     }
-    // No need to set state on success, revalidatePath will refresh the data
-    setIsLoading(false);
   };
 
   const handleReturn = async () => {
@@ -321,6 +350,55 @@ export default function Home() {
       headers['Authorization'] = `Bearer ${sessionToken}`;
     }
     return headers;
+  };
+
+  // Add a refresh function to manually trigger data reload
+  const refreshData = async () => {
+    if (!authUser || !currentStudent) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const [assignedLocation, pass] = await Promise.all([
+        getLocationById(currentStudent.assignedLocationId!),
+        getActivePassByStudentId(currentStudent.id),
+      ]);
+      
+      if (!assignedLocation) {
+        throw new Error(`Could not find your assigned classroom (ID: ${currentStudent.assignedLocationId}).`);
+      }
+
+      // Determine current location based on active pass
+      let currentLocation = assignedLocation; // Default to assigned class
+      
+      if (pass && pass.status === 'OPEN') {
+        const currentLeg = pass.legs[pass.legs.length - 1];
+        if (currentLeg) {
+          if (currentLeg.state === 'IN') {
+            // Student is "IN" at the destination of the current leg
+            const actualLocation = await getLocationById(currentLeg.destinationLocationId);
+            if (actualLocation) {
+              currentLocation = actualLocation;
+            }
+          } else if (currentLeg.state === 'OUT') {
+            // Student is "OUT" - they're traveling from origin to destination
+            // Show where they're coming from (origin)
+            const originLocation = await getLocationById(currentLeg.originLocationId);
+            if (originLocation) {
+              currentLocation = originLocation;
+            }
+          }
+        }
+      }
+      
+      setCurrentLocation(currentLocation);
+      setCurrentPass(pass);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isLoading || authLoading) {
