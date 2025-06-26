@@ -1,22 +1,5 @@
-# Eagle Pass School Safety System
+# EaglePass
 
-**Notice:** This project has undergone a significant security and architectural remediation.
+A modern PWA for school pass management, built with React, Vite, Firebase, and Tailwind.
 
-**All developers, current and new, must start by reading the project summary.**
-
-➡️ **[Project Summary & Developer Onboarding](./docs/SUMMARY.md)** ⬅️
-
-This document provides a clear overview of the current architecture and links to the mandatory reading on our security model and core coding patterns.
-
----
-
-## Quick Commands
-
-*   `npm install`: Install dependencies
-*   `npm run dev`: Start the development server
-*   `npm test`: Run all unit tests
-
----
-*This README was last updated on 2024-07-29 to reflect the new documentation structure.*
-
-## Project Overview
+See [docs/BOOTSTRAP_PLAYBOOK.md](docs/BOOTSTRAP_PLAYBOOK.md) for setup and development instructions. 
