@@ -17,9 +17,7 @@ const customJestConfig = {
     '^geist(.*)$': '<rootDir>/__mocks__/geist.js',
   },
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/', '<rootDir>/functions/'],
-  transformIgnorePatterns: [
-    '/node_modules/(?!(jose|@panva/hkdf|@babel|next|geist)/)',
-  ],
+  testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.[jt]sx?$',
   
   // Coverage configuration for TASK-007
   collectCoverageFrom: [

@@ -58,6 +58,7 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@babel/plugin-transform-modules-commonjs": "^7.27.1",
     "@jest/globals": "^29.7.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.6.3",

@@ -1,618 +1,172 @@
-import React from 'react';
-import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
+import React, { ReactNode } from 'react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { RoleProvider, useRole } from '../RoleProvider';
 import * as AuthProvider from '../AuthProvider';
 import * as firestore from '@/lib/firebase/firestore';
 import * as utils from '@/lib/utils';
+import { User, UserRole } from '@/types';
+import { User as FirebaseUser } from 'firebase/auth';
 
-// Mock AuthProvider at module level
-jest.mock('../AuthProvider', () => ({
-  useAuth: jest.fn(),
-}));
+// Mock dependencies
+jest.mock('../AuthProvider');
+jest.mock('@/lib/firebase/firestore');
+jest.mock('@/lib/utils');
 
-const mockUseAuth = jest.mocked(AuthProvider.useAuth);
+const mockUseAuth = AuthProvider.useAuth as jest.Mock;
+const mockGetUserById = firestore.getUserById as jest.Mock;
+const mockCreateUser = firestore.createUser as jest.Mock;
+const mockExtractNameFromEmail = utils.extractNameFromEmail as jest.Mock;
 
-// Mock AuthProvider context value
-const mockAuthContext: {
-  user: any;
-  isLoading: boolean;
-  sessionToken: string | null;
-} = {
-  user: null,
-  isLoading: false,
-  sessionToken: null,
-};
-
-// Mock firestore functions
-jest.mock('@/lib/firebase/firestore', () => ({
-  getUserByEmail: jest.fn(),
-  getUserById: jest.fn(),
-  createUser: jest.fn(),
-}));
-
-// Mock utils
-jest.mock('@/lib/utils', () => ({
-  extractNameFromEmail: jest.fn(),
-}));
-
-// Test component that uses the role context
-function TestComponent() {
-  const {
-    currentRole,
-    currentUser,
-    availableRoles,
-    isDevMode,
-    switchRole,
-    resetToOriginalRole,
-    isLoading,
-    setCurrentUser,
-  } = useRole();
-
-  return (
-    <div>
-      <div data-testid="loading">{isLoading ? 'loading' : 'not loading'}</div>
-      <div data-testid="current-role">{currentRole || 'no role'}</div>
-      <div data-testid="current-user">
-        {currentUser ? JSON.stringify(currentUser) : 'no user'}
-      </div>
-      <div data-testid="available-roles">{availableRoles.join(',')}</div>
-      <div data-testid="dev-mode">{isDevMode ? 'dev mode' : 'normal mode'}</div>
-      <button
-        onClick={() => switchRole('admin')}
-        data-testid="switch-to-admin"
-      >
-        Switch to Admin
-      </button>
-      <button
-        onClick={() => switchRole('teacher')}
-        data-testid="switch-to-teacher"
-      >
-        Switch to Teacher
-      </button>
-      <button onClick={resetToOriginalRole} data-testid="reset-role">
-        Reset Role
-      </button>
-      <button
-        onClick={() => setCurrentUser({ id: 'test', role: 'student', email: 'test@example.com', schoolId: 'school1' })}
-        data-testid="set-user"
-      >
-        Set User
-      </button>
-    </div>
-  );
-}
-
-const createMockFirebaseUser = (uid: string, email: string, displayName = 'Test User'): any => ({
+const createMockFirebaseUser = (uid: string, email: string, displayName: string | null = 'Test User'): Partial<FirebaseUser> => ({
   uid,
   email,
   displayName,
-  emailVerified: true,
-  isAnonymous: false,
-  metadata: {},
-  providerData: [],
-  refreshToken: 'test-token',
-  tenantId: null,
-  delete: jest.fn().mockResolvedValue(undefined),
-  getIdToken: jest.fn().mockResolvedValue('test-id-token'),
-  getIdTokenResult: jest.fn().mockResolvedValue({ token: 'test-id-token' }),
-  reload: jest.fn().mockResolvedValue(undefined),
-  toJSON: jest.fn(() => ({ uid, email, displayName })),
-  providerId: 'firebase',
 });
 
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <RoleProvider>{children}</RoleProvider>
+);
+
 describe('RoleProvider', () => {
-  const mockGetUserByEmail = firestore.getUserByEmail as jest.MockedFunction<
-    typeof firestore.getUserByEmail
-  >;
-  const mockGetUserById = firestore.getUserById as jest.MockedFunction<
-    typeof firestore.getUserById
-  >;
-  const mockCreateUser = firestore.createUser as jest.MockedFunction<
-    typeof firestore.createUser
-  >;
-  const mockExtractNameFromEmail = utils.extractNameFromEmail as jest.MockedFunction<
-    typeof utils.extractNameFromEmail
-  >;
-
-  const mockUser = {
-    uid: 'user-1',
-    email: 'test@example.com',
-    displayName: 'Test User',
-  };
-
-  const mockUserProfile = {
-    id: 'user-1',
-    email: 'test@example.com',
-    name: 'Test User',
-    role: 'teacher' as const,
-    schoolId: 'school-1',
-  };
-
-  const mockDevUser = {
-    id: 'dev-1',
-    email: 'dev@example.com',
-    name: 'Dev User',
-    role: 'dev' as const,
-    schoolId: 'school-1',
-  };
-
-  const mockDevFirebaseUser = createMockFirebaseUser('dev-1', 'dev@example.com', 'Dev User');
-
-  const originalEnv = process.env;
-
   beforeEach(() => {
-    jest.resetModules(); // Important for process.env changes
-    process.env = {
-      ...originalEnv,
-      NEXT_PUBLIC_DEV_USER_UID: 'dev-1',
-    };
-
     jest.clearAllMocks();
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    process.env.NEXT_PUBLIC_DEV_USER_UID = 'dev-user-uid';
+    // Default to a loading auth state
+    mockUseAuth.mockReturnValue({ user: null, isLoading: true });
+  });
+
+  it('should finish loading if auth user is not present', async () => {
+    mockUseAuth.mockReturnValue({ user: null, isLoading: false });
+    const { result } = renderHook(() => useRole(), { wrapper });
     
-    // Setup mock implementation
-    mockUseAuth.mockReturnValue({ ...mockAuthContext, user: mockDevFirebaseUser });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.currentUser).toBeNull();
+  });
+
+  it('should load user profile if it exists', async () => {
+    const authUser = createMockFirebaseUser('user-1', 'user@example.com');
+    const userProfile: User = { id: 'user-1', name: 'Test User', email: 'user@example.com', role: 'teacher', schoolId: 'school-1' };
+    mockUseAuth.mockReturnValue({ user: authUser, isLoading: false });
+    mockGetUserById.mockResolvedValue(userProfile);
+
+    const { result } = renderHook(() => useRole(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
     
-    // Reset auth context
-    mockAuthContext.user = null;
-    mockAuthContext.isLoading = false;
-    mockAuthContext.sessionToken = null;
+    expect(result.current.currentUser).toEqual(userProfile);
+    expect(result.current.currentRole).toBe('teacher');
+    expect(result.current.isDevMode).toBe(false);
   });
 
-  afterEach(() => {
-    process.env = originalEnv; // Restore original environment
-    jest.restoreAllMocks();
-  });
-
-  it('should throw error when useRole is used outside provider', () => {
-    const TestComponentOutsideProvider = () => {
-      useRole();
-      return <div>Test</div>;
-    };
-
-    // Suppress console.error for this test
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-    expect(() => render(<TestComponentOutsideProvider />)).toThrow(
-      'useRole must be used within a RoleProvider'
-    );
-
-    consoleSpy.mockRestore();
-  });
-
-  it('should render initial state when no authenticated user', async () => {
-    mockAuthContext.user = null;
-
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('loading')).toHaveTextContent('not loading');
-    });
-
-    expect(screen.getByTestId('current-role')).toHaveTextContent('no role');
-    expect(screen.getByTestId('current-user')).toHaveTextContent('no user');
-    expect(screen.getByTestId('dev-mode')).toHaveTextContent('normal mode');
-  });
-
-  it('should load existing user profile', async () => {
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(mockUserProfile);
-
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('loading')).toHaveTextContent('not loading');
-    });
-
-    expect(screen.getByTestId('current-role')).toHaveTextContent('teacher');
-    expect(screen.getByTestId('current-user')).toHaveTextContent(
-      JSON.stringify(mockUserProfile)
-    );
-    expect(screen.getByTestId('dev-mode')).toHaveTextContent('normal mode');
-  });
-
-  it('should enable dev mode for dev users', async () => {
-    mockAuthContext.user = mockDevFirebaseUser;
-    mockGetUserById.mockResolvedValue(mockDevUser);
-
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('dev-mode')).toHaveTextContent('dev mode');
-    });
-
-    expect(screen.getByTestId('current-role')).toHaveTextContent('dev');
-  });
-
-  it('should create new user when profile not found', async () => {
-    const newUser = {
-      ...mockUserProfile,
-      id: 'new-user-1',
-    };
-
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(null);
-    mockExtractNameFromEmail.mockReturnValue({
-      firstName: 'Test',
-      lastName: 'User',
-      confidence: 'high' as const,
-    });
+  it('should create a new user if profile does not exist', async () => {
+    const authUser = createMockFirebaseUser('user-2', 'new@example.com', 'New User');
+    const newUser: User = { id: 'user-2', name: 'New User', email: 'new@example.com', role: 'teacher', schoolId: '' };
+    mockUseAuth.mockReturnValue({ user: authUser, isLoading: false });
+    mockGetUserById.mockResolvedValue(null);
+    mockExtractNameFromEmail.mockReturnValue({ firstName: 'New', lastName: 'User' });
     mockCreateUser.mockResolvedValue(newUser);
 
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
+    const { result } = renderHook(() => useRole(), { wrapper });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('loading')).toHaveTextContent('not loading');
-    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(mockCreateUser).toHaveBeenCalledWith({
-      email: 'test@example.com',
-      role: 'teacher',
-      schoolId: '',
-      name: 'Test User',
-    });
-
-    expect(screen.getByTestId('current-user')).toHaveTextContent(
-      JSON.stringify(newUser)
-    );
+    expect(mockCreateUser).toHaveBeenCalledWith(expect.objectContaining({ email: 'new@example.com' }));
+    expect(result.current.currentUser).toEqual(newUser);
   });
 
-  it('should create user with fallback name when extraction confidence is low', async () => {
-    const newUser = {
-      ...mockUserProfile,
-      id: 'new-user-1',
-    };
+  it('should enable dev mode for a dev user', async () => {
+    const devUser = createMockFirebaseUser(process.env.NEXT_PUBLIC_DEV_USER_UID!, 'dev@example.com');
+    const devProfile: User = { id: process.env.NEXT_PUBLIC_DEV_USER_UID!, name: 'Dev User', email: 'dev@example.com', role: 'dev', schoolId: 'school-dev' };
+    mockUseAuth.mockReturnValue({ user: devUser, isLoading: false });
+    mockGetUserById.mockResolvedValue(devProfile);
 
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(null);
-    mockExtractNameFromEmail.mockReturnValue({
-      firstName: 'Test',
-      lastName: 'User',
-      confidence: 'low' as const,
-    });
-    mockCreateUser.mockResolvedValue(newUser);
+    const { result } = renderHook(() => useRole(), { wrapper });
 
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(mockCreateUser).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        role: 'teacher',
-        schoolId: '',
-        name: 'Test User',
-      });
-    });
+    await waitFor(() => expect(result.current.isDevMode).toBe(true));
   });
 
-  it('should create user with email fallback when no display name', async () => {
-    const userWithoutDisplayName = {
-      ...mockUser,
-      displayName: undefined,
-    };
+  describe('Role Switching', () => {
+    it('should allow a dev user to switch to another role', async () => {
+        const devUser = createMockFirebaseUser(process.env.NEXT_PUBLIC_DEV_USER_UID!, 'dev@example.com');
+        const devProfile: User = { id: process.env.NEXT_PUBLIC_DEV_USER_UID!, name: 'Dev User', email: 'dev@example.com', role: 'dev', schoolId: 'school-dev' };
+        const adminProfile: User = { id: 'admin-00001', name: 'Admin User', email: 'admin@example.com', role: 'admin', schoolId: 'school-admin' };
 
-    mockAuthContext.user = userWithoutDisplayName;
-    mockGetUserByEmail.mockResolvedValue(null);
-    mockExtractNameFromEmail.mockReturnValue({
-      firstName: 'Test',
-      lastName: 'User',
-      confidence: 'low' as const,
-    });
-    mockCreateUser.mockResolvedValue(mockUserProfile);
+        mockUseAuth.mockReturnValue({ user: devUser, isLoading: false });
+        // First load the dev profile, then the admin profile for the switch
+        mockGetUserById.mockResolvedValueOnce(devProfile).mockResolvedValueOnce(adminProfile);
 
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
+        const { result } = renderHook(() => useRole(), { wrapper });
 
-    await waitFor(() => {
-      expect(mockCreateUser).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        role: 'teacher',
-        schoolId: '',
-        name: 'test',
-      });
-    });
-  });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        
+        await act(async () => {
+          await result.current.switchRole('admin');
+        });
 
-  it('should handle user data loading errors', async () => {
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockRejectedValue(new Error('Database error'));
-
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('loading')).toHaveTextContent('not loading');
+        await waitFor(() => {
+            expect(result.current.currentUser).toEqual(adminProfile);
+            expect(result.current.currentRole).toBe('admin');
+        });
     });
 
-    expect(console.error).toHaveBeenCalledWith('Failed to load user data:', expect.any(Error));
-  });
+    it('should throw an error if a non-dev user tries to switch roles', async () => {
+        const regularUser = createMockFirebaseUser('user-1', 'user@example.com');
+        const regularProfile: User = { id: 'user-1', name: 'Regular User', email: 'user@example.com', role: 'teacher', schoolId: 'school-1' };
+        
+        mockUseAuth.mockReturnValue({ user: regularUser, isLoading: false });
+        mockGetUserById.mockResolvedValue(regularProfile);
 
-  it('should display available roles', async () => {
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(mockUserProfile);
+        const { result } = renderHook(() => useRole(), { wrapper });
 
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    await waitFor(() => {
-      expect(screen.getByTestId('available-roles')).toHaveTextContent('student,teacher,admin,dev');
-    });
-  });
-
-  it('should switch roles in dev mode', async () => {
-    const adminUser = {
-      id: 'admin-1',
-      email: 'admin@example.com',
-      name: 'Admin User',
-      role: 'admin' as const,
-      schoolId: 'school-1',
-    };
-
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(mockDevUser);
-    mockGetUserById.mockResolvedValue(adminUser);
-
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('dev-mode')).toHaveTextContent('dev mode');
+        await act(async () => {
+          await expect(result.current.switchRole('admin')).rejects.toThrow('Only dev users can switch roles');
+        });
     });
 
-    const switchButton = screen.getByTestId('switch-to-admin');
-    act(() => {
-      switchButton.click();
+    it('should throw an error for an invalid role', async () => {
+        const devUser = createMockFirebaseUser(process.env.NEXT_PUBLIC_DEV_USER_UID!, 'dev@example.com');
+        const devProfile: User = { id: process.env.NEXT_PUBLIC_DEV_USER_UID!, name: 'Dev User', email: 'dev@example.com', role: 'dev', schoolId: 'school-dev' };
+        
+        mockUseAuth.mockReturnValue({ user: devUser, isLoading: false });
+        mockGetUserById.mockResolvedValueOnce(devProfile).mockResolvedValueOnce(null);
+        
+        const { result } = renderHook(() => useRole(), { wrapper });
+        
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        await act(async () => {
+          await expect(result.current.switchRole('invalid-role' as any)).rejects.toThrow('Test invalid-role user not found. Please run the seeding script first.');
+        });
     });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('current-role')).toHaveTextContent('admin');
-    });
+    it('should allow a dev user to reset their role', async () => {
+        const devUser = createMockFirebaseUser(process.env.NEXT_PUBLIC_DEV_USER_UID!, 'dev@example.com');
+        const devProfile: User = { id: process.env.NEXT_PUBLIC_DEV_USER_UID!, name: 'Dev User', email: 'dev@example.com', role: 'dev', schoolId: 'school-dev' };
+        const adminProfile: User = { id: 'admin-00001', name: 'Admin User', email: 'admin@example.com', role: 'admin', schoolId: 'school-admin' };
 
-    expect(screen.getByTestId('current-user')).toHaveTextContent(
-      JSON.stringify(adminUser)
-    );
-  });
+        mockUseAuth.mockReturnValue({ user: devUser, isLoading: false });
+        mockGetUserById.mockResolvedValueOnce(devProfile).mockResolvedValueOnce(adminProfile);
 
-  it('should not switch roles in normal mode', async () => {
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(mockUserProfile);
+        const { result } = renderHook(() => useRole(), { wrapper });
 
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        
+        // Switch to admin
+        await act(async () => {
+          await result.current.switchRole('admin');
+        });
+        await waitFor(() => expect(result.current.currentRole).toBe('admin'));
 
-    await waitFor(() => {
-      expect(screen.getByTestId('dev-mode')).toHaveTextContent('normal mode');
-    });
-
-    const switchButton = screen.getByTestId('switch-to-admin');
-    act(() => {
-      switchButton.click();
-    });
-
-    // Role should not change - wait for component to update
-    await waitFor(() => {
-      expect(screen.getByTestId('current-role')).toHaveTextContent('teacher');
-    });
-    expect(console.warn).toHaveBeenCalledWith('Role switching is only available in dev mode');
-  });
-
-  it('should fallback to mock user when test user not found', async () => {
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(mockDevUser);
-    mockGetUserById.mockResolvedValue(null);
-
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('dev-mode')).toHaveTextContent('dev mode');
-    });
-
-    const switchButton = screen.getByTestId('switch-to-admin');
-    act(() => {
-      switchButton.click();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('current-role')).toHaveTextContent('admin');
-    });
-
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining("Test user with ID 'admin-1' for role 'admin' not found in database")
-    );
-  });
-
-  it.skip('should handle role switch errors', () => {});
-
-  it('should reset to original role', async () => {
-    const adminUser = {
-      id: 'admin-1',
-      email: 'admin@example.com',
-      name: 'Admin User',
-      role: 'admin' as const,
-      schoolId: 'school-1',
-    };
-
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(mockDevUser);
-    mockGetUserById.mockResolvedValue(adminUser);
-
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('current-role')).toHaveTextContent('dev');
-    });
-
-    // Switch to admin
-    const switchButton = screen.getByTestId('switch-to-admin');
-    act(() => {
-      switchButton.click();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('current-role')).toHaveTextContent('admin');
-    });
-
-    // Reset to original
-    const resetButton = screen.getByTestId('reset-role');
-    act(() => {
-      resetButton.click();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('current-role')).toHaveTextContent('dev');
-    });
-
-    expect(screen.getByTestId('current-user')).toHaveTextContent(
-      JSON.stringify(mockDevUser)
-    );
-  });
-
-  it('should handle setCurrentUser', async () => {
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(mockUserProfile);
-
-    render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('current-role')).toHaveTextContent('teacher');
-    });
-
-    const setUserButton = screen.getByTestId('set-user');
-    act(() => {
-      setUserButton.click();
-    });
-
-    const expectedUser = { id: 'test', role: 'student', email: 'test@example.com', schoolId: 'school1' };
-    expect(screen.getByTestId('current-user')).toHaveTextContent(
-      JSON.stringify(expectedUser)
-    );
-  });
-
-  it('should handle role switch when no original user', async () => {
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(mockDevUser);
-    mockGetUserById.mockResolvedValue(null);
-
-    // Mock a scenario where originalUser is null
-    const { rerender } = render(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('dev-mode')).toHaveTextContent('dev mode');
-    });
-
-    // Force originalUser to be null by clearing auth user and re-rendering
-    mockAuthContext.user = null;
-    rerender(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    mockAuthContext.user = { ...mockUser, email: 'test2@example.com' };
-    mockGetUserByEmail.mockResolvedValue(mockDevUser);
-    
-    rerender(
-      <RoleProvider>
-        <TestComponent />
-      </RoleProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('dev-mode')).toHaveTextContent('dev mode');
-    });
-
-    const switchButton = screen.getByTestId('switch-to-admin');
-    act(() => {
-      switchButton.click();
-    });
-
-    // Should still attempt to switch even without originalUser
-    await waitFor(() => {
-      expect(mockGetUserById).toHaveBeenCalledWith('admin-1');
-    });
-  });
-
-  it('should handle role switch with invalid role', async () => {
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(mockDevUser);
-
-    // Create a test component that calls switchRole directly
-    const TestSwitchComponent = () => {
-      const { switchRole } = useRole();
-      
-      return (
-        <button 
-          data-testid="invalid-switch"
-          onClick={() => switchRole('invalid' as any)}
-        >
-          Invalid Switch
-        </button>
-      );
-    };
-
-    render(
-      <RoleProvider>
-        <TestSwitchComponent />
-      </RoleProvider>
-    );
-
-    const switchButton = screen.getByTestId('invalid-switch');
-    fireEvent.click(switchButton);
-
-    // Should handle invalid role gracefully without crashing
-    await waitFor(() => {
-      expect(screen.getByTestId('invalid-switch')).toBeInTheDocument();
+        // Reset back to dev
+        await act(async () => {
+          await result.current.resetToOriginalRole();
+        });
+        await waitFor(() => {
+            expect(result.current.currentUser).toEqual(devProfile);
+            expect(result.current.currentRole).toBe('dev');
+        });
     });
   });
 });

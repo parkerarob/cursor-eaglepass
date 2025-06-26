@@ -38,34 +38,33 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   const availableRoles: UserRole[] = ['student', 'teacher', 'admin', 'dev'];
 
+  const handleUserNotFound = async (uid: string, email: string, displayName: string | null) => {
+    console.log('Creating new user for:', email);
+    const nameExtraction = extractNameFromEmail(email);
+    const newUserData = {
+      id: uid,
+      email: email,
+      role: 'teacher' as UserRole, // Default role
+      schoolId: '',
+      name: displayName || nameExtraction.firstName || email.split('@')[0],
+    };
+    return await createUser(newUserData);
+  };
+  
   // Load initial user data
   useEffect(() => {
     const loadUserData = async () => {
-      if (!authUser?.email) {
+      if (!authUser) {
         setIsLoading(false);
         return;
       }
 
+      setIsLoading(true);
       try {
-        // First, try to get user by Firebase Auth UID
         let userProfile = await getUserById(authUser.uid);
         
-        // If not found by UID, try by email (legacy support)
         if (!userProfile) {
-          userProfile = await getUserByEmail(authUser.email);
-        }
-        
-        // If still not found, create a new user
-        if (!userProfile) {
-          console.log('Creating new user for:', authUser.email);
-          const nameExtraction = extractNameFromEmail(authUser.email);
-          const newUserData = {
-            email: authUser.email,
-            role: 'teacher' as UserRole, // Default role
-            schoolId: '',
-            name: authUser.displayName || nameExtraction.firstName,
-          };
-          userProfile = await createUser(newUserData);
+          userProfile = await handleUserNotFound(authUser.uid, authUser.email!, authUser.displayName);
         }
 
         setOriginalUser(userProfile);
@@ -109,7 +108,6 @@ export function RoleProvider({ children }: { children: ReactNode }) {
         setIsDevMode(true);
       }
     } catch (error) {
-      console.error('Failed to switch role:', error);
       throw error;
     } finally {
       setIsLoading(false);

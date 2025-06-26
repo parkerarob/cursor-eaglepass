@@ -63,13 +63,15 @@ export default function ParentPortal() {
       
       // Load parent relationships
       const relationshipsResponse = await fetch(`/api/parent/relationships?parentId=${mockParentId}`);
+      let fetchedRelationships: ParentRelationship[] = [];
       if (relationshipsResponse.ok) {
         const data = await relationshipsResponse.json();
-        setRelationships(data.relationships || []);
+        fetchedRelationships = data.relationships || [];
+        setRelationships(fetchedRelationships);
       }
       
       // Load student records for verified relationships
-      const verifiedStudents = relationships.filter(rel => rel.active);
+      const verifiedStudents = fetchedRelationships.filter(rel => rel.active);
       const records: StudentRecord[] = [];
       
       for (const relationship of verifiedStudents) {
@@ -104,10 +106,15 @@ export default function ParentPortal() {
   };
 
   const handleDirectoryOptOutChange = async (infoType: string, optedOut: boolean) => {
+    const primaryRelationship = relationships.find(r => r.active);
+
+    if (!primaryRelationship) {
+      console.warn('No active student relationship found to update directory preferences.');
+      return;
+    }
+
     try {
-      const mockParentId = 'parent-1';
-      const mockStudentId = 'student-00001';
-      const mockStudentName = 'Emma Johnson';
+      const { parentId, studentId, studentName } = primaryRelationship;
       
       const optOutItems = optedOut ? [infoType] : [];
       
@@ -117,9 +124,9 @@ export default function ParentPortal() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          parentId: mockParentId,
-          studentId: mockStudentId,
-          studentName: mockStudentName,
+          parentId: parentId,
+          studentId: studentId,
+          studentName: studentName,
           optOutItems
         }),
       });
