@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { GlobalEmergencyBanner } from '../GlobalEmergencyBanner';
 
@@ -61,7 +61,9 @@ describe('GlobalEmergencyBanner Component', () => {
       activatedAt: new Date('2024-01-15T10:30:00Z')
     };
     
-    setEmergencyStateCallback(mockEmergencyState);
+    await act(async () => {
+      setEmergencyStateCallback(mockEmergencyState);
+    });
     
     await waitFor(() => {
       expect(screen.getByTestId('banner-active')).toBeInTheDocument();
@@ -80,7 +82,9 @@ describe('GlobalEmergencyBanner Component', () => {
       active: true
     };
     
-    setEmergencyStateCallback(mockEmergencyState);
+    await act(async () => {
+      setEmergencyStateCallback(mockEmergencyState);
+    });
     
     await waitFor(() => {
       expect(screen.getByTestId('banner-active')).toBeInTheDocument();
@@ -95,14 +99,18 @@ describe('GlobalEmergencyBanner Component', () => {
     const setEmergencyStateCallback = mockSubscribeToEmergencyState.mock.calls[0][0];
     
     // First activate
-    setEmergencyStateCallback({ active: true });
+    await act(async () => {
+      setEmergencyStateCallback({ active: true });
+    });
     
     await waitFor(() => {
       expect(screen.getByTestId('banner-active')).toBeInTheDocument();
     });
     
     // Then deactivate
-    setEmergencyStateCallback({ active: false });
+    await act(async () => {
+      setEmergencyStateCallback({ active: false });
+    });
     
     await waitFor(() => {
       expect(screen.queryByTestId('banner-active')).not.toBeInTheDocument();
@@ -115,7 +123,9 @@ describe('GlobalEmergencyBanner Component', () => {
     const setEmergencyStateCallback = mockSubscribeToEmergencyState.mock.calls[0][0];
     
     // Simulate Firebase calling with null state
-    setEmergencyStateCallback(null);
+    await act(async () => {
+      setEmergencyStateCallback(null);
+    });
     
     await waitFor(() => {
       expect(screen.queryByTestId('banner-active')).not.toBeInTheDocument();

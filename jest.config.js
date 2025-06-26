@@ -15,9 +15,17 @@ const customJestConfig = {
     '^geist/font/sans$': '<rootDir>/__mocks__/geistFontSans.js',
     '^geist/font/mono$': '<rootDir>/__mocks__/geistFontMono.js',
     '^geist(.*)$': '<rootDir>/__mocks__/geist.js',
+    // Mock problematic ES modules
+    '^jose$': '<rootDir>/__mocks__/jose.js',
+    '^jwks-rsa$': '<rootDir>/__mocks__/jwks-rsa.js',
   },
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/', '<rootDir>/functions/'],
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.[jt]sx?$',
+  
+  // Transform patterns to handle ES modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(jose|jwks-rsa)/)',
+  ],
   
   // Coverage configuration for TASK-007
   collectCoverageFrom: [
