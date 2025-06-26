@@ -1,20 +1,18 @@
 'use server';
 
 import {
-  collection,
-  doc,
-  runTransaction,
-  query,
-  where,
-  getDocs,
   Timestamp,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase/config.server'; // Use server config
+  getFirestore,
+} from 'firebase-admin/firestore';
+import { adminApp } from '@/lib/firebase/config.server';
 import { Pass, PassFormData, User } from '@/types';
 import { passFormDataSchema } from '@/lib/validation/schemas';
 import { PolicyEngine } from '@/lib/policyEngine';
 import { FERPAAuditLogger } from '@/lib/ferpaAuditLogger';
 import { revalidatePath } from 'next/cache';
+
+// Use the Admin SDK Firestore instance
+const adminDb = getFirestore(adminApp);
 
 // This is the new, secure Server Action for creating a pass.
 export async function createPassAction(
@@ -36,6 +34,8 @@ export async function createPassAction(
       studentId: student.id,
       origin: student.assignedLocationId,
       destination: destinationLocationId,
+      locationId: student.assignedLocationId,
+      passType: 'Immediate' as const,
     };
     // Note: Groups and restrictions would be fetched here in a real scenario
     const policyResult = await policyEngine.evaluatePolicy(policyContext, student, [], []);
@@ -54,15 +54,14 @@ export async function createPassAction(
 
     // 3. Run as an atomic transaction
     let newPassId: string | null = null;
-    await runTransaction(db, async (transaction) => {
-      const passesRef = collection(db, 'passes');
+    await adminDb.runTransaction(async (transaction) => {
+      const passesRef = adminDb.collection('passes');
 
       // Re-verify no active pass exists within the transaction
-      const openPassQuery = query(
-        passesRef,
-        where('studentId', '==', student.id),
-        where('status', '==', 'OPEN')
-      );
+      const openPassQuery = passesRef
+        .where('studentId', '==', student.id)
+        .where('status', '==', 'OPEN');
+        
       const openPassSnapshot = await transaction.get(openPassQuery);
 
       if (!openPassSnapshot.empty) {
@@ -71,7 +70,7 @@ export async function createPassAction(
 
       // 4. Create the new pass object
       const now = Timestamp.now();
-      newPassId = doc(passesRef).id;
+      newPassId = passesRef.doc().id;
       const newPass: Pass = {
         id: newPassId,
         studentId: student.id,
@@ -80,7 +79,7 @@ export async function createPassAction(
         lastUpdatedAt: now.toDate(),
         legs: [
           {
-            id: doc(collection(db, 'legs')).id,
+            id: adminDb.collection('legs').doc().id,
             legNumber: 1,
             originLocationId: student.assignedLocationId!,
             destinationLocationId: destinationLocationId,
@@ -90,7 +89,7 @@ export async function createPassAction(
         ],
       };
       
-      const passDocRef = doc(passesRef, newPass.id);
+      const passDocRef = passesRef.doc(newPass.id);
       transaction.set(passDocRef, newPass);
     });
 
