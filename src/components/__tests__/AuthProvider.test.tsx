@@ -3,9 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from '../AuthProvider';
 
 // Mock Firebase auth functions
-jest.mock('@/lib/firebase/auth', () => ({
-  onAuthStateChanged: jest.fn(),
-  FirebaseUser: {},
+jest.mock('firebase/auth', () => ({
+  onIdTokenChanged: jest.fn(),
+  getAuth: jest.fn(),
 }));
 
 jest.mock('@/lib/firebase/config', () => ({
@@ -14,7 +14,7 @@ jest.mock('@/lib/firebase/config', () => ({
 
 // Test component to access auth context
 function TestComponent() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, sessionToken } = useAuth();
   
   if (isLoading) {
     return <div data-testid="loading">Loading...</div>;
@@ -28,24 +28,47 @@ function TestComponent() {
       <div data-testid="loading-status">
         {isLoading ? 'Loading' : 'Not loading'}
       </div>
+      <div data-testid="session-token">
+        {sessionToken || 'no-token'}
+      </div>
     </div>
   );
 }
 
 describe('AuthProvider', () => {
-  const { onAuthStateChanged } = require('@/lib/firebase/auth');
+  const { onIdTokenChanged } = require('firebase/auth');
   const { getFirebaseAuth } = require('@/lib/firebase/config');
   
   let mockUnsubscribe: jest.Mock;
   let mockAuth: any;
+  let mockUser: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockUnsubscribe = jest.fn();
-    mockAuth = { some: 'auth-object' };
+    mockAuth = { 
+      signOut: jest.fn(),
+    };
+    mockUser = {
+      uid: 'user123',
+      email: 'test@example.com',
+      displayName: 'Test User',
+      getIdToken: jest.fn().mockResolvedValue('fake-id-token'),
+    };
     
-    onAuthStateChanged.mockReturnValue(mockUnsubscribe);
+    onIdTokenChanged.mockReturnValue(mockUnsubscribe);
     getFirebaseAuth.mockReturnValue(mockAuth);
+
+    // Mock fetch for session API
+    global.fetch = jest.fn((url) => {
+        if (url === '/api/session') {
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ sessionToken: 'fake-session-token' }),
+            });
+        }
+        return Promise.resolve({ ok: false });
+    }) as jest.Mock;
   });
 
   it('should render children and provide auth context', () => {
@@ -67,7 +90,7 @@ describe('AuthProvider', () => {
 
     expect(screen.getByTestId('loading')).toBeInTheDocument();
     expect(getFirebaseAuth).toHaveBeenCalled();
-    expect(onAuthStateChanged).toHaveBeenCalledWith(
+    expect(onIdTokenChanged).toHaveBeenCalledWith(
       mockAuth,
       expect.any(Function),
       expect.any(Function)
@@ -75,13 +98,6 @@ describe('AuthProvider', () => {
   });
 
   it('should update user state when auth state changes', async () => {
-    jest.setTimeout(20000);
-    const mockUser = {
-      uid: 'user123',
-      email: 'test@example.com',
-      displayName: 'Test User',
-    };
-
     render(
       <AuthProvider>
         <TestComponent />
@@ -89,12 +105,13 @@ describe('AuthProvider', () => {
     );
 
     // Simulate auth state change with user
-    const onAuthCallback = onAuthStateChanged.mock.calls[0][1];
-    onAuthCallback(mockUser);
+    const onAuthCallback = onIdTokenChanged.mock.calls[0][1];
+    await onAuthCallback(mockUser);
 
     await waitFor(() => {
       expect(screen.getByTestId('user-status')).toHaveTextContent('User: test@example.com');
       expect(screen.getByTestId('loading-status')).toHaveTextContent('Not loading');
+      expect(screen.getByTestId('session-token')).toHaveTextContent('fake-session-token');
     });
   });
 
@@ -106,8 +123,8 @@ describe('AuthProvider', () => {
     );
 
     // Simulate auth state change with no user
-    const onAuthCallback = onAuthStateChanged.mock.calls[0][1];
-    onAuthCallback(null);
+    const onAuthCallback = onIdTokenChanged.mock.calls[0][1];
+    await onAuthCallback(null);
 
     await waitFor(() => {
       expect(screen.getByTestId('user-status')).toHaveTextContent('No user');
@@ -125,7 +142,7 @@ describe('AuthProvider', () => {
     );
 
     // Simulate auth error
-    const onErrorCallback = onAuthStateChanged.mock.calls[0][2];
+    const onErrorCallback = onIdTokenChanged.mock.calls[0][2];
     const mockError = new Error('Auth error');
     onErrorCallback(mockError);
 
@@ -153,8 +170,8 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('loading-status')).toHaveTextContent('Not loading');
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith('Firebase Auth not initialized, user will remain null');
-    expect(onAuthStateChanged).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith('Firebase Auth not initialized');
+    expect(onIdTokenChanged).not.toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
 
@@ -165,7 +182,7 @@ describe('AuthProvider', () => {
       </AuthProvider>
     );
 
-    expect(onAuthStateChanged).toHaveBeenCalled();
+    expect(onIdTokenChanged).toHaveBeenCalled();
     
     unmount();
     
@@ -198,8 +215,8 @@ describe('AuthProvider', () => {
   });
 
   it('should handle multiple auth state changes', async () => {
-    const mockUser1 = { uid: 'user1', email: 'user1@example.com' };
-    const mockUser2 = { uid: 'user2', email: 'user2@example.com' };
+    const mockUser1 = { uid: 'user1', email: 'user1@example.com', getIdToken: jest.fn().mockResolvedValue('token1') };
+    const mockUser2 = { uid: 'user2', email: 'user2@example.com', getIdToken: jest.fn().mockResolvedValue('token2') };
 
     render(
       <AuthProvider>
@@ -207,22 +224,22 @@ describe('AuthProvider', () => {
       </AuthProvider>
     );
 
-    const onAuthCallback = onAuthStateChanged.mock.calls[0][1];
+    const onAuthCallback = onIdTokenChanged.mock.calls[0][1];
 
     // First user
-    onAuthCallback(mockUser1);
+    await onAuthCallback(mockUser1);
     await waitFor(() => {
       expect(screen.getByTestId('user-status')).toHaveTextContent('User: user1@example.com');
     });
 
     // Second user
-    onAuthCallback(mockUser2);
+    await onAuthCallback(mockUser2);
     await waitFor(() => {
       expect(screen.getByTestId('user-status')).toHaveTextContent('User: user2@example.com');
     });
 
     // Logout
-    onAuthCallback(null);
+    await onAuthCallback(null);
     await waitFor(() => {
       expect(screen.getByTestId('user-status')).toHaveTextContent('No user');
     });
@@ -274,7 +291,7 @@ describe('AuthProvider', () => {
       </AuthProvider>
     );
 
-    const onAuthCallback = onAuthStateChanged.mock.calls[0][1];
+    const onAuthCallback = onIdTokenChanged.mock.calls[0][1];
     onAuthCallback(mockUser);
 
     await waitFor(() => {
@@ -289,7 +306,7 @@ describe('AuthProvider', () => {
       </AuthProvider>
     );
 
-    const onAuthCallback = onAuthStateChanged.mock.calls[0][1];
+    const onAuthCallback = onIdTokenChanged.mock.calls[0][1];
     onAuthCallback(undefined);
 
     await waitFor(() => {

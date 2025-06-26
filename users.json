@@ -1,19 +1,19 @@
 {"users": [
 {
-  "localId": "OcfLegbLZAeC1EuWuZcWNpywiKq1",
-  "email": "robert.parker@nhcs.net",
+  "localId": "OcfLegbLZAeC1EuWuZcWNpywiKq1_placeholder",
+  "email": "dev.user@example.com",
   "emailVerified": true,
-  "displayName": "Robert Parker",
-  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIm4IfDd16-PxcSGWdLlaZvZ8pcGjziAspt4mTAngSFhMyCJ4OX=s96-c",
+  "displayName": "Dev User",
+  "photoUrl": "",
   "lastSignedInAt": "1750878860980",
   "createdAt": "1750450035615",
   "providerUserInfo": [
     {
-      "providerId": "google.com",
-      "rawId": "113748389287824756383",
-      "email": "robert.parker@nhcs.net",
-      "displayName": "Robert Parker",
-      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIm4IfDd16-PxcSGWdLlaZvZ8pcGjziAspt4mTAngSFhMyCJ4OX=s96-c"
+      "providerId": "password",
+      "rawId": "dev.user@example.com",
+      "email": "dev.user@example.com",
+      "displayName": "Dev User",
+      "photoUrl": ""
     }
   ]
 }]}

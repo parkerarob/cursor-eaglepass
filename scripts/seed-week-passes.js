@@ -52,14 +52,19 @@ const pad = (num, size = 5) => String(num).padStart(size, '0');
  */
 function randomSchoolDate() {
   const now = new Date();
-  // Go back up to 4 full days (0-4) and set time window 8-15h
-  const daysBack = Math.floor(Math.random() * 5); // 0-4
-  const date = new Date(now);
-  date.setDate(now.getDate() - daysBack);
-  date.setHours(8 + Math.floor(Math.random() * 8)); // 8-15
-  date.setMinutes(Math.floor(Math.random() * 60));
-  date.setSeconds(Math.floor(Math.random() * 60));
-  date.setMilliseconds(0);
+  let date;
+  do {
+    // Go back up to 4 full days (0-4)
+    const daysBack = Math.floor(Math.random() * 5);
+    date = new Date(now);
+    date.setDate(now.getDate() - daysBack);
+    // Set time window to 8am-3pm
+    date.setHours(8 + Math.floor(Math.random() * 8));
+    date.setMinutes(Math.floor(Math.random() * 60));
+    date.setSeconds(Math.floor(Math.random() * 60));
+    date.setMilliseconds(0);
+  } while (date.getDay() === 0 || date.getDay() === 6); // 0 = Sunday, 6 = Saturday
+
   return date;
 }
 
@@ -92,7 +97,10 @@ const DESTINATION_POOL = [
   try {
     console.log('🔄  Fetching students …');
     const studentsSnap = await db.collection('users').where('role', '==', 'student').get();
-    const students = studentsSnap.docs.map((d) => d.data());
+    const students = studentsSnap.docs.map((d) => ({
+      id: d.id,
+      assignedLocationId: d.data().assignedLocationId,
+    }));
 
     if (students.length === 0) {
       console.error('❌  No students found. Make sure you ran the user seeding script first.');
@@ -101,7 +109,7 @@ const DESTINATION_POOL = [
 
     console.log('🔄  Fetching teachers …');
     const teachersSnap = await db.collection('users').where('role', '==', 'teacher').get();
-    const teacherIds = teachersSnap.docs.map((d) => (d.data().id || d.id));
+    const teacherIds = teachersSnap.docs.map((d) => d.id);
 
     if (teacherIds.length === 0) {
       console.error('❌  No teachers found.');

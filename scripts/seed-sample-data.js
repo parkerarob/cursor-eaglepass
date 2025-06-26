@@ -143,11 +143,14 @@ function generateUsers(locations) {
 
   // Determine classroom locations to assign to teachers
   const classroomLocations = locations.filter((loc) => loc.locationType === 'classroom');
+  let effectiveTotalTeachers = TOTAL_TEACHERS;
   if (classroomLocations.length < TOTAL_TEACHERS) {
-    throw new Error('Not enough classroom locations to assign to teachers');
+    console.warn(`⚠️  Warning: Not enough classroom locations (${classroomLocations.length}) for the requested number of teachers (${TOTAL_TEACHERS}).`);
+    console.warn(`   ↳ Reducing the number of teachers to ${classroomLocations.length}.`);
+    effectiveTotalTeachers = classroomLocations.length;
   }
 
-  for (let i = 1; i <= TOTAL_TEACHERS; i++) {
+  for (let i = 1; i <= effectiveTotalTeachers; i++) {
     const id = `teacher-${pad(i, 5)}`;
     const classroom = classroomLocations[i - 1];
     classroom.responsiblePartyId = id; // Assign teacher ownership
@@ -164,7 +167,7 @@ function generateUsers(locations) {
 
   // Students evenly distributed among teachers
   for (let i = 1; i <= TOTAL_STUDENTS; i++) {
-    const teacherIndex = (i - 1) % TOTAL_TEACHERS; // 0-based
+    const teacherIndex = (i - 1) % effectiveTotalTeachers; // 0-based
     const teacher = teachers[teacherIndex];
     students.push({
       id: `student-${pad(i, 5)}`,

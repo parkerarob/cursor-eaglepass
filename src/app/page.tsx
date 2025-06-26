@@ -23,7 +23,7 @@ import { formatUserName } from '@/lib/utils';
 import { createPassAction } from './actions'; // Import the new Server Action
 
 export default function Home() {
-  const { user: authUser, isLoading: authLoading } = useAuth();
+  const { user: authUser, isLoading: authLoading, sessionToken } = useAuth();
   const router = useRouter();
 
   const [currentStudent, setCurrentStudent] = useState<User | null>(null);
@@ -184,7 +184,9 @@ export default function Home() {
     setIsLoading(true);
     setPassCreationError(null);
 
-    const result = await createPassAction(currentStudent, formData);
+    // Call the server action. The student is no longer passed as an argument.
+    // The server will identify the user via the session token.
+    const result = await createPassAction(formData);
 
     if (!result.success) {
       setPassCreationError(result.error || 'Failed to create pass.');
@@ -227,6 +229,8 @@ export default function Home() {
     if (!currentPass || !currentStudent) return;
     setIsLoading(true);
     
+    // TODO: Refactor PassService to not be called from client
+    // For now, this is a placeholder to show how headers would be passed
     const result = await PassService.closePass(currentPass, currentStudent);
     if (result.success && result.updatedPass) {
       setCurrentPass(result.updatedPass);
@@ -305,6 +309,18 @@ export default function Home() {
         if (location) setCurrentLocation(location);
       });
     }
+  };
+
+  // This section needs to be refactored to use Server Actions as well,
+  // but for now, we'll pass the session token in the headers for the old service.
+  const getAuthHeaders = () => {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`;
+    }
+    return headers;
   };
 
   if (isLoading || authLoading) {

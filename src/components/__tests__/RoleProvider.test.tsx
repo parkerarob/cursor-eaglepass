@@ -16,13 +16,11 @@ const mockUseAuth = jest.mocked(AuthProvider.useAuth);
 const mockAuthContext: {
   user: any;
   isLoading: boolean;
-  signIn: jest.Mock;
-  signOut: jest.Mock;
+  sessionToken: string | null;
 } = {
   user: null,
   isLoading: false,
-  signIn: jest.fn(),
-  signOut: jest.fn(),
+  sessionToken: null,
 };
 
 // Mock firestore functions
@@ -84,6 +82,24 @@ function TestComponent() {
   );
 }
 
+const createMockFirebaseUser = (uid: string, email: string, displayName = 'Test User'): any => ({
+  uid,
+  email,
+  displayName,
+  emailVerified: true,
+  isAnonymous: false,
+  metadata: {},
+  providerData: [],
+  refreshToken: 'test-token',
+  tenantId: null,
+  delete: jest.fn().mockResolvedValue(undefined),
+  getIdToken: jest.fn().mockResolvedValue('test-id-token'),
+  getIdTokenResult: jest.fn().mockResolvedValue({ token: 'test-id-token' }),
+  reload: jest.fn().mockResolvedValue(undefined),
+  toJSON: jest.fn(() => ({ uid, email, displayName })),
+  providerId: 'firebase',
+});
+
 describe('RoleProvider', () => {
   const mockGetUserByEmail = firestore.getUserByEmail as jest.MockedFunction<
     typeof firestore.getUserByEmail
@@ -120,20 +136,32 @@ describe('RoleProvider', () => {
     schoolId: 'school-1',
   };
 
+  const mockDevFirebaseUser = createMockFirebaseUser('dev-1', 'dev@example.com', 'Dev User');
+
+  const originalEnv = process.env;
+
   beforeEach(() => {
+    jest.resetModules(); // Important for process.env changes
+    process.env = {
+      ...originalEnv,
+      NEXT_PUBLIC_DEV_USER_UID: 'dev-1',
+    };
+
     jest.clearAllMocks();
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
     
     // Setup mock implementation
-    mockUseAuth.mockReturnValue(mockAuthContext);
+    mockUseAuth.mockReturnValue({ ...mockAuthContext, user: mockDevFirebaseUser });
     
     // Reset auth context
     mockAuthContext.user = null;
     mockAuthContext.isLoading = false;
+    mockAuthContext.sessionToken = null;
   });
 
   afterEach(() => {
+    process.env = originalEnv; // Restore original environment
     jest.restoreAllMocks();
   });
 
@@ -193,16 +221,8 @@ describe('RoleProvider', () => {
   });
 
   it('should enable dev mode for dev users', async () => {
-    mockAuthContext.user = mockUser;
-    mockGetUserByEmail.mockResolvedValue(mockDevUser);
-    const adminUser = {
-      id: 'admin-1',
-      email: 'admin@example.com',
-      name: 'Admin User',
-      role: 'admin' as const,
-      schoolId: 'school-1',
-    };
-    mockGetUserById.mockResolvedValue(adminUser);
+    mockAuthContext.user = mockDevFirebaseUser;
+    mockGetUserById.mockResolvedValue(mockDevUser);
 
     render(
       <RoleProvider>
@@ -246,8 +266,7 @@ describe('RoleProvider', () => {
       email: 'test@example.com',
       role: 'teacher',
       schoolId: '',
-      firstName: 'Test',
-      lastName: 'User',
+      name: 'Test User',
     });
 
     expect(screen.getByTestId('current-user')).toHaveTextContent(

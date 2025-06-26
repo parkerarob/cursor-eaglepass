@@ -17,4 +17,6 @@ This document provides a clear overview of the current architecture and links to
 *   `npm test`: Run all unit tests
 
 ---
-*This README was last updated on [Current Date] to reflect the new documentation structure.*
+*This README was last updated on 2024-07-29 to reflect the new documentation structure.*
+
+## Project Overview

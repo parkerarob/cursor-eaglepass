@@ -455,7 +455,16 @@ describe('PassService', () => {
   });
 
   describe('addDestination', () => {
+    const { httpsCallable } = require('firebase/functions');
+    let mockValidateAddDestination: jest.Mock;
+
+    beforeEach(() => {
+      mockValidateAddDestination = jest.fn();
+      httpsCallable.mockReturnValue(mockValidateAddDestination);
+    });
+
     it('should add new destination successfully', async () => {
+      mockValidateAddDestination.mockResolvedValue({ data: { allowed: true } });
       jest.spyOn(PassStateMachine.prototype, 'validateTransition').mockReturnValue({ valid: true });
       jest.spyOn(PassStateMachine.prototype, 'startNewDestination').mockReturnValue(mockPass);
       const result = await PassService.addDestination(mockFormData, mockPass, mockStudent);
@@ -466,10 +475,18 @@ describe('PassService', () => {
     });
 
     it('should reject when transition invalid', async () => {
+      mockValidateAddDestination.mockResolvedValue({ data: { allowed: true } });
       jest.spyOn(PassStateMachine.prototype, 'validateTransition').mockReturnValue({ valid: false, error: 'Cannot start new destination' });
       const result = await PassService.addDestination(mockFormData, mockPass, mockStudent);
       expect(result.success).toBe(false);
       expect(result.error).toContain('Cannot start new destination');
+    });
+
+    it('should reject when server validation fails', async () => {
+      mockValidateAddDestination.mockResolvedValue({ data: { allowed: false } });
+      const result = await PassService.addDestination(mockFormData, mockPass, mockStudent);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Server validation failed');
     });
   });
 }); 

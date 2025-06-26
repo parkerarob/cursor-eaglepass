@@ -129,7 +129,7 @@ export const eventLogSchema = z.object({
   actorId: uuidSchema,
   timestamp: z.date(),
   eventType: z.enum([
-    'DEPARTED', 'RETURNED', 'PASS_CREATED', 'PASS_CLOSED', 'ARRIVED',
+    'DEPARTED', 'RETURNED', 'PASS_CREATED', 'PASS_CLOSED', 'ARRIVED', 'NEW_DESTINATION',
     'INVALID_TRANSITION', 'POLICY_DENIED', 'ERROR', 'NOTIFICATION_SENT',
     'NOTIFICATION_FAILED', 'STUDENT_CLAIMED', 'EMERGENCY_ACTIVATED'
   ]),

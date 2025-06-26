@@ -6,26 +6,47 @@ import {
 } from 'firebase-admin/firestore';
 import { adminApp } from '@/lib/firebase/config.server';
 import { Pass, PassFormData, User } from '@/types';
+import { Group, Restriction } from '@/types/policy';
 import { passFormDataSchema } from '@/lib/validation/schemas';
 import { PolicyEngine } from '@/lib/policyEngine';
 import { FERPAAuditLogger } from '@/lib/ferpaAuditLogger';
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
+import { SessionManager } from '@/lib/auth/sessionManager';
+import { getUserById } from '@/lib/firebase/firestore';
 
 // Use the Admin SDK Firestore instance
 const adminDb = getFirestore(adminApp);
 
 // This is the new, secure Server Action for creating a pass.
 export async function createPassAction(
-  student: User,
   formData: PassFormData
 ): Promise<{ success: boolean; error?: string }> {
+  const headersList = headers();
+  const token = headersList.get('Authorization')?.split('Bearer ')[1];
+
+  if (!token) {
+    return { success: false, error: 'Authorization token not provided.' };
+  }
+  
+  const sessionResult = await SessionManager.validateSession(token);
+  if (!sessionResult.valid || !sessionResult.session) {
+    return { success: false, error: sessionResult.error || 'Invalid session.' };
+  }
+  
+  const student = await getUserById(sessionResult.session.userId);
+
+  if (!student) {
+      return { success: false, error: 'Student profile not found.' };
+  }
+
   try {
     // 1. Validate input payload
     const validatedFormData = passFormDataSchema.parse(formData);
     const { destinationLocationId } = validatedFormData;
 
-    if (!student || !student.id || !student.assignedLocationId) {
-      throw new Error('Invalid student data provided.');
+    if (!student.assignedLocationId) {
+      throw new Error('Student has no assigned location and cannot create a pass.');
     }
 
     // 2. Evaluate Policy
@@ -37,8 +58,12 @@ export async function createPassAction(
       locationId: student.assignedLocationId,
       passType: 'Immediate' as const,
     };
-    // Note: Groups and restrictions would be fetched here in a real scenario
-    const policyResult = await policyEngine.evaluatePolicy(policyContext, student, [], []);
+    
+    // TODO: [TICKET-582] Fetch student's groups and any active restrictions for accurate policy enforcement.
+    // Currently using placeholders.
+    const studentGroups: Group[] = [];
+    const activeRestrictions: Restriction[] = [];
+    const policyResult = await policyEngine.evaluatePolicy(policyContext, student, studentGroups, activeRestrictions);
 
     if (!policyResult.allowed) {
       await FERPAAuditLogger.logRecordAccess(

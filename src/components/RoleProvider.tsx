@@ -24,8 +24,8 @@ const TEST_USERS = {
   student: 'student-00001',
   teacher: 'teacher-00001',
   admin: 'admin-00001',
-  // Use the actual Firebase Auth UID instead of Firestore document ID
-  dev: 'OcfLegbLZAeC1EuWuZcWNpywiKq1',
+  // Use the actual Firebase Auth UID from environment variables
+  dev: process.env.NEXT_PUBLIC_DEV_USER_UID || '',
 };
 
 export function RoleProvider({ children }: { children: ReactNode }) {

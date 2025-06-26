@@ -7,7 +7,7 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import { onCall } from "firebase-functions/v2/https";
+import { onCall, CallableRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
@@ -90,13 +90,13 @@ export const validateAddDestination = onCall(
     timeoutSeconds: 30,
     memory: "256MiB"
   },
-  async (request: any) => {
+  async (request: CallableRequest<{ passId: string; studentId: string }>) => {
     try {
       if (!request.auth || !request.auth.uid) {
         throw new Error("User must be authenticated");
       }
 
-      const { passId, studentId } = request.data || {};
+      const { passId, studentId } = request.data;
       if (!passId || !studentId) {
         throw new Error("passId and studentId are required");
       }

@@ -17,13 +17,22 @@ const resolveServiceAccount = () => {
 
   for (const candidate of candidates) {
     try {
-      return require(path.resolve(candidate));
+      const resolvedPath = path.resolve(candidate);
+      console.log(`ℹ️ Trying to load service account from: ${resolvedPath}`);
+      const key = require(resolvedPath);
+      console.log(`✅ Successfully loaded service account from: ${resolvedPath}`);
+      return key;
     } catch (err) {
+      if (err.code === 'MODULE_NOT_FOUND') {
+        console.log(`⚠️  File not found at '${candidate}'.`);
+      } else {
+        console.warn(`⚠️  Error loading service account from '${candidate}':`, err.message);
+      }
       continue;
     }
   }
   
-  console.error('❌ Could not find service account key. Please provide path as argument or set SERVICE_ACCOUNT_PATH env var');
+  console.error('❌ Could not find or load a valid service account key. Please provide the path as an argument or set the SERVICE_ACCOUNT_PATH env var.');
   process.exit(1);
 };
 
@@ -35,14 +44,25 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
+// Get user info from environment variables
+const firebaseAuthUID = process.env.DEV_USER_UID;
+const email = process.env.DEV_USER_EMAIL;
+const legacyDevUserId = process.env.LEGACY_DEV_USER_ID;
+
+// Validate environment variables
+if (!firebaseAuthUID || typeof firebaseAuthUID !== 'string' || firebaseAuthUID.length < 1) {
+    console.error('❌ Invalid or missing DEV_USER_UID. Please check your environment variables.');
+    process.exit(1);
+}
+if (!email || !legacyDevUserId) {
+    console.error('❌ Missing environment variables. Please set DEV_USER_EMAIL and LEGACY_DEV_USER_ID.');
+    process.exit(1);
+}
+
 async function fixAuthUser() {
   console.log('🔧 Fixing Firebase Auth user mapping...');
   
   try {
-    // The actual Firebase Auth UID from users.json
-    const firebaseAuthUID = 'OcfLegbLZAeC1EuWuZcWNpywiKq1';
-    const email = 'robert.parker@nhcs.net';
-    
     // Check if user document already exists
     const userDoc = await db.collection('users').doc(firebaseAuthUID).get();
     
@@ -66,9 +86,9 @@ async function fixAuthUser() {
     console.log('📋 User data:', devUserData);
     
     // Also update the legacy dev user mapping if it exists
-    const legacyDevDoc = await db.collection('users').doc('59d6dM275YRP9a6cqqr6').get();
+    const legacyDevDoc = await db.collection('users').doc(legacyDevUserId).get();
     if (legacyDevDoc.exists) {
-      await db.collection('users').doc('59d6dM275YRP9a6cqqr6').delete();
+      await db.collection('users').doc(legacyDevUserId).delete();
       console.log('🗑️  Removed legacy dev user document');
     }
     

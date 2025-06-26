@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Phase-2: Suspicious pattern guards moved from legacy validation.ts
  */

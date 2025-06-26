@@ -373,6 +373,7 @@ class DataLifecycleManager {
     );
     
     for (const record of eligibleForDestruction) {
+      this.logDestructionIntent(record, policy);
       await this.executeDestruction(record, policy.destructionMethod);
       await this.logDestruction(record, policy);
     }

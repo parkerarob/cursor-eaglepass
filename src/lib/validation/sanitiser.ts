@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+import { checkForSuspiciousPatterns } from './guards';
+
 /**
  * Phase-2: Sanitisation helpers moved from legacy validation.ts
  */
@@ -17,9 +18,6 @@ export function sanitizeString(input: unknown): string {
     .replace(/\s+/g, ' ') // Normalize whitespace
     .substring(0, 1000); // Limit length
 }
-
-// Import after export to avoid hoisting issues
-import { checkForSuspiciousPatterns } from './guards';
 
 /**
  * Advanced input sanitization with security checks

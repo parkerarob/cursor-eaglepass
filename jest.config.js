@@ -18,7 +18,7 @@ const customJestConfig = {
   },
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/', '<rootDir>/functions/'],
   transformIgnorePatterns: [
-    '/node_modules/(?!(geist|jose|next)/)',
+    '/node_modules/(?!(jose|@panva/hkdf|@babel|next|geist)/)',
   ],
   
   // Coverage configuration for TASK-007

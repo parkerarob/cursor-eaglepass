@@ -20,8 +20,22 @@ const firebaseConfig = {
 };
 
 // Validate Firebase config
-if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-  console.error('❌ Firebase configuration is missing. Please check your .env.local file.');
+const requiredConfig = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+const missingConfig = requiredConfig.filter(key => !firebaseConfig[key]);
+
+if (missingConfig.length > 0) {
+  console.error(`❌ Missing Firebase configuration keys: ${missingConfig.join(', ')}. Please check your .env.local file.`);
+  process.exit(1);
+}
+
+// The actual Firebase Auth UID from environment variables
+const firebaseAuthUID = process.env.DEV_USER_UID;
+const email = process.env.DEV_USER_EMAIL;
+const legacyDevUserId = process.env.LEGACY_DEV_USER_ID;
+
+// Validate environment variables for the script
+if (!firebaseAuthUID || !email || !legacyDevUserId) {
+  console.error('❌ Missing environment variables. Please set DEV_USER_UID, DEV_USER_EMAIL, and LEGACY_DEV_USER_ID.');
   process.exit(1);
 }
 
@@ -33,10 +47,6 @@ async function fixAuthUser() {
   console.log('🔧 Fixing Firebase Auth user mapping...');
   
   try {
-    // The actual Firebase Auth UID from users.json
-    const firebaseAuthUID = 'OcfLegbLZAeC1EuWuZcWNpywiKq1';
-    const email = 'robert.parker@nhcs.net';
-    
     // Check if user document already exists
     const userDocRef = doc(db, 'users', firebaseAuthUID);
     const userDoc = await getDoc(userDocRef);
@@ -61,7 +71,7 @@ async function fixAuthUser() {
     console.log('📋 User data:', devUserData);
     
     // Also remove the legacy dev user mapping if it exists
-    const legacyDevDocRef = doc(db, 'users', '59d6dM275YRP9a6cqqr6');
+    const legacyDevDocRef = doc(db, 'users', legacyDevUserId);
     const legacyDevDoc = await getDoc(legacyDevDocRef);
     if (legacyDevDoc.exists()) {
       await deleteDoc(legacyDevDocRef);
