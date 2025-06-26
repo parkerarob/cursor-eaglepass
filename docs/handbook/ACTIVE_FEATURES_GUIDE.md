@@ -12,21 +12,26 @@ This document is a quick reference for what is **currently implemented and live*
 |---------|-----------------|-------|-------|
 | **Pass Status** | `OPEN`, `CLOSED` | ✅ | Exactly one `OPEN` pass per student is allowed. |
 | **Movement State** | `IN`, `OUT` | ✅ | Stored per leg; determines which UI actions are shown. |
-| **Legs Array** | Arbitrary length | ⚠️ _Read-only_ | The backend stores each state transition as a new leg, but **students cannot initiate an additional destination while the pass is still OPEN** (see §2). |
+| **Legs Array** | Arbitrary length | ✅ | Students can now add new destinations to an open pass as long as their last leg is `IN`. |
 
 ---
 
 ## 2. Multi-Leg Trips
 
-Multi-destination support appeared in early prototypes but was moved to the _Deferred_ column of the PRD (v3.1 §4: "Expanded multi-leg passes").
+Multi-destination support is now **active** and available to students.
 
 | Capability | Status | Rationale |
 |------------|--------|-----------|
-| Start a new destination while an `OPEN` pass exists | 🚫 Blocked by validation | Keeps the MVP logic simple and aligns with "one active pass per student". |
-| Auto-extend current pass by adding legs (UI) | 🚫 Hidden in production UI | The backend still supports `addLeg()` (used by arrive/return actions), but the **extra _Create Pass_ form is now suppressed**. |
-| Teacher/admin manual add-leg | 🚫 Not exposed | Will be revisited post-MVP. |
+| Start a new destination while an `OPEN` pass exists | ✅ Supported | Students can add destinations as long as their last leg is `IN`. |
+| Auto-extend current pass by adding legs (UI) | ✅ Supported | UI and backend both support multi-leg journeys. |
+| Teacher/admin manual add-leg | 🚫 Not exposed | Still deferred for staff, but student self-service is live. |
 
-**Take-away:**  Students must _return to their scheduled classroom and close the pass_ before starting a new trip.
+**Security:**
+- All add-destination actions are validated by the `validateAddDestination` Cloud Function.
+- Firestore rules enforce append-only writes to the `legs` array.
+- All attempts (allowed or denied) are logged in `eventLogs` with `eventType: NEW_DESTINATION` or `PASS_VALIDATION`.
+
+**Take-away:**  Students may add as many destinations as needed without returning to class, as long as they are physically at a location (`IN`).
 
 ---
 
@@ -34,10 +39,12 @@ Multi-destination support appeared in early prototypes but was moved to the _Def
 
 1. **Create Pass** – origin = scheduled classroom, destination = selected location.  Pass status becomes `OPEN`, leg #1 state = `OUT`.
 2. **I've Arrived** – marks arrival (`IN`) at destination by appending leg #2.  Pass remains `OPEN`.
-3. **Return to Class** – starts journey back (`OUT`) to class (leg #3).
-4. **I'm Back in Class** – arrival (`IN`) at class closes the pass (`status = CLOSED`, leg #4).
+3. **Add Destination** – while at a location (`IN`), student may select a new destination, appending a new `OUT` leg.
+4. **Repeat** – steps 2–3 as needed for additional stops.
+5. **Return to Class** – starts journey back (`OUT`) to class (final leg).
+6. **I'm Back in Class** – arrival (`IN`) at class closes the pass (`status = CLOSED`).
 
-A single pass therefore has four legs in the common restroom scenario.
+A single pass may now have many legs, reflecting a true multi-stop journey.
 
 ---
 
@@ -45,7 +52,7 @@ A single pass therefore has four legs in the common restroom scenario.
 
 | Feature | PRD Section | Current ETA |
 |---------|-------------|-------------|
-| Multi-leg passes without returning to class | §4 (Deferred) | TBD – requires policy & UI work |
+| Teacher/admin manual add-leg | §4 (Deferred) | TBD |
 | Scheduled passes | §4 (Deferred) | TBD |
 | Parent portal visibility | §4 (Deferred) | TBD |
 

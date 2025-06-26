@@ -20,6 +20,8 @@ Welcome to the Eagle Pass system documentation. This directory contains comprehe
 
 ### Development Guides
 - **[Code Conventions](./CODE_CONVENTIONS.md)** - Coding standards and best practices
+- **[Data Access Security Model](./DATA_ACCESS_SECURITY_MODEL.md)** - **[NEW]** Explains the Firestore security rules and data access patterns. **All developers should read this.**
+- **[Core Actions Architecture](./CORE_ACTIONS_ARCHITECTURE.md)** - **[NEW]** Explains the Server Action pattern for all state-changing operations. **All developers should read this.**
 - **[API Documentation](./API_DOCUMENTATION.md)** - Detailed API reference for all services
 - **[Troubleshooting Guide](./TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions
 
@@ -111,3 +113,17 @@ When adding new features:
 ---
 
 *For the most up-to-date information, always check the actual implementation in the codebase.* 
+
+### Key Documentation
+
+This handbook is organized into several key areas. New developers should start with the `AI Context Guide` and the `Data Access Security Model`.
+
+*   **[AI Context Guide](./AI_CONTEXT_GUIDE.md)**: High-level overview for AI assistants and developers.
+*   **[Code Conventions](./CODE_CONVENTIONS.md)**: Standards for writing consistent and maintainable code.
+*   **[Data Access Security Model](./DATA_ACCESS_SECURITY_MODEL.md)**: Explains the Firestore security rules and data access patterns. **All developers should read this.**
+*   **[Core Actions Architecture](./CORE_ACTIONS_ARCHITECTURE.md)**: **[NEW]** Explains the Server Action pattern for all state-changing operations. **All developers should read this.**
+*   **[API Documentation](./API_DOCUMENTATION.md)**: Details on the service layer and core APIs.
+*   **[CI/CD Pipeline](./CI_CD_PIPELINE.md)**: Information on the continuous integration and deployment process.
+*   **[Troubleshooting Guide](./TROUBLESHOOTING_GUIDE.md)**: Solutions for common problems and errors.
+
+### FERPA Compliance

@@ -20,6 +20,7 @@ import { Login } from '@/components/Login';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { formatUserName } from '@/lib/utils';
+import { createPassAction } from './actions'; // Import the new Server Action
 
 export default function Home() {
   const { user: authUser, isLoading: authLoading } = useAuth();
@@ -177,33 +178,18 @@ export default function Home() {
     updateActionState();
   }, [currentPass, currentStudent]);
 
-  const handleCreateOrAddDestination = async (formData: PassFormData) => {
+  // This is the new, simplified handler that calls the Server Action
+  const handleCreatePass = async (formData: PassFormData) => {
     if (!currentStudent) return;
     setIsLoading(true);
     setPassCreationError(null);
 
-    let result;
-    // If there is an OPEN pass and student is currently IN, add a destination instead of creating a new pass
-    if (currentPass && currentPass.status === 'OPEN') {
-      const lastLeg = currentPass.legs[currentPass.legs.length - 1];
-      if (lastLeg && lastLeg.state === 'IN') {
-        result = await PassService.addDestination(formData, currentPass, currentStudent);
-      } else {
-        // Should not happen because UI hides form, but guard anyway
-        setPassCreationError('You are currently in transit. Please arrive or return to class first.');
-        setIsLoading(false);
-        return;
-      }
-    } else {
-      result = await PassService.createPass(formData, currentStudent);
-    }
+    const result = await createPassAction(currentStudent, formData);
 
-    if (result.success && result.updatedPass) {
-      setCurrentPass(result.updatedPass);
-      await updateCurrentLocation(result.updatedPass);
-    } else {
-      setPassCreationError(result.error || 'Failed to start pass');
+    if (!result.success) {
+      setPassCreationError(result.error || 'Failed to create pass.');
     }
+    // No need to set state on success, revalidatePath will refresh the data
     setIsLoading(false);
   };
 
@@ -381,8 +367,10 @@ export default function Home() {
 
         {!currentPass && (
           <CreatePassForm
-            onCreatePass={handleCreateOrAddDestination}
+            onCreatePass={handleCreatePass}
             isLoading={isLoading}
+            excludeLocationId={currentLocation?.id}
+            heading="Where to next?"
           />
         )}
 
@@ -406,7 +394,7 @@ export default function Home() {
                       : 'Return to Scheduled Class'}
                   </Button>
                   <CreatePassForm
-                    onCreatePass={handleCreateOrAddDestination}
+                    onCreatePass={handleCreatePass}
                     isLoading={isLoading}
                     excludeLocationId={currentLeg.destinationLocationId}
                     heading="Need to go somewhere else?"

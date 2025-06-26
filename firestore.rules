@@ -2,26 +2,111 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
+    // By default, deny all access to all documents.
+    // Specific rules below will grant explicit access.
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 7, 18);
+      allow read, write: if false;
     }
 
-    // Pass document rules - allow append-only legs
+    //----------------------------------------------------------------------
+    // Helper Functions
+    //----------------------------------------------------------------------
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isRole(role) {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function isStudent() {
+      return isRole('student');
+    }
+
+    function isTeacher() {
+      return isRole('teacher');
+    }
+
+    function isAdmin() {
+      return isRole('admin') || isRole('dev');
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    //----------------------------------------------------------------------
+    // User Profiles
+    //----------------------------------------------------------------------
+    match /users/{userId} {
+      // Users can read their own profile.
+      // Admins can read any user profile.
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Users can only update specific, non-critical fields on their own profile.
+      // Admins can update any field.
+      allow update: if (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys.hasOnly(['firstName', 'lastName', 'emergencyContacts'])) || isAdmin();
+    }
+
+    //----------------------------------------------------------------------
+    // Passes & Event Logs (Core Application)
+    //----------------------------------------------------------------------
     match /passes/{passId} {
-      allow update: if request.auth != null &&
-        request.resource.data.legs.size() == resource.data.legs.size() + 1 &&
-        request.resource.data.legs[0:resource.data.legs.size()] == resource.data.legs &&
-        request.resource.data.status == resource.data.status;
+      // Students can read passes where they are the student.
+      // Teachers and Admins can read any pass.
+      allow read: if (isAuthenticated() && resource.data.studentId == request.auth.uid) || isTeacher() || isAdmin();
+      
+      // Pass creation and updates are handled by secure server-side logic (Server Actions), not direct client writes.
+      // Therefore, we deny direct client create/update/delete.
+      allow write: if false;
+    }
+
+    match /eventLogs/{logId} {
+        // Event logs are created by server-side logic.
+        // Reading logs is restricted to teachers and admins for reporting.
+        allow read: if isTeacher() || isAdmin();
+        allow write: if false; // Logs are immutable.
+    }
+
+    //----------------------------------------------------------------------
+    // FERPA & Compliance Collections
+    //----------------------------------------------------------------------
+    match /ferpaAuditLogs/{logId} {
+      // FERPA logs are highly sensitive.
+      // They are written by server-side logic only.
+      // They can only be read by admins.
+      allow read: if isAdmin();
+      allow create: if false; // Server-side only
+      allow update, delete: if false; // Immutable
+    }
+    
+    match /parentStudentRelationships/{relId} {
+        // Written by server-side logic.
+        // Can be read by the parent who owns the relationship, or an admin.
+        allow read: if (isAuthenticated() && resource.data.parentId == request.auth.uid) || isAdmin();
+        allow write: if false;
+    }
+
+    match /emergencyDisclosures/{disclosureId} {
+        // Written by server-side logic.
+        // Read by admins only.
+        allow read: if isAdmin();
+        allow write: if false;
+    }
+
+    match /directoryInfoOptOuts/{optOutId} {
+        // Written by server-side logic.
+        // Read by the parent who created it, or an admin.
+        allow read: if (isAuthenticated() && resource.data.parentId == request.auth.uid) || isAdmin();
+        allow write: if false;
+    }
+
+    //----------------------------------------------------------------------
+    // Application Configuration (Read-Only for clients)
+    //----------------------------------------------------------------------
+    match /locations/{locationId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Managed by admins via server-side logic
     }
   }
 }
