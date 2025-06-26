@@ -16,14 +16,17 @@ import {
 } from '@/lib/firebase/firestore';
 import { PassService } from '@/lib/passService';
 import { useAuth } from '@/components/AuthProvider';
+import { useRole } from '@/components/RoleProvider';
+import { RoleSwitcher } from '@/components/RoleSwitcher';
 import { Login } from '@/components/Login';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { formatUserName } from '@/lib/utils';
-import { createPassAction } from './actions'; // Import the new Server Action
+import { createPassAction } from './actions';
 
 export default function Home() {
   const { user: authUser, isLoading: authLoading, sessionToken } = useAuth();
+  const { currentUser: roleUser, currentRole, isLoading: roleLoading, isDevMode } = useRole();
   const router = useRouter();
 
   const [currentStudent, setCurrentStudent] = useState<User | null>(null);
@@ -31,7 +34,6 @@ export default function Home() {
   const [currentPass, setCurrentPass] = useState<Pass | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDevMode, setIsDevMode] = useState(false);
   const [passCreationError, setPassCreationError] = useState<string | null>(null);
 
   const [actionState, setActionState] = useState({
@@ -54,12 +56,12 @@ export default function Home() {
       return;
     }
 
-    if (authLoading) {
+    if (authLoading || roleLoading) {
       setIsLoading(true);
       return;
     }
 
-    if (!authUser) {
+    if (!authUser || !roleUser) {
       setIsLoading(false);
       setCurrentStudent(null);
       setCurrentPass(null);
@@ -70,32 +72,28 @@ export default function Home() {
       setIsLoading(true);
       setError(null);
       try {
-        const userProfile = await getUserByEmail(authUser.email!);
-        if (userProfile?.role === 'student') {
-          setCurrentStudent(userProfile);
-          setIsDevMode(false);
-        } else if (userProfile?.role === 'dev') {
+        // Use RoleProvider's current user and role
+        if (currentRole === 'student') {
+          setCurrentStudent(roleUser);
+        } else if (currentRole === 'dev') {
+          // For dev users, load the test student profile
           const testStudent = await getUserById('student-00001');
           if (testStudent) {
             setCurrentStudent(testStudent);
-            setIsDevMode(true);
           } else {
             setError('Could not load test student profile for dev mode.');
             setCurrentStudent(null);
           }
-        } else if (userProfile?.role === 'teacher') {
+        } else if (currentRole === 'teacher') {
           // Redirect teachers to teacher interface
           router.push('/teacher');
           return;
-        } else if (userProfile?.role === 'admin') {
+        } else if (currentRole === 'admin') {
           // Redirect admins to admin interface
           router.push('/admin');
           return;
-        } else if (userProfile) {
-          setError(`This application is for students only. Your role is: ${userProfile.role}.`);
-          setCurrentStudent(null);
         } else {
-          setError(`Your email (${authUser.email}) is not registered in the system.`);
+          setError(`This application is for students only. Your role is: ${currentRole}.`);
           setCurrentStudent(null);
         }
       } catch (e) {
@@ -105,7 +103,7 @@ export default function Home() {
     };
 
     fetchUserData();
-  }, [authUser, authLoading, router]);
+  }, [authUser, authLoading, roleUser, currentRole, roleLoading, router]);
 
   useEffect(() => {
     if (!currentStudent) {
@@ -401,7 +399,7 @@ export default function Home() {
     }
   };
 
-  if (isLoading || authLoading) {
+  if (isLoading || authLoading || roleLoading) {
     return (
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
         <p>Loading...</p>
@@ -409,7 +407,7 @@ export default function Home() {
     );
   }
 
-  if (!authUser) {
+  if (!authUser || !roleUser) {
     return <Login />;
   }
 
@@ -433,6 +431,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background p-4">
+      {/* Role Switcher for Dev Users */}
+      <RoleSwitcher />
+      
       <ThemeToggle />
       <div className="max-w-2xl mx-auto space-y-6">
         <header className="flex justify-between items-center">
