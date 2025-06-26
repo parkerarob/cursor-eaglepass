@@ -15,8 +15,6 @@ const nextConfig = {
     };
     return config;
   },
-  // External packages for server components
-  serverExternalPackages: ['firebase-functions', 'redis', '@redis/client'],
 };
 
 module.exports = nextConfig; 
